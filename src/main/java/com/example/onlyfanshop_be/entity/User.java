@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,8 +30,9 @@ public class User {
     private String phoneNumber;
     private String address;
 
-    @ManyToOne
     @JoinColumn(name = "roleID")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Role role;
 
     @OneToMany(mappedBy = "user")
