@@ -6,6 +6,8 @@ import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
@@ -13,7 +15,12 @@ import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
+
 @Service
 public class LoginService implements ILoginService{
     @Autowired
@@ -21,6 +28,11 @@ public class LoginService implements ILoginService{
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     @Autowired
     private RoleRepository roleRepository;
+    private final JavaMailSender mailSender;
+    @Autowired
+    public LoginService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
 
     @Override
     public ApiResponse login(LoginRequest loginRequest) {
@@ -73,5 +85,61 @@ public class LoginService implements ILoginService{
         return response;
     }
 
+    private final Map<String, OTPDetails> otpStorage = new HashMap<>();
+    @Override
+    public String generateOTP(String email) {
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        LocalDateTime expireTime = LocalDateTime.now().plusMinutes(2);
+        otpStorage.put(email, new OTPDetails(otp, expireTime));
+        return otp;
+    }
 
+    @Override
+    public boolean validateOTP(String email, String otp) {
+        OTPDetails details = otpStorage.get(email);
+
+        if (details == null) return false;
+
+        // Nếu đã hết hạn thì xóa luôn
+        if (LocalDateTime.now().isAfter(details.getExpireTime())) {
+            otpStorage.remove(email);
+            return false;
+        }
+
+        // Nếu đúng OTP và còn hạn → xóa khỏi storage (dùng 1 lần thôi)
+        if (otp.equals(details.getOtp())) {
+            otpStorage.remove(email);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public void sendOTP(String to, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Xác thực email - OTP");
+        message.setText("Mã OTP của bạn là: " + otp + " (hết hạn sau 5 phút)");
+        mailSender.send(message);
+    }
+
+    // Inner class để lưu OTP + ExpireTime
+    private static class OTPDetails {
+        private final String otp;
+        private final LocalDateTime expireTime;
+
+        public OTPDetails(String otp, LocalDateTime expireTime) {
+            this.otp = otp;
+            this.expireTime = expireTime;
+        }
+
+        public String getOtp() {
+            return otp;
+        }
+
+        public LocalDateTime getExpireTime() {
+            return expireTime;
+        }
+    }
 }

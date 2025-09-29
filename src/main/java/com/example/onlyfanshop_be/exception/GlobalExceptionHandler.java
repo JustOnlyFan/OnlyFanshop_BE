@@ -9,24 +9,22 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(value = Exception.class)
-    ResponseEntity<ApiResponse> handleRuntimeException(Exception e) {
-        ApiResponse apiReponse = new ApiResponse();
-
-        apiReponse.setStatusCode(9999);
-        apiReponse.setMessage(e.getMessage());
-
-        return ResponseEntity.badRequest().body(apiReponse);
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<ApiResponse> handleAppException(AppException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        ApiResponse response = new ApiResponse();
+        response.setStatusCode(errorCode.getCode());
+        response.setMessage(e.getMessage());
+        return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler(value = RuntimeException.class)
-    ResponseEntity<ApiResponse> handleAppException(AppException e) {
-        ErrorCode errorCode = e.getErrorCode();
-        ApiResponse apiReponse = new ApiResponse();
-
-        apiReponse.setStatusCode(errorCode.getCode());
-        apiReponse.setMessage(e.getMessage());
-
-        return ResponseEntity.badRequest().body(apiReponse);
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse> handleGeneralException(Exception e) {
+        ApiResponse response = new ApiResponse();
+        response.setStatusCode(9999);
+        response.setMessage(e.getMessage());
+        return ResponseEntity.badRequest().body(response);
     }
 }
+
+
