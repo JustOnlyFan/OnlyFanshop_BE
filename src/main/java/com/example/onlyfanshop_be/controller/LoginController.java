@@ -8,10 +8,9 @@ import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.service.ILoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("login")
@@ -32,4 +31,22 @@ public class LoginController {
         return response;
     }
 
+
+
+    @PostMapping("/send-otp")
+    public ResponseEntity<String> sendOtp(@RequestParam String email) {
+        String otp = loginService.generateOTP(email);
+        loginService.sendOTP(email, otp);
+        return ResponseEntity.ok("OTP đã gửi tới email: " + email);
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+        if (loginService.validateOTP(email, otp)) {
+            return ResponseEntity.ok("Xác thực thành công!");
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("OTP không hợp lệ!");
+    }
 }
+
+
