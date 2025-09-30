@@ -36,7 +36,9 @@ public class LoginService implements ILoginService{
 
     @Override
     public ApiResponse login(LoginRequest loginRequest) {
-        Optional<User> userOpt = userRepository.findByUsername(loginRequest.getUsername());
+        Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
+        System.out.println(loginRequest.getEmail());
+        System.out.println(userOpt.isPresent());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             ApiResponse apiResponse = new ApiResponse();
@@ -80,7 +82,7 @@ public class LoginService implements ILoginService{
         userRepository.save(user);
 
         ApiResponse response = new ApiResponse();
-        response.setMessage("Đăng ký thành công");
+        response.setMessage("Đăng ký thành công, hãy đăng nhập");
         response.setData(user);
         return response;
     }
@@ -141,5 +143,18 @@ public class LoginService implements ILoginService{
         public LocalDateTime getExpireTime() {
             return expireTime;
         }
+    }
+
+    public ApiResponse resetPassword(String email, String newPassword) {
+        ApiResponse apiResponse = new ApiResponse();
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
+        User user = userOpt.get();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        apiResponse.setMessage("Đổi mật khẩu thành công, hãy đăng nhập");
+        return apiResponse;
     }
 }
