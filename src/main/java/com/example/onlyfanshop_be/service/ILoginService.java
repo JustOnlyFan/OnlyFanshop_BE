@@ -10,4 +10,5 @@ public interface ILoginService {
     public String generateOTP(String email);
     public boolean validateOTP(String email, String otp);
     public void sendOTP(String to, String otp);
+    public ApiResponse resetPassword(String email, String newPassword);
 }
