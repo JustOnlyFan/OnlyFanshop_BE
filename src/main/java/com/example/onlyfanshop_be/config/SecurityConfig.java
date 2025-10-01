@@ -15,7 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
             http
                     .csrf(csrf -> csrf.disable())
                     .authorizeHttpRequests(auth -> auth
-                            .anyRequest().permitAll()   // ✅ Tạm thời mở hết
+                            .anyRequest().permitAll()   
                     );
 
             return http.build();
