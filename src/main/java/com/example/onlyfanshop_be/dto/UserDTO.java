@@ -2,6 +2,7 @@ package com.example.onlyfanshop_be.dto;
 
 import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.enums.Role;
+
 import lombok.Builder;
 import lombok.Data;
 import lombok.AllArgsConstructor;

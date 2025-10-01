@@ -12,11 +12,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("login")
 public class LoginController {
+  
     @Autowired
     private LoginService loginService;
+
     @PostMapping("/signin")
     @Operation(summary = "Đăng nhập", description = "-Nguyễn Hoàng Thiên")
     public ApiResponse<UserDTO> login(@RequestBody LoginRequest loginRequest) {
@@ -39,19 +44,50 @@ public class LoginController {
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<String> sendOtp(@RequestParam String email) {
+    public ApiResponse sendOtp(@RequestParam String email) {
+        ApiResponse response = new ApiResponse();
         String otp = loginService.generateOTP(email);
         loginService.sendOTP(email, otp);
-        return ResponseEntity.ok("OTP đã gửi tới email: " + email);
+        response.setMessage("OTP đã được gửi qua email: " + email);
+        return response;
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+    public ApiResponse verifyOtp(@RequestParam String email, @RequestParam String otp) {
+        ApiResponse response = new ApiResponse();
         if (loginService.validateOTP(email, otp)) {
-            return ResponseEntity.ok("Xác thực thành công!");
+            response.setMessage("Xác thực thành công");
+            return response;
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("OTP không hợp lệ!");
+        response.setMessage("OTP không hợp lệ");
+        return response;
     }
+
+
+    @GetMapping("/check-account")
+    public ResponseEntity<Map<String, Boolean>> checkAccount(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email) {
+
+        Map<String, Boolean> result = new HashMap<>();
+
+        if (username != null && !username.isEmpty()) {
+            result.put("usernameExists", userRepository.existsByUsername(username));
+        }
+
+        if (email != null && !email.isEmpty()) {
+            result.put("emailExists", userRepository.existsByEmail(email));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse resetPassword(
+            @RequestParam String email,
+            @RequestParam String newPassword) {
+            ApiResponse apiResponse = loginService.resetPassword(email, newPassword);
+        return apiResponse;
+    }
+
 }
-
-
