@@ -6,9 +6,11 @@ import com.example.onlyfanshop_be.dto.Pagination;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
 import com.example.onlyfanshop_be.entity.Product;
+import com.example.onlyfanshop_be.repository.ProductRepository;
 import com.example.onlyfanshop_be.repository.BrandRepository;
 import com.example.onlyfanshop_be.repository.CategoryRepository;
-import com.example.onlyfanshop_be.repository.ProductRepository;
+import com.example.onlyfanshop_be.entity.Brand;
+import com.example.onlyfanshop_be.entity.Category;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -17,10 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import com.example.onlyfanshop_be.dto.ProductDTO;
-import com.example.onlyfanshop_be.entity.Category;
-import com.example.onlyfanshop_be.entity.Brand;
 import org.springframework.stereotype.Service;
-
 
 import java.util.List;
 @Service
@@ -28,10 +27,12 @@ import java.util.List;
 public class ProductService implements  IProductService {
     @Autowired
     private ProductRepository productRepository;
-    @Autowired
-    private CategoryRepository categoryRepository;
+    
     @Autowired
     private BrandRepository brandRepository;
+    
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Override
     public ApiResponse<Object> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
@@ -59,35 +60,52 @@ public class ProductService implements  IProductService {
 
         List<ProductDTO> productDTOs = productPage.getContent().stream()
                 .map(p -> ProductDTO.builder()
-                        .id(p.getProductID())
+                        .productId(p.getProductId())
                         .productName(p.getProductName())
-                        .price(p.getPrice())
-                        .imageURL(p.getImageURL())
                         .briefDescription(p.getBriefDescription())
-                        .brand(new BrandDTO(
-                                p.getBrand().getBrandID(),
-                                p.getBrand().getBrandName()
-                        ))
-                        .category(new CategoryDTO(
-                                p.getCategory().getCategoryID(),
-                                p.getCategory().getCategoryName()
-                        ))
+                        .fullDescription(p.getFullDescription())
+                        .technicalSpecifications(p.getTechnicalSpecifications())
+                        .price(p.getPrice())
+                        .imageUrl(p.getImageUrl())
+                        .brand(p.getBrand() != null ? p.getBrand().getBrandName() : null)
+                        .brandDisplayName(p.getBrand() != null ? p.getBrand().getBrandName() : null)
+                        .category(p.getCategory() != null ? p.getCategory().getCategoryName() : null)
+                        .categoryDisplayName(p.getCategory() != null ? p.getCategory().getCategoryName() : null)
                         .build()
                 )
                 .toList();
 
+        // Get selected category and brand names
+        String selectedCategoryName = "All";
+        String selectedBrandName = "All";
+        
+        if (categoryId != null && categoryId > 0) {
+            Category category = categoryRepository.findById(categoryId).orElse(null);
+            if (category != null) {
+                selectedCategoryName = category.getCategoryName();
+            }
+        }
+        
+        if (brandId != null && brandId > 0) {
+            Brand brand = brandRepository.findById(brandId).orElse(null);
+            if (brand != null) {
+                selectedBrandName = brand.getBrandName();
+            }
+        }
+
         HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
-                .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
-                .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
+                .selectedCategory(selectedCategoryName)
+                .selectedBrand(selectedBrandName)
                 .sortOption(sortBy + "_" + order.toLowerCase())
                 .build();
 
+        // Convert entities to DTOs
         List<CategoryDTO> categories = categoryRepository.findAll().stream()
                 .map(c -> new CategoryDTO(c.getCategoryID(), c.getCategoryName()))
                 .toList();
 
         List<BrandDTO> brands = brandRepository.findAll().stream()
-                .map(b -> new BrandDTO(b.getBrandID(), b.getBrandName()))
+                .map(b -> new BrandDTO((long)b.getBrandID(), b.getBrandName()))
                 .toList();
 
         Pagination pagination = Pagination.builder()

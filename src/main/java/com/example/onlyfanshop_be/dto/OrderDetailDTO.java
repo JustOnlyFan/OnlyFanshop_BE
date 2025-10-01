@@ -22,7 +22,7 @@ public class OrderDetailDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long orderId;
-    private Long productId;
+    private Integer productId;
     private String productName;
     private String productImageUrl;
 

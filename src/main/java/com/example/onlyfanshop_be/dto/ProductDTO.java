@@ -7,46 +7,38 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProductDTO {
-    private Long productId;
+
+    private Integer productId;
     private String productName;
+    private String briefDescription;
+    private String fullDescription;
+    private String technicalSpecifications;
     private BigDecimal price;
-    private String description;
+    private String imageUrl;
     private String category;
     private String categoryDisplayName;
     private String brand;
     private String brandDisplayName;
-    private Integer stockQuantity;
-    private String imageUrl;
-    private Boolean isActive;
-    private BigDecimal weight;
-    private String sku;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     public static ProductDTO fromProduct(Product product) {
         return ProductDTO.builder()
                 .productId(product.getProductId())
                 .productName(product.getProductName())
+                .briefDescription(product.getBriefDescription())
+                .fullDescription(product.getFullDescription())
+                .technicalSpecifications(product.getTechnicalSpecifications())
                 .price(product.getPrice())
-                .description(product.getDescription())
-                .category(product.getCategory() != null ? product.getCategory().name() : null)
-                .categoryDisplayName(product.getCategory() != null ? product.getCategory().getDisplayName() : null)
-                .brand(product.getBrand() != null ? product.getBrand().name() : null)
-                .brandDisplayName(product.getBrand() != null ? product.getBrand().getDisplayName() : null)
-                .stockQuantity(product.getStockQuantity())
                 .imageUrl(product.getImageUrl())
-                .isActive(product.getIsActive())
-                .weight(product.getWeight())
-                .sku(product.getSku())
-                .createdAt(product.getCreatedAt())
-                .updatedAt(product.getUpdatedAt())
+                .category(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
+                .categoryDisplayName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
+                .brand(product.getBrand() != null ? product.getBrand().getBrandName() : null)
+                .brandDisplayName(product.getBrand() != null ? product.getBrand().getBrandName() : null)
                 .build();
     }
 }

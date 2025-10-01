@@ -2,8 +2,7 @@ package com.example.onlyfanshop_be.enums;
 
 public enum Role {
     ADMIN("Admin", "Administrator with full access"),
-    CUSTOMER("Customer", "Regular customer user"),
-    STAFF("Staff", "Staff member with limited admin access");
+    CUSTOMER("Customer", "Regular customer user");
 
     private final String displayName;
     private final String description;

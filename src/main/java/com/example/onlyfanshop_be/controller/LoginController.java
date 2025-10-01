@@ -5,6 +5,7 @@ import com.example.onlyfanshop_be.dto.request.GoogleLoginRequest;
 import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.service.LoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class LoginController {
   
     @Autowired
     private LoginService loginService;
+
+    @Autowired
+    UserRepository userRepository;
 
     @PostMapping("/signin")
     @Operation(summary = "Đăng nhập", description = "-Nguyễn Hoàng Thiên")

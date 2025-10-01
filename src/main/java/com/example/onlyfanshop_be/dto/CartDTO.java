@@ -22,10 +22,9 @@ public class CartDTO {
     private LocalDateTime updatedAt;
     private Long userId;
     private String username;
-    private Long productId;
+    private Integer productId;
     private String productName;
     private String productImageUrl;
-    private Integer productStockQuantity;
 
     public static CartDTO fromCart(Cart cart) {
         return CartDTO.builder()
@@ -40,7 +39,6 @@ public class CartDTO {
                 .productId(cart.getProduct() != null ? cart.getProduct().getProductId() : null)
                 .productName(cart.getProduct() != null ? cart.getProduct().getProductName() : null)
                 .productImageUrl(cart.getProduct() != null ? cart.getProduct().getImageUrl() : null)
-                .productStockQuantity(cart.getProduct() != null ? cart.getProduct().getStockQuantity() : null)
                 .build();
     }
 }

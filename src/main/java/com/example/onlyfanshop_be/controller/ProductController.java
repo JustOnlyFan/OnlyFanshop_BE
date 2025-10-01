@@ -22,7 +22,7 @@ public class ProductController {
             @RequestParam(required = false) Integer brandId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "ProductID") String sortBy,
+            @RequestParam(defaultValue = "productId") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
 
         ApiResponse response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);

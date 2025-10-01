@@ -201,6 +201,9 @@ public class LoginService implements ILoginService {
             return new ApiResponse<>(500, "Google verification failed", null);
         }
 
+    }
+
+    @Override
     public ApiResponse resetPassword(String email, String newPassword) {
         ApiResponse apiResponse = new ApiResponse();
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -213,4 +216,5 @@ public class LoginService implements ILoginService {
         apiResponse.setMessage("Đổi mật khẩu thành công, hãy đăng nhập");
         return apiResponse;
     }
+
 }
