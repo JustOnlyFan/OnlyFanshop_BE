@@ -11,20 +11,20 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "carts", indexes = {
-    @Index(name = "idx_cart_user", columnList = "user_id"),
-    @Index(name = "idx_cart_product", columnList = "product_id")
+@Table(name = "order_details", indexes = {
+    @Index(name = "idx_order_detail_order", columnList = "order_id"),
+    @Index(name = "idx_order_detail_product", columnList = "product_id")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Cart {
+public class OrderDetail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cart_id")
-    private Long cartId;
+    @Column(name = "order_detail_id")
+    private Long orderDetailId;
 
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")
@@ -43,6 +43,10 @@ public class Cart {
     @Column(name = "total_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalPrice;
 
+    @Size(max = 500, message = "Notes must not exceed 500 characters")
+    @Column(length = 500)
+    private String notes;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -52,11 +56,11 @@ public class Cart {
     private LocalDateTime updatedAt;
 
     // Relationships
-    @NotNull(message = "User is required")
+    @NotNull(message = "Order is required")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "order_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private User user;
+    private Order order;
 
     @NotNull(message = "Product is required")
     @ManyToOne(fetch = FetchType.LAZY)
@@ -64,4 +68,3 @@ public class Cart {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Product product;
 }
-

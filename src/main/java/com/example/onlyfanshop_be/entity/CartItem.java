@@ -2,8 +2,6 @@ package com.example.onlyfanshop_be.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-
-
 @Entity
 @Table(name = "CartItems")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
