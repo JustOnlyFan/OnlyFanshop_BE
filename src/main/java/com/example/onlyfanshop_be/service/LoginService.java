@@ -1,11 +1,16 @@
 package com.example.onlyfanshop_be.service;
+
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
-import com.example.onlyfanshop_be.dto.response.RoleResponse;
+import com.example.onlyfanshop_be.enums.Role;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.repository.RoleRepository;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,23 +21,26 @@ import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 @Service
-public class LoginService implements ILoginService{
+public class LoginService implements ILoginService {
+
     @Autowired
     private UserRepository userRepository;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    @Autowired
-    private RoleRepository roleRepository;
+
     private final JavaMailSender mailSender;
+
     @Autowired
     public LoginService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
+
+    @Value("${google.clientId}")
+
+    private String clientId;
 
     @Override
     public ApiResponse login(LoginRequest loginRequest) {
@@ -42,43 +50,42 @@ public class LoginService implements ILoginService{
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             ApiResponse apiResponse = new ApiResponse();
-            if(passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())){
+            if (passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
 
                 apiResponse.setMessage("Đăng nhập thành công");
                 apiResponse.setData(UserDTO.builder()
-                        .userID(user.getUserID())
+                        .userId(user.getUserId())
                         .username(user.getUsername())
                         .email(user.getEmail())
                         .phoneNumber(user.getPhoneNumber())
                         .address(user.getAddress())
-                        .role(user.getRole().getRoleName())
+                        .role(user.getRole().name())
+                        .roleDisplayName(user.getRole().getDisplayName())
                         .build());
                 return apiResponse;
-            }else throw new AppException(ErrorCode.WRONGPASS);
+            } else throw new AppException(ErrorCode.WRONGPASS);
 
         } else throw new AppException(ErrorCode.USER_NOTEXISTED);
 
     }
+
     @Override
     public ApiResponse register(RegisterRequest registerRequest) {
-        // Kiểm tra username đã tồn tại chưa
-        if(userRepository.findByUsername(registerRequest.getUsername()).isPresent()){
-            throw new AppException(ErrorCode.USER_EXISTED); // Tạo ErrorCode phù hợp
+
+        if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        // Tạo user mới
         User user = new User();
         user.setUsername(registerRequest.getUsername());
         user.setEmail(registerRequest.getEmail());
         user.setPhoneNumber(registerRequest.getPhoneNumber());
         user.setAddress(registerRequest.getAddress());
-        user.setRole(roleRepository.getReferenceById(1)); // hoặc set role mặc định
+        user.setRole(Role.CUSTOMER);
 
-        // Encode mật khẩu
         String hashedPassword = passwordEncoder.encode(registerRequest.getPassword());
         user.setPasswordHash(hashedPassword);
 
-        // Lưu vào DB
         userRepository.save(user);
 
         ApiResponse response = new ApiResponse();
@@ -88,6 +95,7 @@ public class LoginService implements ILoginService{
     }
 
     private final Map<String, OTPDetails> otpStorage = new HashMap<>();
+
     @Override
     public String generateOTP(String email) {
         String otp = String.format("%06d", new Random().nextInt(999999));
@@ -102,13 +110,11 @@ public class LoginService implements ILoginService{
 
         if (details == null) return false;
 
-        // Nếu đã hết hạn thì xóa luôn
         if (LocalDateTime.now().isAfter(details.getExpireTime())) {
             otpStorage.remove(email);
             return false;
         }
 
-        // Nếu đúng OTP và còn hạn → xóa khỏi storage (dùng 1 lần thôi)
         if (otp.equals(details.getOtp())) {
             otpStorage.remove(email);
             return true;
@@ -126,7 +132,6 @@ public class LoginService implements ILoginService{
         mailSender.send(message);
     }
 
-    // Inner class để lưu OTP + ExpireTime
     private static class OTPDetails {
         private final String otp;
         private final LocalDateTime expireTime;
@@ -144,6 +149,57 @@ public class LoginService implements ILoginService{
             return expireTime;
         }
     }
+
+    @Override
+    public ApiResponse<UserDTO> loginWithGoogle(String idTokenString) {
+        try {
+            // Validate input token
+            if (idTokenString == null || idTokenString.trim().isEmpty()) {
+                return new ApiResponse<>(400, "ID token is required", null);
+            }
+
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    JacksonFactory.getDefaultInstance())
+                    .setAudience(Collections.singletonList(clientId))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+            if (idToken != null) {
+                GoogleIdToken.Payload payload = idToken.getPayload();
+
+                String userId = payload.getSubject();
+                String email = payload.getEmail();
+                String name = (String) payload.get("name");
+
+                User user = userRepository.findByEmail(email)
+                        .orElseGet(() -> {
+                            User newUser = new User();
+                            newUser.setEmail(email);
+                            newUser.setUsername(name);
+                            // Set default role for Google users
+                            newUser.setRole(Role.CUSTOMER);
+                            return userRepository.save(newUser);
+                        });
+
+                UserDTO userDTO = UserDTO.builder()
+                        .userId(user.getUserId())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .phoneNumber(user.getPhoneNumber())
+                        .address(user.getAddress())
+                        .role(user.getRole().name())
+                        .roleDisplayName(user.getRole().getDisplayName())
+                        .build();
+
+                return new ApiResponse<>(200, "Login with Google success", userDTO);
+            } else {
+                return new ApiResponse<>(401, "Invalid ID token", null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ApiResponse<>(500, "Google verification failed", null);
+        }
 
     public ApiResponse resetPassword(String email, String newPassword) {
         ApiResponse apiResponse = new ApiResponse();
