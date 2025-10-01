@@ -1,11 +1,12 @@
 package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
-import com.example.onlyfanshop_be.dto.request.GoogleLoginRequest;
 import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.service.LoginService;
+import com.example.onlyfanshop_be.entity.User;
+import com.example.onlyfanshop_be.repository.UserRepository;
+import com.example.onlyfanshop_be.service.ILoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,9 +19,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("login")
 public class LoginController {
-  
     @Autowired
-    private LoginService loginService;
+    private ILoginService loginService;
+    @Autowired
+    private UserRepository userRepository;
 
     @PostMapping("/signin")
     @Operation(summary = "Đăng nhập", description = "-Nguyễn Hoàng Thiên")
@@ -36,12 +38,7 @@ public class LoginController {
         return response;
     }
 
-    @PostMapping("/google")
-    @Operation(summary = "Đăng nhập bằng Google")
-    public ApiResponse<UserDTO> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
-        ApiResponse<UserDTO> response = loginService.loginWithGoogle(request.getIdToken());
-        return response;
-    }
+
 
     @PostMapping("/send-otp")
     public ApiResponse sendOtp(@RequestParam String email) {
@@ -91,3 +88,5 @@ public class LoginController {
     }
 
 }
+
+
