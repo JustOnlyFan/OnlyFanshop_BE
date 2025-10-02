@@ -4,8 +4,7 @@ package com.example.onlyfanshop_be.exception;
 public enum ErrorCode {
     USER_NOTEXISTED(1001, "User không tồn tại"),
     WRONGPASS(1002, "Sai mật khẩu"),
-
-
+    EMAIL_USED(1004,"Email đã sử dụng"),
     USER_EXISTED(1003,"User đã tồn tại" );
 
 

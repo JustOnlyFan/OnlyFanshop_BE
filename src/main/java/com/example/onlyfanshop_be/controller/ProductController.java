@@ -16,7 +16,7 @@ public class ProductController {
     @Autowired
     private IProductService iProductService;
     @PostMapping("/homepage")
-    public ResponseEntity<ApiResponse> resetPassword(
+    public ResponseEntity<ApiResponse> Homepage(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer brandId,
