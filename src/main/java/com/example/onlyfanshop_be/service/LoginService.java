@@ -37,8 +37,6 @@ public class LoginService implements ILoginService{
     @Override
     public ApiResponse login(LoginRequest loginRequest) {
         Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
-        System.out.println(loginRequest.getEmail());
-        System.out.println(userOpt.isPresent());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             ApiResponse apiResponse = new ApiResponse();
@@ -63,27 +61,34 @@ public class LoginService implements ILoginService{
     public ApiResponse register(RegisterRequest registerRequest) {
         // Kiểm tra username đã tồn tại chưa
         if(userRepository.findByUsername(registerRequest.getUsername()).isPresent()){
-            throw new AppException(ErrorCode.USER_EXISTED); // Tạo ErrorCode phù hợp
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+        if(userRepository.findByEmail(registerRequest.getEmail()).isPresent()){
+            throw new AppException(ErrorCode.EMAIL_USED);
         }
 
-        // Tạo user mới
         User user = new User();
         user.setUsername(registerRequest.getUsername());
         user.setEmail(registerRequest.getEmail());
         user.setPhoneNumber(registerRequest.getPhoneNumber());
         user.setAddress(registerRequest.getAddress());
-        user.setRole(roleRepository.getReferenceById(1)); // hoặc set role mặc định
+        user.setRole(roleRepository.getReferenceById(1));
 
-        // Encode mật khẩu
         String hashedPassword = passwordEncoder.encode(registerRequest.getPassword());
         user.setPasswordHash(hashedPassword);
 
-        // Lưu vào DB
         userRepository.save(user);
 
         ApiResponse response = new ApiResponse();
         response.setMessage("Đăng ký thành công, hãy đăng nhập");
-        response.setData(user);
+        response.setData(UserDTO.builder()
+                .userID(user.getUserID())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .address(user.getAddress())
+                .role(user.getRole().getRoleName())
+                .build());
         return response;
     }
 
@@ -102,13 +107,11 @@ public class LoginService implements ILoginService{
 
         if (details == null) return false;
 
-        // Nếu đã hết hạn thì xóa luôn
         if (LocalDateTime.now().isAfter(details.getExpireTime())) {
             otpStorage.remove(email);
             return false;
         }
 
-        // Nếu đúng OTP và còn hạn → xóa khỏi storage (dùng 1 lần thôi)
         if (otp.equals(details.getOtp())) {
             otpStorage.remove(email);
             return true;
@@ -126,7 +129,6 @@ public class LoginService implements ILoginService{
         mailSender.send(message);
     }
 
-    // Inner class để lưu OTP + ExpireTime
     private static class OTPDetails {
         private final String otp;
         private final LocalDateTime expireTime;
