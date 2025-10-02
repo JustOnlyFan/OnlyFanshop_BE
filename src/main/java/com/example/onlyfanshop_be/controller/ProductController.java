@@ -3,10 +3,13 @@ package com.example.onlyfanshop_be.controller;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
 import com.example.onlyfanshop_be.service.IProductService;
+import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +21,7 @@ public class ProductController {
     private IProductService iProductService;
     @PostMapping("/homepage")
     public ResponseEntity<ApiResponse<HomepageResponse>> Homepage(
+
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer brandId,

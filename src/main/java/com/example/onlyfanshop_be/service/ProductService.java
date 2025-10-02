@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import com.example.onlyfanshop_be.dto.ProductDTO;
+import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.entity.Category;
 import com.example.onlyfanshop_be.entity.Brand;
 import org.springframework.stereotype.Service;
@@ -67,10 +68,10 @@ public class ProductService implements  IProductService {
                         .price(p.getPrice())
                         .imageURL(p.getImageURL())
                         .briefDescription(p.getBriefDescription())
-                        .brand(new BrandDTO(
-                                p.getBrand().getBrandID(),
-                                p.getBrand().getBrandName()
-                        ))
+                        .brand(BrandDTO.builder()
+                                .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().longValue())
+                                .name(p.getBrand().getBrandName())
+                                .build())
                         .category(new CategoryDTO(
                                 p.getCategory().getCategoryID(),
                                 p.getCategory().getCategoryName()
@@ -90,7 +91,10 @@ public class ProductService implements  IProductService {
                 .toList();
 
         List<BrandDTO> brands = brandRepository.findAll().stream()
-                .map(b -> new BrandDTO(b.getBrandID(), b.getBrandName()))
+                .map(b -> BrandDTO.builder()
+                        .brandID(b.getBrandID() == null ? null : b.getBrandID().longValue())
+                        .name(b.getBrandName())
+                        .build())
                 .toList();
 
         Pagination pagination = Pagination.builder()
@@ -107,7 +111,35 @@ public class ProductService implements  IProductService {
                 .products(productDTOs)
                 .pagination(pagination)
                 .build()).build();
-                
+
+    }
+
+    @Override
+    public ApiResponse<ProductDetailDTO> getProductDetail(Integer productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        ProductDetailDTO dto = ProductDetailDTO.builder()
+                .id(product.getProductID())
+                .productName(product.getProductName())
+                .briefDescription(product.getBriefDescription())
+                .fullDescription(product.getFullDescription())
+                .technicalSpecifications(product.getTechnicalSpecifications())
+                .price(product.getPrice())
+                .imageURL(product.getImageURL())
+                .brand(BrandDTO.builder()
+                        .brandID(product.getBrand().getBrandID() == null ? null : product.getBrand().getBrandID().longValue())
+                        .name(product.getBrand().getBrandName())
+                        .build())
+                .category(new CategoryDTO(
+                        product.getCategory().getCategoryID(),
+                        product.getCategory().getCategoryName()
+                ))
+                .build();
+
+        return ApiResponse.<ProductDetailDTO>builder()
+                .data(dto)
+                .build();
     }
 
 

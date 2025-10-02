@@ -26,4 +26,3 @@ public class Payment {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Order order;
 }
-

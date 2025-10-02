@@ -3,7 +3,11 @@ import jakarta.persistence.*;
 import lombok.*;
 @Entity
 @Table(name = "StoreLocations")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class StoreLocation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

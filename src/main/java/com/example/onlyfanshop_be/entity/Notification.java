@@ -25,4 +25,3 @@ public class Notification {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 }
-

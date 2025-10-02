@@ -8,6 +8,6 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class BrandDTO {
-    private Integer id;
+    private Long brandID;
     private String name;
 }
