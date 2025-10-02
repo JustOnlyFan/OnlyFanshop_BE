@@ -1,4 +1,6 @@
 package com.example.onlyfanshop_be.entity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -26,12 +28,15 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "cartID")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Cart cart;
 
     @ManyToOne
     @JoinColumn(name = "userID")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 
     @OneToMany(mappedBy = "order")
+    @JsonIgnore
     private List<Payment> payments;
 }

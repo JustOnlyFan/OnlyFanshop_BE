@@ -1,4 +1,5 @@
 package com.example.onlyfanshop_be.entity;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class Notification {
 
     @ManyToOne
     @JoinColumn(name = "userID")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 }
 

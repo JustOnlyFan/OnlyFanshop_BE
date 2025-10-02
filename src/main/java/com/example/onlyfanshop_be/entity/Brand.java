@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,6 +25,7 @@ public class Brand {
     private String description;
 
     @OneToMany(mappedBy = "brand")
+    @JsonIgnore
     private List<Product> products;
 }
 
