@@ -39,7 +39,7 @@ public class LoginController {
     public ApiResponse<Void> sendOtp(@RequestParam String email) {
         String otp = loginService.generateOTP(email);
         loginService.sendOTP(email, otp);
-        return ApiResponse.<Void>builder().message("OTP đã được gửi qua email: " + email).build();
+        return ApiResponse.<Void>builder().statusCode(200).message("OTP đã được gửi qua email: " + email).build();
     }
 
     @PostMapping("/verify-otp")
@@ -47,7 +47,7 @@ public class LoginController {
         if (loginService.validateOTP(email, otp)) {
             return ApiResponse.<Void>builder().message("Xác thực thành công").build();
         }
-        return ApiResponse.<Void>builder().message("OTP không hợp lệ").build();
+        return ApiResponse.<Void>builder().statusCode(200).message("OTP không hợp lệ").build();
     }
 
 

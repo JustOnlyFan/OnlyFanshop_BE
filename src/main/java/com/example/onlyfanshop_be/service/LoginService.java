@@ -41,7 +41,7 @@ public class LoginService implements ILoginService{
             User user = userOpt.get();
             if(passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())){
 
-                return ApiResponse.<UserDTO>builder().message("Đăng nhập thành công").data(UserDTO.builder()
+                return ApiResponse.<UserDTO>builder().statusCode(200).message("Đăng nhập thành công").data(UserDTO.builder()
                         .userID(user.getUserID())
                         .username(user.getUsername())
                         .email(user.getEmail())
@@ -75,7 +75,7 @@ public class LoginService implements ILoginService{
         user.setPasswordHash(hashedPassword);
 
         userRepository.save(user);
-        return ApiResponse.<UserDTO>builder().message("Đăng ký thành công, hãy đăng nhập").data(UserDTO.builder()
+        return ApiResponse.<UserDTO>builder().statusCode(200).message("Đăng ký thành công, hãy đăng nhập").data(UserDTO.builder()
                 .userID(user.getUserID())
                 .username(user.getUsername())
                 .email(user.getEmail())
@@ -142,6 +142,6 @@ public class LoginService implements ILoginService{
         User user = userOpt.get();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-        return ApiResponse.<Void>builder().message("Đổi mật khẩu thành công, hãy đăng nhập").build();
+        return ApiResponse.<Void>builder().statusCode(200).message("Đổi mật khẩu thành công, hãy đăng nhập").build();
     }
 }

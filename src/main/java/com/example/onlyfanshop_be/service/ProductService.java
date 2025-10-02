@@ -100,7 +100,7 @@ public class ProductService implements  IProductService {
                 .totalElements(productPage.getTotalElements())
                 .build();
 
-        return ApiResponse.<HomepageResponse>builder().data(HomepageResponse.builder()
+        return ApiResponse.<HomepageResponse>builder().statusCode(200).data(HomepageResponse.builder()
                 .filters(filters)
                 .categories(categories)
                 .brands(brands)
