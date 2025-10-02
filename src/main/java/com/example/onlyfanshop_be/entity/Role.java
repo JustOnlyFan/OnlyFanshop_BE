@@ -6,22 +6,22 @@ import lombok.*;
 
 import java.util.List;
 
-@Entity
-@Table(name = "Categories")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category {
+@Entity
+@Table(name = "Roles")
+public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer categoryID;
+    private Integer roleID;
 
-    @Column(nullable = false, length = 100)
-    private String categoryName;
+    @Column(nullable = false, unique = true, length = 50)
+    private String roleName;
 
-    @OneToMany(mappedBy = "category")
+    @OneToMany(mappedBy = "role")
     @JsonIgnore
-    private List<Product> products;
+    private List<User> users;
 }

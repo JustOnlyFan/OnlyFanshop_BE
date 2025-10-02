@@ -6,11 +6,9 @@ import com.example.onlyfanshop_be.dto.Pagination;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
 import com.example.onlyfanshop_be.entity.Product;
-import com.example.onlyfanshop_be.repository.ProductRepository;
 import com.example.onlyfanshop_be.repository.BrandRepository;
 import com.example.onlyfanshop_be.repository.CategoryRepository;
-import com.example.onlyfanshop_be.entity.Brand;
-import com.example.onlyfanshop_be.entity.Category;
+import com.example.onlyfanshop_be.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,7 +17,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import com.example.onlyfanshop_be.dto.ProductDTO;
+import com.example.onlyfanshop_be.dto.ProductDetailDTO;
+import com.example.onlyfanshop_be.entity.Category;
+import com.example.onlyfanshop_be.entity.Brand;
 import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 @Service
@@ -27,12 +29,10 @@ import java.util.List;
 public class ProductService implements  IProductService {
     @Autowired
     private ProductRepository productRepository;
-    
-    @Autowired
-    private BrandRepository brandRepository;
-    
     @Autowired
     private CategoryRepository categoryRepository;
+    @Autowired
+    private BrandRepository brandRepository;
 
     @Override
     public ApiResponse<Object> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
@@ -60,52 +60,38 @@ public class ProductService implements  IProductService {
 
         List<ProductDTO> productDTOs = productPage.getContent().stream()
                 .map(p -> ProductDTO.builder()
-                        .productId(p.getProductId())
+                        .id(p.getProductID())
                         .productName(p.getProductName())
-                        .briefDescription(p.getBriefDescription())
-                        .fullDescription(p.getFullDescription())
-                        .technicalSpecifications(p.getTechnicalSpecifications())
                         .price(p.getPrice())
-                        .imageUrl(p.getImageUrl())
-                        .brand(p.getBrand() != null ? p.getBrand().getBrandName() : null)
-                        .brandDisplayName(p.getBrand() != null ? p.getBrand().getBrandName() : null)
-                        .category(p.getCategory() != null ? p.getCategory().getCategoryName() : null)
-                        .categoryDisplayName(p.getCategory() != null ? p.getCategory().getCategoryName() : null)
+                        .imageURL(p.getImageURL())
+                        .briefDescription(p.getBriefDescription())
+                        .brand(BrandDTO.builder()
+                                .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().longValue())
+                                .name(p.getBrand().getBrandName())
+                                .build())
+                        .category(new CategoryDTO(
+                                p.getCategory().getCategoryID(),
+                                p.getCategory().getCategoryName()
+                        ))
                         .build()
                 )
                 .toList();
 
-        // Get selected category and brand names
-        String selectedCategoryName = "All";
-        String selectedBrandName = "All";
-        
-        if (categoryId != null && categoryId > 0) {
-            Category category = categoryRepository.findById(categoryId).orElse(null);
-            if (category != null) {
-                selectedCategoryName = category.getCategoryName();
-            }
-        }
-        
-        if (brandId != null && brandId > 0) {
-            Brand brand = brandRepository.findById(brandId).orElse(null);
-            if (brand != null) {
-                selectedBrandName = brand.getBrandName();
-            }
-        }
-
         HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
-                .selectedCategory(selectedCategoryName)
-                .selectedBrand(selectedBrandName)
+                .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
+                .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
                 .sortOption(sortBy + "_" + order.toLowerCase())
                 .build();
 
-        // Convert entities to DTOs
         List<CategoryDTO> categories = categoryRepository.findAll().stream()
                 .map(c -> new CategoryDTO(c.getCategoryID(), c.getCategoryName()))
                 .toList();
 
         List<BrandDTO> brands = brandRepository.findAll().stream()
-                .map(b -> new BrandDTO((long)b.getBrandID(), b.getBrandName()))
+                .map(b -> BrandDTO.builder()
+                        .brandID(b.getBrandID() == null ? null : b.getBrandID().longValue())
+                        .name(b.getBrandName())
+                        .build())
                 .toList();
 
         Pagination pagination = Pagination.builder()
@@ -122,7 +108,35 @@ public class ProductService implements  IProductService {
                 .products(productDTOs)
                 .pagination(pagination)
                 .build()).build();
-                
+
+    }
+
+    @Override
+    public ApiResponse<ProductDetailDTO> getProductDetail(Integer productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        ProductDetailDTO dto = ProductDetailDTO.builder()
+                .id(product.getProductID())
+                .productName(product.getProductName())
+                .briefDescription(product.getBriefDescription())
+                .fullDescription(product.getFullDescription())
+                .technicalSpecifications(product.getTechnicalSpecifications())
+                .price(product.getPrice())
+                .imageURL(product.getImageURL())
+                .brand(BrandDTO.builder()
+                        .brandID(product.getBrand().getBrandID() == null ? null : product.getBrand().getBrandID().longValue())
+                        .name(product.getBrand().getBrandName())
+                        .build())
+                .category(new CategoryDTO(
+                        product.getCategory().getCategoryID(),
+                        product.getCategory().getCategoryName()
+                ))
+                .build();
+
+        return ApiResponse.<ProductDetailDTO>builder()
+                .data(dto)
+                .build();
     }
 
 

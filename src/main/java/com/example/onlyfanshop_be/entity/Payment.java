@@ -1,9 +1,9 @@
 package com.example.onlyfanshop_be.entity;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "Payments")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -23,6 +23,6 @@ public class Payment {
 
     @ManyToOne
     @JoinColumn(name = "orderID")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Order order;
 }
-

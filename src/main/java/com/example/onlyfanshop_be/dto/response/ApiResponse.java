@@ -1,6 +1,5 @@
 package com.example.onlyfanshop_be.dto.response;
 
-import com.example.onlyfanshop_be.dto.UserDTO;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +19,4 @@ public class ApiResponse <T> {
     private T data;
     private Date dateTime = new Date();
 
-    public ApiResponse(int i, String loginWithGoogleSuccess, UserDTO userDTO) {
-    }
 }

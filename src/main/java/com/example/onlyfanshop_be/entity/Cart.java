@@ -1,67 +1,35 @@
 package com.example.onlyfanshop_be.entity;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
-@Table(name = "carts", indexes = {
-    @Index(name = "idx_cart_user", columnList = "user_id"),
-    @Index(name = "idx_cart_product", columnList = "product_id")
-})
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "Carts")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Cart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cart_id")
-    private Long cartId;
+    private Integer cartID;
 
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be at least 1")
     @Column(nullable = false)
-    private Integer quantity;
+    private Double totalPrice;
 
-    @NotNull(message = "Unit price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Unit price must be greater than 0")
-    @Digits(integer = 10, fraction = 2, message = "Unit price must have at most 10 integer digits and 2 decimal places")
-    @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal unitPrice;
+    @Column(nullable = false, length = 50)
+    private String status;
 
-    @NotNull(message = "Total price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Total price must be greater than 0")
-    @Digits(integer = 10, fraction = 2, message = "Total price must have at most 10 integer digits and 2 decimal places")
-    @Column(name = "total_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal totalPrice;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    // Relationships
-    @NotNull(message = "User is required")
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "userID")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 
-    @NotNull(message = "Product is required")
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Product product;
-}
+    @OneToMany(mappedBy = "cart")
+    @JsonIgnore
+    private List<CartItem> cartItems;
 
+    @OneToMany(mappedBy = "cart")
+    @JsonIgnore
+    private List<Order> orders;
+}
