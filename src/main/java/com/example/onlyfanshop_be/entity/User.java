@@ -52,4 +52,3 @@ public class User {
     @JsonIgnore
     private List<ChatMessage> chatMessages;
 }
-

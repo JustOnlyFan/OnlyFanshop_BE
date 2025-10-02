@@ -1,9 +1,8 @@
 package com.example.onlyfanshop_be.entity;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-
-
 
 @Entity
 @Table(name = "CartItems")
@@ -29,4 +28,3 @@ public class CartItem {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Product product;
 }
-

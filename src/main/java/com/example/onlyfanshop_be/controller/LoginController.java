@@ -4,12 +4,10 @@ import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.service.ILoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -83,10 +81,9 @@ public class LoginController {
     public ApiResponse resetPassword(
             @RequestParam String email,
             @RequestParam String newPassword) {
-            ApiResponse apiResponse = loginService.resetPassword(email, newPassword);
+        ApiResponse apiResponse = loginService.resetPassword(email, newPassword);
         return apiResponse;
     }
 
 }
-
 

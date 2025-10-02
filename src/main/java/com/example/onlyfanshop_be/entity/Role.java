@@ -1,12 +1,9 @@
 package com.example.onlyfanshop_be.entity;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -28,4 +25,3 @@ public class Role {
     @JsonIgnore
     private List<User> users;
 }
-

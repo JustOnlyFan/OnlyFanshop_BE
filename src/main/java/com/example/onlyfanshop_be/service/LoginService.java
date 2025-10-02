@@ -1,7 +1,6 @@
 package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
-import com.example.onlyfanshop_be.dto.response.RoleResponse;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.RoleRepository;
