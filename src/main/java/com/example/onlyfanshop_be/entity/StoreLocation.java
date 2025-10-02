@@ -1,8 +1,6 @@
 package com.example.onlyfanshop_be.entity;
-
 import jakarta.persistence.*;
 import lombok.*;
-
 @Entity
 @Table(name = "StoreLocations")
 @Getter
