@@ -1,10 +1,10 @@
 package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
-import com.example.onlyfanshop_be.dto.response.RoleResponse;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.RoleRepository;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -35,30 +35,27 @@ public class LoginService implements ILoginService{
     }
 
     @Override
-    public ApiResponse login(LoginRequest loginRequest) {
+    public ApiResponse<UserDTO> login(LoginRequest loginRequest) {
         Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            ApiResponse apiResponse = new ApiResponse();
             if(passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())){
 
-                apiResponse.setMessage("Đăng nhập thành công");
-                apiResponse.setData(UserDTO.builder()
+                return ApiResponse.<UserDTO>builder().message("Đăng nhập thành công").data(UserDTO.builder()
                         .userID(user.getUserID())
                         .username(user.getUsername())
                         .email(user.getEmail())
                         .phoneNumber(user.getPhoneNumber())
                         .address(user.getAddress())
                         .role(user.getRole().getRoleName())
-                        .build());
-                return apiResponse;
+                        .build()).build();
             }else throw new AppException(ErrorCode.WRONGPASS);
 
         } else throw new AppException(ErrorCode.USER_NOTEXISTED);
 
     }
     @Override
-    public ApiResponse register(RegisterRequest registerRequest) {
+    public ApiResponse<UserDTO> register(RegisterRequest registerRequest) {
         // Kiểm tra username đã tồn tại chưa
         if(userRepository.findByUsername(registerRequest.getUsername()).isPresent()){
             throw new AppException(ErrorCode.USER_EXISTED);
@@ -78,18 +75,14 @@ public class LoginService implements ILoginService{
         user.setPasswordHash(hashedPassword);
 
         userRepository.save(user);
-
-        ApiResponse response = new ApiResponse();
-        response.setMessage("Đăng ký thành công, hãy đăng nhập");
-        response.setData(UserDTO.builder()
+        return ApiResponse.<UserDTO>builder().message("Đăng ký thành công, hãy đăng nhập").data(UserDTO.builder()
                 .userID(user.getUserID())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .address(user.getAddress())
                 .role(user.getRole().getRoleName())
-                .build());
-        return response;
+                .build()).build();
     }
 
     private final Map<String, OTPDetails> otpStorage = new HashMap<>();
@@ -129,6 +122,7 @@ public class LoginService implements ILoginService{
         mailSender.send(message);
     }
 
+    @Getter
     private static class OTPDetails {
         private final String otp;
         private final LocalDateTime expireTime;
@@ -138,17 +132,9 @@ public class LoginService implements ILoginService{
             this.expireTime = expireTime;
         }
 
-        public String getOtp() {
-            return otp;
-        }
-
-        public LocalDateTime getExpireTime() {
-            return expireTime;
-        }
     }
 
-    public ApiResponse resetPassword(String email, String newPassword) {
-        ApiResponse apiResponse = new ApiResponse();
+    public ApiResponse<Void> resetPassword(String email, String newPassword) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
             throw new AppException(ErrorCode.USER_NOTEXISTED);
@@ -156,7 +142,6 @@ public class LoginService implements ILoginService{
         User user = userOpt.get();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-        apiResponse.setMessage("Đổi mật khẩu thành công, hãy đăng nhập");
-        return apiResponse;
+        return ApiResponse.<Void>builder().message("Đổi mật khẩu thành công, hãy đăng nhập").build();
     }
 }
