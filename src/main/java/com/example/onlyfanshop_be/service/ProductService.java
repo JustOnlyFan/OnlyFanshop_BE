@@ -24,6 +24,9 @@ import org.springframework.stereotype.Service;
 
 
 import java.util.List;
+
+import static org.springframework.http.codec.ServerSentEvent.builder;
+
 @Service
 @RequiredArgsConstructor
 public class ProductService implements  IProductService {
@@ -35,7 +38,7 @@ public class ProductService implements  IProductService {
     private BrandRepository brandRepository;
 
     @Override
-    public ApiResponse<Object> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
+    public ApiResponse<HomepageResponse> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
         Sort.Direction direction = "DESC".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(direction, sortBy));
 
@@ -101,7 +104,7 @@ public class ProductService implements  IProductService {
                 .totalElements(productPage.getTotalElements())
                 .build();
 
-        return ApiResponse.builder().data(HomepageResponse.builder()
+        return ApiResponse.<HomepageResponse>builder().statusCode(200).data(HomepageResponse.builder()
                 .filters(filters)
                 .categories(categories)
                 .brands(brands)

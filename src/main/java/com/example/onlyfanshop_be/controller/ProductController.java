@@ -2,6 +2,7 @@ package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.ProductDetailDTO;
+import com.example.onlyfanshop_be.dto.response.HomepageResponse;
 import com.example.onlyfanshop_be.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,7 +15,7 @@ public class ProductController {
     @Autowired
     private IProductService iProductService;
     @PostMapping("/homepage")
-    public ResponseEntity<ApiResponse<Object>> resetPassword(
+    public ResponseEntity<ApiResponse<HomepageResponse>> resetPassword(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer brandId,
@@ -23,7 +24,7 @@ public class ProductController {
             @RequestParam(defaultValue = "ProductID") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
 
-        ApiResponse<Object> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
+        ApiResponse<HomepageResponse> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(response);

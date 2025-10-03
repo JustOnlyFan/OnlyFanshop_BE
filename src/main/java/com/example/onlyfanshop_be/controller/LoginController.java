@@ -25,37 +25,29 @@ public class LoginController {
     @PostMapping("/signin")
     @Operation(summary = "Đăng nhập", description = "-Nguyễn Hoàng Thiên")
     public ApiResponse<UserDTO> login(@RequestBody LoginRequest loginRequest) {
-        ApiResponse<UserDTO> reponse = loginService.login(loginRequest);
-        return reponse;
+        return loginService.login(loginRequest);
     }
 
     @PostMapping("/register")
-    public ApiResponse register(@RequestBody RegisterRequest request) {
-        ApiResponse response = loginService.register(request);
-        response.setMessage("Đăng ký thành công");
-        return response;
+    public ApiResponse<UserDTO> register(@RequestBody RegisterRequest request) {
+        return  loginService.register(request);
     }
 
 
 
     @PostMapping("/send-otp")
-    public ApiResponse sendOtp(@RequestParam String email) {
-        ApiResponse response = new ApiResponse();
+    public ApiResponse<Void> sendOtp(@RequestParam String email) {
         String otp = loginService.generateOTP(email);
         loginService.sendOTP(email, otp);
-        response.setMessage("OTP đã được gửi qua email: " + email);
-        return response;
+        return ApiResponse.<Void>builder().statusCode(200).message("OTP đã được gửi qua email: " + email).build();
     }
 
     @PostMapping("/verify-otp")
-    public ApiResponse verifyOtp(@RequestParam String email, @RequestParam String otp) {
-        ApiResponse response = new ApiResponse();
+    public ApiResponse<Void> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         if (loginService.validateOTP(email, otp)) {
-            response.setMessage("Xác thực thành công");
-            return response;
+            return ApiResponse.<Void>builder().message("Xác thực thành công").build();
         }
-        response.setMessage("OTP không hợp lệ");
-        return response;
+        return ApiResponse.<Void>builder().statusCode(200).message("OTP không hợp lệ").build();
     }
 
 
@@ -78,11 +70,10 @@ public class LoginController {
     }
 
     @PostMapping("/reset-password")
-    public ApiResponse resetPassword(
+    public ApiResponse<Void> resetPassword(
             @RequestParam String email,
             @RequestParam String newPassword) {
-        ApiResponse apiResponse = loginService.resetPassword(email, newPassword);
-        return apiResponse;
+        return loginService.resetPassword(email, newPassword);
     }
 
 }
