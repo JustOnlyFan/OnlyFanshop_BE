@@ -56,6 +56,11 @@ public class LoginService implements ILoginService{
     }
     @Override
     public ApiResponse<UserDTO> register(RegisterRequest registerRequest) {
+        // Kiểm tra password và confirmPassword có khớp không
+        if (!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_NOT_MATCH);
+        }
+        
         // Kiểm tra username đã tồn tại chưa
         if(userRepository.findByUsername(registerRequest.getUsername()).isPresent()){
             throw new AppException(ErrorCode.USER_EXISTED);
