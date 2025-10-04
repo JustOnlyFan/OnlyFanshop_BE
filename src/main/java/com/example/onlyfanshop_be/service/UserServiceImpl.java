@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
-public class UserController implements  IUserController {
+public class UserServiceImpl implements  IUserController {
     @Autowired
     private UserRepository userRepository;
     @Override
@@ -26,6 +26,8 @@ public class UserController implements  IUserController {
                     .phoneNumber(user.getPhoneNumber())
                     .address(user.getAddress())
                     .username(user.getUsername())
+                    .role(user.getRole())
+                    .authProvider(user.getAuthProvider())
                     .build()).build();
         }else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
@@ -41,6 +43,8 @@ public class UserController implements  IUserController {
                     .phoneNumber(user.getPhoneNumber())
                     .address(user.getAddress())
                     .username(user.getUsername())
+                    .role(user.getRole())
+                    .authProvider(user.getAuthProvider())
                     .build()).build();
         }else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
