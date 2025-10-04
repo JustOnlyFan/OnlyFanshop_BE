@@ -2,7 +2,8 @@ package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.service.IUserController;
+import com.example.onlyfanshop_be.service.IUserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/users")
 public class UserController {
     @Autowired
-    private IUserController userService;
+    private IUserService userService;
     @GetMapping("/getUserByID")
     public ApiResponse<UserDTO> getUserByID(@RequestParam int userID) {
         return userService.getUserByID(userID);
@@ -23,7 +24,7 @@ public class UserController {
 
     @PostMapping("/updateUser")
     public ApiResponse<UserDTO> updateUser(@RequestBody UserDTO userDTO) {
-        return userController.updateUser(userDTO);
+        return userService.updateUser(userDTO);
     }
 
     //    @PutMapping("/users/{id}/password")
@@ -40,7 +41,7 @@ public class UserController {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-            userController.logout(token);
+            userService.logout(token);
             return ApiResponse.<Void>builder().message("Đăng xuất thành công!").build();
         } else {
             return ApiResponse.<Void>builder().message("Token không hợp lệ!").build();

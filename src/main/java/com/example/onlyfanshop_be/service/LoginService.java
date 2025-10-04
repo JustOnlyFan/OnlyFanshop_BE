@@ -1,25 +1,23 @@
 package com.example.onlyfanshop_be.service;
+
 import com.example.onlyfanshop_be.dto.UserDTO;
+import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
+import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.entity.Token;
+import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.enums.AuthProvider;
 import com.example.onlyfanshop_be.enums.Role;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.entity.Token;
-import com.example.onlyfanshop_be.exception.AppException;
-import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.repository.RoleRepository;
 import com.example.onlyfanshop_be.repository.TokenRepository;
+import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import com.example.onlyfanshop_be.dto.request.LoginRequest;
-import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.entity.User;
-import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,15 +29,16 @@ public class LoginService implements ILoginService{
     private UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JavaMailSender mailSender;
+
     @Autowired
     public LoginService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
+
     @Autowired
     private TokenRepository tokenRepository;
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
-
     @Override
     public ApiResponse<UserDTO> login(LoginRequest loginRequest) {
         Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
@@ -69,7 +68,7 @@ public class LoginService implements ILoginService{
                 tokenRepository.save(tokenEntity);
 
                 // 🔹 Trả về UserDTO kèm token
-                UserDTO userDTO = UserDTO.builder()
+                 return ApiResponse.<UserDTO>builder().data(UserDTO.builder()
                         .userID(user.getUserID())
                         .username(user.getUsername())
                         .email(user.getEmail())
@@ -78,31 +77,20 @@ public class LoginService implements ILoginService{
                         .role(user.getRole())
                         .authProvider(user.getAuthProvider())
                         .token(jwtToken)
-                        .build();
-            }else throw new AppException(ErrorCode.WRONGPASS);
+                        .build()).build();
+            } else throw new AppException(ErrorCode.WRONGPASS);
 
-                return ApiResponse.<UserDTO>builder()
-                        .statusCode(200)
-                        .message("Đăng nhập thành công")
-                        .data(userDTO)
-                        .build();
-
-            } else {
-                throw new AppException(ErrorCode.WRONGPASS);
-            }
-
-        } else {
-            throw new AppException(ErrorCode.USER_NOTEXISTED);
-        }
+        } else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
 
+    private final Map<String, OTPDetails> otpStorage = new HashMap<>();
     @Override
     public ApiResponse<UserDTO> register(RegisterRequest registerRequest) {
         // Kiểm tra username đã tồn tại chưa
-        if(userRepository.findByUsername(registerRequest.getUsername()).isPresent()){
+        if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
-        if(userRepository.findByEmail(registerRequest.getEmail()).isPresent()){
+        if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
             throw new AppException(ErrorCode.EMAIL_USED);
         }
 
@@ -129,7 +117,6 @@ public class LoginService implements ILoginService{
                 .build()).build();
     }
 
-    private final Map<String, OTPDetails> otpStorage = new HashMap<>();
     @Override
     public String generateOTP(String email) {
         String otp = String.format("%06d", new Random().nextInt(999999));
@@ -188,6 +175,4 @@ public class LoginService implements ILoginService{
         userRepository.save(user);
         return ApiResponse.<Void>builder().statusCode(200).message("Đổi mật khẩu thành công, hãy đăng nhập").build();
     }
-
-
 }
