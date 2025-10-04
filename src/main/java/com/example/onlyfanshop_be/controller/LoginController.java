@@ -5,10 +5,13 @@ import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.repository.UserRepository;
+import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.ILoginService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -17,6 +20,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("login")
 public class LoginController {
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenProvider tokenProvider;
+
+    public LoginController(AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider) {
+        this.authenticationManager = authenticationManager;
+        this.tokenProvider = tokenProvider;
+    }
     @Autowired
     private ILoginService loginService;
     @Autowired

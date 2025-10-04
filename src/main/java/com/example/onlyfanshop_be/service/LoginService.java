@@ -5,6 +5,12 @@ import com.example.onlyfanshop_be.enums.AuthProvider;
 import com.example.onlyfanshop_be.enums.Role;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
+import com.example.onlyfanshop_be.entity.Token;
+import com.example.onlyfanshop_be.exception.AppException;
+import com.example.onlyfanshop_be.exception.ErrorCode;
+import com.example.onlyfanshop_be.repository.RoleRepository;
+import com.example.onlyfanshop_be.repository.TokenRepository;
+import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -17,10 +23,7 @@ import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 @Service
 public class LoginService implements ILoginService{
@@ -32,15 +35,41 @@ public class LoginService implements ILoginService{
     public LoginService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
+    @Autowired
+    private TokenRepository tokenRepository;
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @Override
     public ApiResponse<UserDTO> login(LoginRequest loginRequest) {
         Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            if(passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())){
 
-                return ApiResponse.<UserDTO>builder().statusCode(200).message("Đăng nhập thành công").data(UserDTO.builder()
+            if (passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
+
+                // 🔹 Revoke các token cũ của user (nếu có)
+                List<Token> validUserTokens = tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID());
+                validUserTokens.forEach(t -> {
+                    t.setExpired(true);
+                    t.setRevoked(true);
+                });
+                tokenRepository.saveAll(validUserTokens);
+
+                // 🔹 Sinh JWT mới
+                String jwtToken = jwtTokenProvider.generateToken(user.getEmail());
+
+                // 🔹 Lưu token vào DB
+                Token tokenEntity = Token.builder()
+                        .user(user)
+                        .token(jwtToken)
+                        .expired(false)
+                        .revoked(false)
+                        .build();
+                tokenRepository.save(tokenEntity);
+
+                // 🔹 Trả về UserDTO kèm token
+                UserDTO userDTO = UserDTO.builder()
                         .userID(user.getUserID())
                         .username(user.getUsername())
                         .email(user.getEmail())
@@ -48,19 +77,27 @@ public class LoginService implements ILoginService{
                         .address(user.getAddress())
                         .role(user.getRole())
                         .authProvider(user.getAuthProvider())
-                        .build()).build();
+                        .token(jwtToken)
+                        .build();
             }else throw new AppException(ErrorCode.WRONGPASS);
 
-        } else throw new AppException(ErrorCode.USER_NOTEXISTED);
+                return ApiResponse.<UserDTO>builder()
+                        .statusCode(200)
+                        .message("Đăng nhập thành công")
+                        .data(userDTO)
+                        .build();
 
+            } else {
+                throw new AppException(ErrorCode.WRONGPASS);
+            }
+
+        } else {
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
     }
+
     @Override
     public ApiResponse<UserDTO> register(RegisterRequest registerRequest) {
-        // Kiểm tra password và confirmPassword có khớp không
-        if (!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
-            throw new AppException(ErrorCode.PASSWORD_NOT_MATCH);
-        }
-        
         // Kiểm tra username đã tồn tại chưa
         if(userRepository.findByUsername(registerRequest.getUsername()).isPresent()){
             throw new AppException(ErrorCode.USER_EXISTED);
@@ -151,4 +188,6 @@ public class LoginService implements ILoginService{
         userRepository.save(user);
         return ApiResponse.<Void>builder().statusCode(200).message("Đổi mật khẩu thành công, hãy đăng nhập").build();
     }
+
+
 }
