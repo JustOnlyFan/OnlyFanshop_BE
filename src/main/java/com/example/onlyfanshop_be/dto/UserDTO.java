@@ -19,4 +19,5 @@ public class UserDTO {
     private String address;
     private Role role;
     private AuthProvider authProvider;
+    private String token;
 }

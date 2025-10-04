@@ -36,7 +36,7 @@ public class SwaggerConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")))
-//                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
 //                .servers(List.of(new Server().url("https://1stshop.store/koifarm")))
                 ;
     }
