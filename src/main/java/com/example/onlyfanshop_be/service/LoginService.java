@@ -1,9 +1,10 @@
 package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
+import com.example.onlyfanshop_be.enums.AuthProvider;
+import com.example.onlyfanshop_be.enums.Role;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.repository.RoleRepository;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -26,8 +27,6 @@ public class LoginService implements ILoginService{
     @Autowired
     private UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    @Autowired
-    private RoleRepository roleRepository;
     private final JavaMailSender mailSender;
     @Autowired
     public LoginService(JavaMailSender mailSender) {
@@ -47,7 +46,8 @@ public class LoginService implements ILoginService{
                         .email(user.getEmail())
                         .phoneNumber(user.getPhoneNumber())
                         .address(user.getAddress())
-                        .role(user.getRole().getRoleName())
+                        .role(user.getRole())
+                        .authProvider(user.getAuthProvider())
                         .build()).build();
             }else throw new AppException(ErrorCode.WRONGPASS);
 
@@ -74,7 +74,8 @@ public class LoginService implements ILoginService{
         user.setEmail(registerRequest.getEmail());
         user.setPhoneNumber(registerRequest.getPhoneNumber());
         user.setAddress(registerRequest.getAddress());
-        user.setRole(roleRepository.getReferenceById(1));
+        user.setRole(Role.CUSTOMER);
+        user.setAuthProvider(AuthProvider.LOCAL);
 
         String hashedPassword = passwordEncoder.encode(registerRequest.getPassword());
         user.setPasswordHash(hashedPassword);
@@ -86,7 +87,8 @@ public class LoginService implements ILoginService{
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .address(user.getAddress())
-                .role(user.getRole().getRoleName())
+                .role(user.getRole())
+                .authProvider(user.getAuthProvider())
                 .build()).build();
     }
 
