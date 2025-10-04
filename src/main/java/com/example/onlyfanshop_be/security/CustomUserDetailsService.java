@@ -23,7 +23,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng: " + email));
 
         // Lấy tên role (đảm bảo có tiền tố ROLE_)
-        String roleName = user.getRole().getRoleName();
+        String roleName = user.getRole().name();
         if (!roleName.startsWith("ROLE_")) {
             roleName = "ROLE_" + roleName;
         }
