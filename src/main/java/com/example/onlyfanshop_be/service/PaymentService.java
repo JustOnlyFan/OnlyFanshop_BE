@@ -13,24 +13,30 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentService {
     private final VNPAYConfig vnPayConfig;
-    public PaymentDTO.VNPayResponse createVnPayPayment(HttpServletRequest request) {
-        long amount = Integer.parseInt(request.getParameter("amount")) * 100L;
-        String bankCode = request.getParameter("bankCode");
+    public PaymentDTO.VNPayResponse createVnPayPayment(HttpServletRequest request, Double amount, String bankCode) {
+        long amountValue = Math.round(amount * 100); // nhân 100 theo quy định VNPay
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
-        vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
+
+        vnpParamsMap.put("vnp_Amount", String.valueOf(amountValue));
+
         if (bankCode != null && !bankCode.isEmpty()) {
             vnpParamsMap.put("vnp_BankCode", bankCode);
         }
+
         vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
-        //build query url
+
         String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);
         String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false);
         String vnpSecureHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
         queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+
         String paymentUrl = vnPayConfig.getVnp_PayUrl() + "?" + queryUrl;
+
         return PaymentDTO.VNPayResponse.builder()
                 .code("ok")
                 .message("success")
-                .paymentUrl(paymentUrl).build();
+                .paymentUrl(paymentUrl)
+                .build();
     }
+
 }
