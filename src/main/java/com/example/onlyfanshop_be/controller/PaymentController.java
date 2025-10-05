@@ -30,7 +30,7 @@ public class PaymentController {
     private final PaymentRepository paymentRepository;
     @GetMapping("/vn-pay")
     public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode) {
-        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request)).build();
+        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode)).build();
     }
     @GetMapping("/vn-pay-callback")
     public void vnPayCallback(@RequestParam Map<String, String> params, HttpServletResponse response) throws IOException {
@@ -54,11 +54,12 @@ public class PaymentController {
             // Giao dịch thành công
             payment.setPaymentStatus(true);
             paymentRepository.save(payment);
+            response.sendRedirect("https://onlyfanshop.app/payment-result?status=success&code=" + paymentCode);
         } else {
             // Giao dịch thất bại
             payment.setPaymentStatus(false);
             paymentRepository.save(payment);
-
+            response.sendRedirect("https://onlyfanshop.app/payment-result?status=fail&code=" + paymentCode);
         }
     }
 
