@@ -77,7 +77,7 @@ public class LoginService implements ILoginService{
                         .role(user.getRole())
                         .authProvider(user.getAuthProvider())
                         .token(jwtToken)
-                        .build()).build();
+                        .build()).message("Đăng nhập thành công").statusCode(200).build();
             } else throw new AppException(ErrorCode.WRONGPASS);
 
         } else throw new AppException(ErrorCode.USER_NOTEXISTED);
