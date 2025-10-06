@@ -59,4 +59,9 @@ public class User {
     @OneToMany(mappedBy = "user")
     @JsonIgnore
     private List<ChatMessage> chatMessages;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Token> token;
+
 }

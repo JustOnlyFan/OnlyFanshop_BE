@@ -9,10 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.example.onlyfanshop_be.entity.User;
 
 @Component
 public class JwtTokenProvider {
@@ -30,31 +26,6 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    public String generateToken(User user) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION);
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getUserID());
-        claims.put("username", user.getUsername());
-        claims.put("email", user.getEmail());
-        if (user.getRole() != null) {
-            claims.put("role", user.getRole().name());
-        }
-        if (user.getAuthProvider() != null) {
-            claims.put("provider", user.getAuthProvider().name());
-        }
-
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(user.getEmail())
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
