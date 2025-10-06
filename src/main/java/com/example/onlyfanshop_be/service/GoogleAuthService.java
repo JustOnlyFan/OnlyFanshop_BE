@@ -2,10 +2,13 @@ package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.entity.Token;
 import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.enums.AuthProvider;
 import com.example.onlyfanshop_be.enums.Role;
+import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
+import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +19,10 @@ public class GoogleAuthService {
     
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private TokenRepository tokenRepository;
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
     
     public ApiResponse<UserDTO> handleGoogleLogin(String email, String username) {
         System.out.println("GoogleAuthService: Processing login for email: " + email + ", username: " + username);
@@ -35,7 +42,13 @@ public class GoogleAuthService {
                 response.setMessage("Email đã tồn tại với phương thức đăng nhập khác. Vui lòng sử dụng phương thức đăng nhập ban đầu.");
                 return response;
             }
-            
+            // Revoke các token cũ
+            tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID())
+                    .forEach(t -> { t.setExpired(true); t.setRevoked(true); });
+            // Tạo token mới với custom claims
+            String jwtToken = jwtTokenProvider.generateToken(user);
+            tokenRepository.save(Token.builder().user(user).token(jwtToken).expired(false).revoked(false).build());
+
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
             response.setMessage("Đăng nhập Google thành công");
@@ -47,6 +60,7 @@ public class GoogleAuthService {
             userDTO.setAddress(user.getAddress());
             userDTO.setRole(user.getRole());
             userDTO.setAuthProvider(user.getAuthProvider());
+            userDTO.setToken(jwtToken);
             response.setData(userDTO);
             return response;
         } else {
@@ -62,6 +76,10 @@ public class GoogleAuthService {
             System.out.println("GoogleAuthService: Saving new user to database");
             User savedUser = userRepository.save(newUser);
             System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getUserID());
+
+            // Tạo token mới cho user mới
+            String jwtToken = jwtTokenProvider.generateToken(savedUser);
+            tokenRepository.save(Token.builder().user(savedUser).token(jwtToken).expired(false).revoked(false).build());
             
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
@@ -74,6 +92,7 @@ public class GoogleAuthService {
             userDTO.setAddress(newUser.getAddress());
             userDTO.setRole(newUser.getRole());
             userDTO.setAuthProvider(newUser.getAuthProvider());
+            userDTO.setToken(jwtToken);
             response.setData(userDTO);
             return response;
         }

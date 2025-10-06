@@ -15,8 +15,23 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+<<<<<<< Updated upstream
                         .anyRequest().permitAll()
                 );
+=======
+                        .requestMatchers(
+                                "/login/**",
+                                "/api/auth/google/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/swagger-resources",
+                                "/webjars/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+>>>>>>> Stashed changes
 
         return http.build();
     }
