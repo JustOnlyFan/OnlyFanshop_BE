@@ -56,7 +56,7 @@ public class LoginService implements ILoginService{
                 tokenRepository.saveAll(validUserTokens);
 
                 // 🔹 Sinh JWT mới
-                String jwtToken = jwtTokenProvider.generateToken(user.getEmail());
+                String jwtToken = jwtTokenProvider.generateToken(user.getEmail(),user.getUserID(),user.getRole());
 
                 // 🔹 Lưu token vào DB
                 Token tokenEntity = Token.builder()
