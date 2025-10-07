@@ -7,6 +7,7 @@ public interface IUserService {
     ApiResponse<UserDTO> getUserByID(int userID);
     ApiResponse<UserDTO> getUserByEmail(String email);
     ApiResponse<UserDTO> updateUser(UserDTO userDTO);
-//    ApiResponse<Void> changePassword(String pass);
-public void logout(String token);
+    void changePassword(int userID, String oldPassword, String newPassword);
+
+    public void logout(String token);
 }

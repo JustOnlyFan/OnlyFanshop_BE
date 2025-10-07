@@ -9,6 +9,7 @@ import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -19,6 +20,7 @@ public class UserService implements IUserService {
     private UserRepository userRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     @Override
     public ApiResponse<UserDTO> getUserByID(int userID) {
         Optional<User> userOtp = userRepository.findById(userID);
@@ -60,7 +62,6 @@ public class UserService implements IUserService {
             User user = userOtp.get();
             user.setAddress(userDTO.getAddress());
             user.setPhoneNumber(userDTO.getPhoneNumber());
-            user.setUsername(userDTO.getUsername());
             userRepository.save(user);
             return ApiResponse.<UserDTO>builder().message("Cập nhật thành công").statusCode(200).data(UserDTO.builder()
                     .userID(user.getUserID())
@@ -72,6 +73,20 @@ public class UserService implements IUserService {
         }
         else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
+
+    @Override
+    public void changePassword(int userID, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user!"));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new RuntimeException("Mật khẩu cũ không đúng!");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     @Override
     @Transactional
     public void logout(String token) {
