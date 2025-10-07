@@ -21,7 +21,7 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
     }
 
-    public String generateToken(String email, int userId, Role role) {
+    public String generateToken(String email, int userId, Role role, String username) {
         Date now = new Date();
 
         return Jwts.builder()
@@ -29,7 +29,8 @@ public class JwtTokenProvider {
                 .setIssuedAt(now)
                 .addClaims(Map.of(
                         "userId", userId,
-                        "role", role
+                        "role", role,
+                        "username", username
                 ))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
