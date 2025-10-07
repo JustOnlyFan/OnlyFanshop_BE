@@ -46,7 +46,7 @@ public class GoogleAuthService {
             tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID())
                     .forEach(t -> { t.setExpired(true); t.setRevoked(true); });
             // Tạo token mới với custom claims
-            String jwtToken = jwtTokenProvider.generateToken(user);
+            String jwtToken = jwtTokenProvider.generateToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
             tokenRepository.save(Token.builder().user(user).token(jwtToken).expired(false).revoked(false).build());
 
             ApiResponse<UserDTO> response = new ApiResponse<>();
@@ -78,7 +78,7 @@ public class GoogleAuthService {
             System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getUserID());
 
             // Tạo token mới cho user mới
-            String jwtToken = jwtTokenProvider.generateToken(savedUser);
+            String jwtToken = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole(), savedUser.getUsername());
             tokenRepository.save(Token.builder().user(savedUser).token(jwtToken).expired(false).revoked(false).build());
             
             ApiResponse<UserDTO> response = new ApiResponse<>();
