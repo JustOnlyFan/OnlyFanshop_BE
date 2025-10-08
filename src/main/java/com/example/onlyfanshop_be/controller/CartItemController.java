@@ -9,10 +9,7 @@ import com.example.onlyfanshop_be.repository.CartItemRepository;
 import com.example.onlyfanshop_be.repository.CartRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -44,5 +41,42 @@ public class CartItemController {
         response.setData(cartItem);
 
         return  response;
+    }
+    @PostMapping("/addQuantity")
+    public ApiResponse<Void> addQuantity(@RequestParam String username, @RequestParam Integer productID){
+        ApiResponse<Void> response = new ApiResponse<>();
+        boolean existUser = userRepository.existsByUsername(username);
+        if(!existUser){
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
+        Cart cart = cartRepository.findByStatusAndUser_username("Inprogress", username).getFirst();
+        CartItem cartItem = cartItemRepository.findByCart_CartIDAndProduct_ProductID(cart.getCartID(), productID);
+        cartItem.setQuantity(cartItem.getQuantity() + 1);
+        cartItem.setPrice(cartItem.getPrice() + cartItem.getProduct().getPrice());
+        cart.setTotalPrice(cart.getTotalPrice() + cartItem.getProduct().getPrice());
+        cartRepository.save(cart);
+        cartItemRepository.save(cartItem);
+        return   response;
+    }
+
+    @PostMapping("/minusQuantity")
+    public ApiResponse<Void> minusQuantity(@RequestParam String username, @RequestParam Integer productID){
+        ApiResponse<Void> response = new ApiResponse<>();
+        boolean existUser = userRepository.existsByUsername(username);
+        if(!existUser){
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
+        Cart cart = cartRepository.findByStatusAndUser_username("Inprogress", username).getFirst();
+        CartItem cartItem = cartItemRepository.findByCart_CartIDAndProduct_ProductID(cart.getCartID(), productID);
+        cartItem.setQuantity(cartItem.getQuantity()-1);
+        cart.setTotalPrice(cart.getTotalPrice() - cartItem.getProduct().getPrice());
+        cartRepository.save(cart);
+        if(cartItem.getQuantity() == 0){
+            cartItemRepository.delete(cartItem);
+        }else {
+            cartItem.setPrice(cartItem.getPrice() - cartItem.getProduct().getPrice());
+            cartItemRepository.save(cartItem);
+        }
+        return response;
     }
 }
