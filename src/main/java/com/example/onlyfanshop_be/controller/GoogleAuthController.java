@@ -15,13 +15,13 @@ import java.util.Optional;
 @RequestMapping("/api/auth/google")
 @CrossOrigin(origins = "*")
 public class GoogleAuthController {
-    
+
     @Autowired
     private GoogleAuthService googleAuthService;
-    
+
     @Autowired
     private UserRepository userRepository;
-    
+
     @PostMapping("/login")
     public ApiResponse<UserDTO> googleLogin(@RequestBody GoogleLoginRequest request) {
         System.out.println("Google login request received: " + request.getEmail() + " - " + request.getUsername());
@@ -32,7 +32,7 @@ public class GoogleAuthController {
         } catch (Exception e) {
             System.err.println("Error in Google login: " + e.getMessage());
             e.printStackTrace();
-            
+
             // Trả về lỗi thân thiện thay vì throw exception
             return ApiResponse.<UserDTO>builder()
                     .statusCode(500)
@@ -40,12 +40,12 @@ public class GoogleAuthController {
                     .build();
         }
     }
-    
+
     @GetMapping("/test")
     public String testEndpoint() {
         return "Google Auth Controller is working!";
     }
-    
+
     @GetMapping("/debug/users")
     public String debugUsers() {
         try {
@@ -61,7 +61,7 @@ public class GoogleAuthController {
             return "Error: " + e.getMessage();
         }
     }
-    
+
     @GetMapping("/check-email")
     public ApiResponse<String> checkEmail(@RequestParam String email) {
         try {
@@ -71,9 +71,9 @@ public class GoogleAuthController {
                 return ApiResponse.<String>builder()
                         .statusCode(200)
                         .message("Email đã tồn tại")
-                        .data("Email: " + existingUser.getEmail() + 
-                              ", Username: " + existingUser.getUsername() + 
-                              ", AuthProvider: " + existingUser.getAuthProvider() + 
+                        .data("Email: " + existingUser.getEmail() +
+                              ", Username: " + existingUser.getUsername() +
+                              ", AuthProvider: " + existingUser.getAuthProvider() +
                               ", Role: " + existingUser.getRole())
                         .build();
             } else {
@@ -90,24 +90,24 @@ public class GoogleAuthController {
                     .build();
         }
     }
-    
+
     // Inner class for request
     public static class GoogleLoginRequest {
         private String email;
         private String username;
-        
+
         public String getEmail() {
             return email;
         }
-        
+
         public void setEmail(String email) {
             this.email = email;
         }
-        
+
         public String getUsername() {
             return username;
         }
-        
+
         public void setUsername(String username) {
             this.username = username;
         }
