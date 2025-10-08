@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("api/cart")
+@RequestMapping("/cart")
 public class CartController {
     @Autowired
     CartService cartService;
 
-    @PostMapping("addToCart")
-    public ApiResponse<Void> addToCart(int productID, String userName) {
+    @PostMapping("/addToCart")
+    public ApiResponse<Void> addToCart(@RequestParam int productID,@RequestParam String userName) {
         boolean status = cartService.addToCart(productID, userName);
         if (status) {
             return ApiResponse.<Void>builder().message("Thêm vào giỏ hàng thành công").build();

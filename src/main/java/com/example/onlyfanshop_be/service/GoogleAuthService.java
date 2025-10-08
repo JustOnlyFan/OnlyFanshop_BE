@@ -16,21 +16,21 @@ import java.util.Optional;
 
 @Service
 public class GoogleAuthService {
-    
+
     @Autowired
     private UserRepository userRepository;
     @Autowired
     private TokenRepository tokenRepository;
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
-    
+
     public ApiResponse<UserDTO> handleGoogleLogin(String email, String username) {
         System.out.println("GoogleAuthService: Processing login for email: " + email + ", username: " + username);
-        
+
         // Kiểm tra xem user đã tồn tại chưa
         Optional<User> existingUser = userRepository.findByEmail(email);
         System.out.println("GoogleAuthService: Existing user found: " + existingUser.isPresent());
-        
+
         if (existingUser.isPresent()) {
             // User đã tồn tại, cập nhật thông tin nếu cần
             User user = existingUser.get();
@@ -72,7 +72,7 @@ public class GoogleAuthService {
             newUser.setRole(Role.CUSTOMER);
             newUser.setAuthProvider(AuthProvider.GOOGLE);
             // Không cần password cho Google login
-            
+
             System.out.println("GoogleAuthService: Saving new user to database");
             User savedUser = userRepository.save(newUser);
             System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getUserID());
@@ -80,7 +80,7 @@ public class GoogleAuthService {
             // Tạo token mới cho user mới
             String jwtToken = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole(), savedUser.getUsername());
             tokenRepository.save(Token.builder().user(savedUser).token(jwtToken).expired(false).revoked(false).build());
-            
+
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
             response.setMessage("Đăng ký và đăng nhập Google thành công");
