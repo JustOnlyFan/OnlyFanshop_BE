@@ -77,13 +77,21 @@ public class UserService implements IUserService {
     @Override
     public void changePassword(int userID, String oldPassword, String newPassword) {
         User user = userRepository.findById(userID)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user!"));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_EXISTED));
 
         if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
-            throw new RuntimeException("Mật khẩu cũ không đúng!");
+            throw new AppException(ErrorCode.CART_NOTFOUND);
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    @Override
+    public void changeAddress(int userID, String address) {
+        User user = userRepository.findById(userID)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_EXISTED));
+        user.setAddress(address);
         userRepository.save(user);
     }
 

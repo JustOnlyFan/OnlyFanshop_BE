@@ -8,6 +8,6 @@ public interface IUserService {
     ApiResponse<UserDTO> getUserByEmail(String email);
     ApiResponse<UserDTO> updateUser(UserDTO userDTO);
     void changePassword(int userID, String oldPassword, String newPassword);
-
+    void changeAddress(int userID, String address);
     public void logout(String token);
 }

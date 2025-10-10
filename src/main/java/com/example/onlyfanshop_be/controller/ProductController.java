@@ -15,6 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/product")
 public class ProductController {
@@ -45,5 +47,30 @@ public class ProductController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(response);
+    }
+    @GetMapping
+    public List<Product> getAllProducts() {
+        return iProductService.getAllProducts();
+    }
+
+    @GetMapping("/{id}")
+    public Product getProductById(@PathVariable Integer id) {
+        return iProductService.getProductById(id);
+    }
+
+    @PostMapping
+    public Product createProduct(@RequestBody Product product) {
+        return iProductService.createProduct(product);
+    }
+
+    @PutMapping("/{id}")
+    public Product updateProduct(@PathVariable Integer id, @RequestBody Product product) {
+        return iProductService.updateProduct(id, product);
+    }
+
+    @DeleteMapping("/{id}")
+    public String deleteProduct(@PathVariable Integer id) {
+        iProductService.deleteProduct(id);
+        return "Xóa sản phẩm có ID " + id + " thành công!";
     }
 }

@@ -8,7 +8,10 @@ public enum ErrorCode {
     USER_EXISTED(1003,"User đã tồn tại"),
     PASSWORD_NOT_MATCH(1005, "Mật khẩu và xác nhận mật khẩu không khớp"),
     PRODUCT_NOTEXISTED(1006,"Sản phẩm không tồn tại"),
-    CARTITEM_NOTHING(1007,"Chưa có sản phẩm nào trong giỏ hàng");
+    CARTITEM_NOTHING(1007,"Chưa có sản phẩm nào trong giỏ hàng"),
+    CART_NOTFOUND(1008,"Không tìm thấy cart"),
+    WRONG_OLD_PASSWORD(1009,"Mật khẩu cũ không đúng"),
+    LOCATION_NOT_FOUND(1010,"Không thể tìm thấy địa điểm");
 
 
     private int code;

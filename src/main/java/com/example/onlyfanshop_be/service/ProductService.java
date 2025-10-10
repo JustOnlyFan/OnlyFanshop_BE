@@ -141,6 +141,66 @@ public class ProductService implements  IProductService {
                 .data(dto)
                 .build();
     }
+    @Override
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+    @Override
+    public Product getProductById(int id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
+    }
+    @Override
+    public Product createProduct(Product product) {
+        // Xác nhận Category hợp lệ
+        if (product.getCategory() != null && product.getCategory().getCategoryID() != null) {
+            Category category = categoryRepository.findById(product.getCategory().getCategoryID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + product.getCategory().getCategoryID()));
+            product.setCategory(category);
+        }
 
+        // Xác nhận Brand hợp lệ
+        if (product.getBrand() != null && product.getBrand().getBrandID() != null) {
+            Brand brand = brandRepository.findById(product.getBrand().getBrandID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + product.getBrand().getBrandID()));
+            product.setBrand(brand);
+        }
 
+        return productRepository.save(product);
+    }
+    @Override
+    public Product updateProduct(Integer id, Product updatedProduct) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
+
+        product.setProductName(updatedProduct.getProductName());
+        product.setBriefDescription(updatedProduct.getBriefDescription());
+        product.setFullDescription(updatedProduct.getFullDescription());
+        product.setTechnicalSpecifications(updatedProduct.getTechnicalSpecifications());
+        product.setPrice(updatedProduct.getPrice());
+        product.setImageURL(updatedProduct.getImageURL());
+
+        // Cập nhật Category (nếu có)
+        if (updatedProduct.getCategory() != null && updatedProduct.getCategory().getCategoryID() != null) {
+            Category category = categoryRepository.findById(updatedProduct.getCategory().getCategoryID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + updatedProduct.getCategory().getCategoryID()));
+            product.setCategory(category);
+        }
+
+        // Cập nhật Brand (nếu có)
+        if (updatedProduct.getBrand() != null && updatedProduct.getBrand().getBrandID() != null) {
+            Brand brand = brandRepository.findById(updatedProduct.getBrand().getBrandID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + updatedProduct.getBrand().getBrandID()));
+            product.setBrand(brand);
+        }
+
+        return productRepository.save(product);
+    }
+    @Override
+    public void deleteProduct(int id) {
+        if (!productRepository.existsById(id)) {
+            throw new RuntimeException("Không tìm thấy sản phẩm có ID: " + id);
+        }
+        productRepository.deleteById(id);
+    }
 }
