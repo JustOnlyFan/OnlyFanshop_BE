@@ -55,7 +55,7 @@ public class PaymentController {
         int userid = jwtTokenProvider.getUserIdFromJWT(token);
 
         // ✅ 3. Lấy cart tương ứng với user
-        Cart cart = cartRepository.findByUser_UserID(userid)
+        Cart cart = cartRepository.findByUser_UserIDAndStatus(userid,"InProgress")
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
 
         // ✅ 4. Gọi service xử lý thanh toán
