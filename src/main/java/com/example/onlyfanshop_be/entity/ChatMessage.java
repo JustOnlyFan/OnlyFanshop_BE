@@ -19,9 +19,41 @@ public class ChatMessage {
     @Column(nullable = false)
     private LocalDateTime sentAt;
 
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(length = 500)
+    private String attachmentUrl;
+
+    @Column(length = 100)
+    private String attachmentType;
+
+
+    @Column(length = 50)
+    private String replyToMessageId;
+
+    @Column(columnDefinition = "TEXT")
+    private String metadata; // JSON string for additional data
+
     @ManyToOne
-    @JoinColumn(name = "userID")
+    @JoinColumn(name = "senderID")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private User user;
+    private User sender;
+
+    @ManyToOne
+    @JoinColumn(name = "receiverID")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private User receiver;
+
+    @PrePersist
+    protected void onCreate() {
+        sentAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
 

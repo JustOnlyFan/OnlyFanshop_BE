@@ -11,6 +11,7 @@ import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -31,12 +32,11 @@ public class CartItemController {
         }
         ApiResponse<List<CartItem>> response = new ApiResponse<>();
         List<Cart> cart = cartRepository.findByStatusAndUser_username("Inprogress", username);
-        if(cart.isEmpty()){
-            throw new AppException(ErrorCode.CARTITEM_NOTHING);
-        }
         List<CartItem> cartItem = cartItemRepository.findByCart_CartID(cart.getFirst().getCartID());
-        if(cartItem.isEmpty()){
-            throw new AppException(ErrorCode.CARTITEM_NOTHING);
+        if (cartItem.isEmpty()) {
+            response.setData(Collections.emptyList());
+            response.setMessage("No cart found");
+            return response;
         }
         response.setData(cartItem);
 
