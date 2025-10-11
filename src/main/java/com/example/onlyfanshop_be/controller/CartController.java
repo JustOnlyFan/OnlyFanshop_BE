@@ -17,8 +17,8 @@ public class CartController {
     CartService cartService;
 
     @PostMapping("/addToCart")
-    public ApiResponse<Void> addToCart(@RequestParam int productID,@RequestParam String userName) {
-        boolean status = cartService.addToCart(productID, userName);
+    public ApiResponse<Void> addToCart(@RequestParam int productID,@RequestParam String username) {
+        boolean status = cartService.addToCart(productID, username);
         if (status) {
             return ApiResponse.<Void>builder().message("Thêm vào giỏ hàng thành công").build();
         }else return ApiResponse.<Void>builder().statusCode(201).message("Có lỗi khi thêm vào giỏ hàng").build();
