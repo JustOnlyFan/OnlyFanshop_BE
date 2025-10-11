@@ -23,7 +23,7 @@ public class ProductController {
     @Autowired
     private IProductService iProductService;
 
-    @PostMapping("/homepage")
+    @PostMapping("/public/homepage")
     public ResponseEntity<ApiResponse<HomepageResponse>> resetPassword(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
@@ -39,7 +39,7 @@ public class ProductController {
                 .body(response);
     }
 
-    @GetMapping("/detail/{productId}")
+    @GetMapping("/public/detail/{productId}")
     public ResponseEntity<ApiResponse<ProductDetailDTO>> getProductDetail(@PathVariable Integer productId) {
         System.out.println("Getting product detail for ID: " + productId);
         ApiResponse<ProductDetailDTO> response = iProductService.getProductDetail(productId);

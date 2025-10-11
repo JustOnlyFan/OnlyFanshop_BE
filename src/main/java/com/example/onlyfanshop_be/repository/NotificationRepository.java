@@ -10,6 +10,6 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
     List<Notification> findByUser_UserIDOrderByCreatedAtDesc(Integer userID);
-
+    long countByUser_UserIDAndIsReadFalse(Integer userID);
 }
 

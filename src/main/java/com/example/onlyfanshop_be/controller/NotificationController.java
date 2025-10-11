@@ -49,5 +49,10 @@ public class NotificationController {
         notificationRepository.save(n);
         return ResponseEntity.ok("Đã đánh dấu là đã đọc");
     }
+    @GetMapping("/user/{userID}/unread-count")
+    public ResponseEntity<Long> getUnreadCount(@PathVariable Integer userID) {
+        return ResponseEntity.ok(notificationRepository.countByUser_UserIDAndIsReadFalse(userID));
+    }
+
 }
 
