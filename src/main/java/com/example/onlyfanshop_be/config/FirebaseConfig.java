@@ -16,11 +16,11 @@ public class FirebaseConfig {
     public void init() throws IOException {
         if (FirebaseApp.getApps().isEmpty()) {
             FileInputStream serviceAccount =
-                    new FileInputStream("onlyfan-f9406-firebase-adminsdk-fbsvc-ff312aee1d.json");
+                    new FileInputStream("key.json");
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .setStorageBucket("onlyfan-f9406.firebasestorage.app") // 🔥 tên bucket của bạn
+                    .setStorageBucket("onlyfan-f9406.firebasestorage.app")
                     .build();
 
             FirebaseApp.initializeApp(options);

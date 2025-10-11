@@ -56,7 +56,7 @@ public class User {
     @JsonIgnore
     private List<Notification> notifications;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "sender")
     @JsonIgnore
     private List<ChatMessage> chatMessages;
 
