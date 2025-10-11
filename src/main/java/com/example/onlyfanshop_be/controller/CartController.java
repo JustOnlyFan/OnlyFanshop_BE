@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.controller;
 
+import com.example.onlyfanshop_be.dto.CartDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.Cart;
 import com.example.onlyfanshop_be.entity.CartItem;
@@ -20,8 +21,14 @@ public class CartController {
     public ApiResponse<Void> addToCart(@RequestParam int productID,@RequestParam String username) {
         boolean status = cartService.addToCart(productID, username);
         if (status) {
-            return ApiResponse.<Void>builder().message("Thêm vào giỏ hàng thành công").build();
+            return ApiResponse.<Void>builder().message("Thêm vào giỏ hàng thành công").statusCode(200).build();
         }else return ApiResponse.<Void>builder().statusCode(201).message("Có lỗi khi thêm vào giỏ hàng").build();
 
     }
+
+    @GetMapping("/cart/{userId}")
+    public ApiResponse<CartDTO> getCart(@PathVariable int userId) {
+        return cartService.getCart(userId);
+    }
+
 }

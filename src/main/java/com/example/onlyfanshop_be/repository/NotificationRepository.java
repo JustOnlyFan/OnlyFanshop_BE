@@ -10,6 +10,10 @@ import java.util.List;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
+    List<Notification> findByUser_UserIDOrderByCreatedAtDesc(Integer userID);
+    long countByUser_UserIDAndIsReadFalse(Integer userID);
+}
+
     
     @Query("SELECT n FROM Notification n WHERE n.user.userID = :userID ORDER BY n.createdAt DESC")
     List<Notification> findByUser_UserIDOrderByCreatedAtDesc(@Param("userID") Integer userID);

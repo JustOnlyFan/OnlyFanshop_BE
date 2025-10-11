@@ -1,5 +1,7 @@
 package com.example.onlyfanshop_be.service;
 
+import com.example.onlyfanshop_be.dto.CartDTO;
+import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.Cart;
 import com.example.onlyfanshop_be.entity.CartItem;
 import com.example.onlyfanshop_be.entity.Product;
@@ -7,6 +9,8 @@ import com.example.onlyfanshop_be.repository.CartItemRepository;
 import com.example.onlyfanshop_be.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 public class CartItemService implements ICartItemService {
