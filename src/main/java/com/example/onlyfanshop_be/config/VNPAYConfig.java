@@ -6,6 +6,8 @@ import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -31,7 +33,7 @@ public class VNPAYConfig {
     @Value("${ORDER_TYPE}")
     private String orderType;
 
-    public Map<String, String> getVNPayConfig(int cartId) {
+    public Map<String, String> getVNPayConfig(int cartId, String address) {
         Map<String, String> vnpParamsMap = new HashMap<>();
         vnpParamsMap.put("vnp_Version", this.vnp_Version);
         vnpParamsMap.put("vnp_Command", this.vnp_Command);
@@ -41,8 +43,8 @@ public class VNPAYConfig {
         vnpParamsMap.put("vnp_OrderInfo", "Thanh toan don hang:" + VNPayUtil.getRandomNumber(8));
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
-        vnpParamsMap.put("vnp_ReturnUrl", vnp_ReturnUrl);
-        System.out.println(vnp_ReturnUrl);
+        String encodedAddress = URLEncoder.encode(address, StandardCharsets.UTF_8);
+        vnpParamsMap.put("vnp_ReturnUrl", vnp_ReturnUrl + "?address=" + encodedAddress);
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
         String vnpCreateDate = formatter.format(calendar.getTime());

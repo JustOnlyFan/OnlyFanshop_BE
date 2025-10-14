@@ -52,7 +52,8 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/product/public/**",
                                 "category/public/**",
-                                "brands/public/**"
+                                "brands/public/**",
+                                "/payment/public/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
