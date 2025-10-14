@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.service;
 
+import com.example.onlyfanshop_be.dto.request.ProductDetailRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
@@ -11,8 +12,8 @@ public interface IProductService {
     public ApiResponse<HomepageResponse> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order);
     public ApiResponse<ProductDetailDTO> getProductDetail(Integer productId);
     public List<Product> getAllProducts();
-    public Product getProductById(int id);
-    public Product createProduct(Product product);
-    public Product updateProduct(Integer id, Product updatedProduct);
+    public ProductDetailDTO getProductById(int id);
+    public Product createProduct(ProductDetailRequest product);
+    public ProductDetailDTO updateProduct(Integer id, ProductDetailRequest updatedProduct);
     public void deleteProduct(int id);
 }

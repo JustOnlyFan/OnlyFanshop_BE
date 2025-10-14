@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.controller;
 
+import com.example.onlyfanshop_be.dto.BrandDTO;
 import com.example.onlyfanshop_be.entity.Brand;
 import com.example.onlyfanshop_be.service.BrandService;
 import com.example.onlyfanshop_be.service.IBrandService;
@@ -11,10 +12,16 @@ import java.util.List;
 @RestController
 @RequestMapping("/brands")
 public class BrandController {
+    @Autowired
     private IBrandService brandService;
 
-    @GetMapping
-    public List<Brand> getAllBrands() {
+    @GetMapping("/")
+    public List<Brand> getAllBrandsDetail() {
+        return brandService.getAllBrandsDetail();
+    }
+
+    @GetMapping("/public")
+    public List<BrandDTO> getAllBrands() {
         return brandService.getAllBrands();
     }
 
