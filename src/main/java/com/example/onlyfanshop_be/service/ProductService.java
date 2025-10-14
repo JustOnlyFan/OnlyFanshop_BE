@@ -3,6 +3,7 @@ package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.BrandDTO;
 import com.example.onlyfanshop_be.dto.CategoryDTO;
 import com.example.onlyfanshop_be.dto.Pagination;
+import com.example.onlyfanshop_be.dto.request.ProductDetailRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
 import com.example.onlyfanshop_be.entity.Product;
@@ -69,7 +70,7 @@ public class ProductService implements  IProductService {
                         .imageURL(p.getImageURL())
                         .briefDescription(p.getBriefDescription())
                         .brand(BrandDTO.builder()
-                                .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().longValue())
+                                .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().intValue())
                                 .name(p.getBrand().getBrandName())
                                 .build())
                         .category(new CategoryDTO(
@@ -92,7 +93,7 @@ public class ProductService implements  IProductService {
 
         List<BrandDTO> brands = brandRepository.findAll().stream()
                 .map(b -> BrandDTO.builder()
-                        .brandID(b.getBrandID() == null ? null : b.getBrandID().longValue())
+                        .brandID(b.getBrandID() == null ? null : b.getBrandID().intValue())
                         .name(b.getBrandName())
                         .build())
                 .toList();
@@ -128,7 +129,7 @@ public class ProductService implements  IProductService {
                 .price(product.getPrice())
                 .imageURL(product.getImageURL())
                 .brand(BrandDTO.builder()
-                        .brandID(product.getBrand().getBrandID() == null ? null : product.getBrand().getBrandID().longValue())
+                        .brandID(product.getBrand().getBrandID() == null ? null : product.getBrand().getBrandID().intValue())
                         .name(product.getBrand().getBrandName())
                         .build())
                 .category(new CategoryDTO(
@@ -146,30 +147,68 @@ public class ProductService implements  IProductService {
         return productRepository.findAll();
     }
     @Override
-    public Product getProductById(int id) {
-        return productRepository.findById(id)
+    public ProductDetailDTO getProductById(int id) {
+        Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
+
+        // Ánh xạ từ Entity -> DTO
+        return ProductDetailDTO.builder()
+                .id(product.getProductID())
+                .productName(product.getProductName())
+                .briefDescription(product.getBriefDescription())
+                .fullDescription(product.getFullDescription())
+                .technicalSpecifications(product.getTechnicalSpecifications())
+                .price(product.getPrice())
+                .imageURL(product.getImageURL())
+                .brand(product.getBrand() != null
+                        ? new BrandDTO(
+                        product.getBrand().getBrandID(),
+                        product.getBrand().getBrandName()
+                )
+                        : null)
+                .category(product.getCategory() != null
+                        ? new CategoryDTO(
+                        product.getCategory().getCategoryID(),
+                        product.getCategory().getCategoryName()
+                )
+                        : null)
+                .build();
     }
+
     @Override
-    public Product createProduct(Product product) {
-        // Xác nhận Category hợp lệ
-        if (product.getCategory() != null && product.getCategory().getCategoryID() != null) {
-            Category category = categoryRepository.findById(product.getCategory().getCategoryID())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + product.getCategory().getCategoryID()));
-            product.setCategory(category);
+    public Product createProduct(ProductDetailRequest request) {
+        // 1️⃣ Kiểm tra danh mục
+        Category category = null;
+        if (request.getCategoryID() != null) {
+            category = categoryRepository.findById(request.getCategoryID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + request.getCategoryID()));
         }
 
-        // Xác nhận Brand hợp lệ
-        if (product.getBrand() != null && product.getBrand().getBrandID() != null) {
-            Brand brand = brandRepository.findById(product.getBrand().getBrandID())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + product.getBrand().getBrandID()));
-            product.setBrand(brand);
+        // 2️⃣ Kiểm tra thương hiệu
+        Brand brand = null;
+        if (request.getBrandID() != null) {
+            brand = brandRepository.findById(request.getBrandID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + request.getBrandID()));
         }
 
+        // 3️⃣ Tạo Product entity
+        Product product = Product.builder()
+                .productName(request.getProductName())
+                .briefDescription(request.getBriefDescription())
+                .fullDescription(request.getFullDescription())
+                .technicalSpecifications(request.getTechnicalSpecifications())
+                .price(request.getPrice())
+                .imageURL(request.getImageURL())
+                .category(category)
+                .brand(brand)
+                .build();
+
+        // 4️⃣ Lưu vào DB
         return productRepository.save(product);
     }
+
     @Override
-    public Product updateProduct(Integer id, Product updatedProduct) {
+    public ProductDetailDTO updateProduct(Integer id, ProductDetailRequest updatedProduct) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
 
@@ -178,24 +217,44 @@ public class ProductService implements  IProductService {
         product.setFullDescription(updatedProduct.getFullDescription());
         product.setTechnicalSpecifications(updatedProduct.getTechnicalSpecifications());
         product.setPrice(updatedProduct.getPrice());
-        product.setImageURL(updatedProduct.getImageURL());
 
         // Cập nhật Category (nếu có)
-        if (updatedProduct.getCategory() != null && updatedProduct.getCategory().getCategoryID() != null) {
-            Category category = categoryRepository.findById(updatedProduct.getCategory().getCategoryID())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + updatedProduct.getCategory().getCategoryID()));
+        if (updatedProduct.getCategoryID()!= null) {
+            Category category = categoryRepository.findById(updatedProduct.getCategoryID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + updatedProduct.getCategoryID()));
             product.setCategory(category);
         }
 
         // Cập nhật Brand (nếu có)
-        if (updatedProduct.getBrand() != null && updatedProduct.getBrand().getBrandID() != null) {
-            Brand brand = brandRepository.findById(updatedProduct.getBrand().getBrandID())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + updatedProduct.getBrand().getBrandID()));
+        if (updatedProduct.getBrandID()!= null) {
+            Brand brand = brandRepository.findById(updatedProduct.getBrandID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + updatedProduct.getBrandID()));
             product.setBrand(brand);
         }
 
-        return productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+
+        // Trả về DTO
+        return ProductDetailDTO.builder()
+                .id(savedProduct.getProductID())
+                .productName(savedProduct.getProductName())
+                .briefDescription(savedProduct.getBriefDescription())
+                .fullDescription(savedProduct.getFullDescription())
+                .technicalSpecifications(savedProduct.getTechnicalSpecifications())
+                .price(savedProduct.getPrice())
+                .imageURL(savedProduct.getImageURL())
+                .brand(savedProduct.getBrand() != null ? new BrandDTO(
+                        savedProduct.getBrand().getBrandID(),
+                        savedProduct.getBrand().getBrandName()
+
+                ) : null)
+                .category(savedProduct.getCategory() != null ? new CategoryDTO(
+                        savedProduct.getCategory().getCategoryID(),
+                        savedProduct.getCategory().getCategoryName()
+                ) : null)
+                .build();
     }
+
     @Override
     public void deleteProduct(int id) {
         if (!productRepository.existsById(id)) {

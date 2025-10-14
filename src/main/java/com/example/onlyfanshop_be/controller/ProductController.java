@@ -1,15 +1,11 @@
 package com.example.onlyfanshop_be.controller;
 
+import com.example.onlyfanshop_be.dto.request.ProductDetailRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
 import com.example.onlyfanshop_be.service.IProductService;
 import com.example.onlyfanshop_be.entity.Product;
-import com.example.onlyfanshop_be.entity.Category;
-import com.example.onlyfanshop_be.entity.Brand;
-import com.example.onlyfanshop_be.repository.ProductRepository;
-import com.example.onlyfanshop_be.repository.CategoryRepository;
-import com.example.onlyfanshop_be.repository.BrandRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,17 +50,17 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public Product getProductById(@PathVariable Integer id) {
+    public ProductDetailDTO getProductById(@PathVariable Integer id) {
         return iProductService.getProductById(id);
     }
 
     @PostMapping
-    public Product createProduct(@RequestBody Product product) {
+    public Product createProduct(@RequestBody ProductDetailRequest product) {
         return iProductService.createProduct(product);
     }
 
     @PutMapping("/{id}")
-    public Product updateProduct(@PathVariable Integer id, @RequestBody Product product) {
+    public ProductDetailDTO updateProduct(@PathVariable Integer id, @RequestBody ProductDetailRequest product) {
         return iProductService.updateProduct(id, product);
     }
 

@@ -1,10 +1,12 @@
 package com.example.onlyfanshop_be.service;
 
+import com.example.onlyfanshop_be.dto.BrandDTO;
 import com.example.onlyfanshop_be.entity.Brand;
 import com.example.onlyfanshop_be.repository.BrandRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -12,7 +14,20 @@ public class BrandService implements IBrandService{
     @Autowired
     private BrandRepository brandRepository;
     @Override
-    public List<Brand> getAllBrands() {
+    public List<BrandDTO> getAllBrands() {
+        List<Brand>list = brandRepository.findAll();
+        List<BrandDTO> listDTO = new ArrayList<>();
+        for(Brand brand : list){
+            BrandDTO brandDTO = new BrandDTO();
+            brandDTO.setBrandID(brand.getBrandID());
+            brandDTO.setName(brand.getBrandName());
+            listDTO.add(brandDTO);
+        }
+        return listDTO;
+    }
+
+    @Override
+    public List<Brand> getAllBrandsDetail() {
         return brandRepository.findAll();
     }
     @Override
