@@ -40,7 +40,8 @@ public class PaymentController {
     private final OrderRepository orderRepository;
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
-//    @GetMapping("/vn-pay")
+
+    //    @GetMapping("/vn-pay")
 //    public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode,@RequestParam int cardId) {
 //        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode, cardId)).build();
 //    }
@@ -48,18 +49,19 @@ public class PaymentController {
     public ApiResponse<PaymentDTO.VNPayResponse> pay(
             HttpServletRequest request,
             @RequestParam Double amount,
-            @RequestParam String bankCode
+            @RequestParam String bankCode,
+            @RequestParam String address
     ) {
         // ✅ 1. Lấy token từ header
         String token = jwtTokenProvider.extractToken(request);
         int userid = jwtTokenProvider.getUserIdFromJWT(token);
 
         // ✅ 3. Lấy cart tương ứng với user
-        Cart cart = cartRepository.findByUser_UserIDAndStatus(userid,"InProgress")
+        Cart cart = cartRepository.findByUser_UserIDAndStatus(userid, "InProgress")
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
 
         // ✅ 4. Gọi service xử lý thanh toán
-        PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID());
+        PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID(),address);
 
         return ApiResponse.<PaymentDTO.VNPayResponse>builder()
                 .statusCode(200)
@@ -68,51 +70,65 @@ public class PaymentController {
                 .build();
     }
 
-    @GetMapping("/vn-pay-callback")
-    public void vnPayCallback(@RequestParam Map<String, String> params, HttpServletResponse response) throws IOException {
+    @GetMapping("/public/vn-pay-callback")
+    public void vnPayCallback(@RequestParam Map<String, String> params,
+                              @RequestParam(required = false) String address,  // ✅ Lấy address từ URL
+                              HttpServletResponse response) throws IOException {
         String responseCode = params.get("vnp_ResponseCode");
         String paymentCode = params.get("vnp_TransactionNo");
         String amountStr = params.get("vnp_Amount");
-        String cardIdStr =  params.get("vnp_TxnRef");
+        String cardIdStr = params.get("vnp_TxnRef");
+        System.out.println("đã call back");
         // Kiểm tra transactionCode đã tồn tại chưa (tránh duplicate)
         boolean exists = paymentRepository.existsByTransactionCode(paymentCode);
         if (exists) {
-
             return;
         }
-
 
         Payment payment = new Payment();
         payment.setTransactionCode(paymentCode);
         payment.setAmount(amountStr != null ? Double.parseDouble(amountStr) / 100 : 0); // VNPay gửi amount * 100
         payment.setPaymentDate(LocalDateTime.now());
-
+        System.out.println(responseCode);
         if ("00".equals(responseCode)) {
-            // Giao dịch thành công
+            // ✅ Giao dịch thành công
             Cart cart = cartRepository.findById(Integer.parseInt(cardIdStr))
                     .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
+
             cart.setStatus("PAID");
             cartRepository.save(cart);
-            User user =  cart.getUser();
+
+            User user = cart.getUser();
+
             Order order = new Order();
             order.setUser(user);
             order.setCart(cart);
-            order.setBillingAddress(user.getAddress());
+
+            // ✅ Ưu tiên lấy address từ param VNPay callback (nếu có)
+            if (address != null && !address.isEmpty()) {
+                order.setBillingAddress(address);
+            } else {
+                order.setBillingAddress(user.getAddress()); // fallback
+            }
+
             order.setOrderStatus("confirmed");
             order.setOrderDate(LocalDateTime.now());
             order.setPaymentMethod("VNPay");
+
             orderRepository.save(order);
+
             payment.setPaymentStatus(true);
             payment.setOrder(order);
             paymentRepository.save(payment);
+
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=success&code=" + paymentCode);
         } else {
             // Giao dịch thất bại
             payment.setPaymentStatus(false);
             paymentRepository.save(payment);
+
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=fail&code=" + paymentCode);
         }
     }
-
 }
 
