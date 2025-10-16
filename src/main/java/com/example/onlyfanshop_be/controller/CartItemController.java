@@ -31,8 +31,17 @@ public class CartItemController {
             throw new AppException(ErrorCode.USER_NOTEXISTED);
         }
         ApiResponse<List<CartItem>> response = new ApiResponse<>();
-        List<Cart> cart = cartRepository.findByStatusAndUser_username("Inprogress", username);
-        List<CartItem> cartItem = cartItemRepository.findByCart_CartID(cart.getFirst().getCartID());
+        List<Cart> carts = cartRepository.findByStatusAndUser_username("Inprogress", username);
+        Cart cart = new Cart();
+        if(carts.isEmpty()){
+            cart.setStatus("InProgress");
+            cart.setTotalPrice(0.0);
+            cart.setUser(userRepository.findByUsername(username).get());
+        }else {
+            cart =  carts.getFirst();
+        }
+        cartRepository.save(cart);
+        List<CartItem> cartItem = cartItemRepository.findByCart_CartID(cart.getCartID());
         if (cartItem.isEmpty()) {
             response.setData(Collections.emptyList());
             response.setMessage("No cart found");
