@@ -20,7 +20,7 @@ public class CartItemService implements ICartItemService {
     private ProductRepository productRepository;
 
     @Override
-    public boolean addCartItem(Cart cart, int productID) {
+    public boolean addCartItem(Cart cart, int productID,  int quantity) {
         boolean status = false;
         Product product = productRepository.findByProductID(productID);
         CartItem cartItem = cartItemRepository.findByCart_CartIDAndProduct_ProductID(cart.getCartID(), productID);
@@ -28,13 +28,13 @@ public class CartItemService implements ICartItemService {
             cartItem = new CartItem();
             cartItem.setCart(cart);
             cartItem.setProduct(product);
-            cartItem.setPrice(product.getPrice());
-            cartItem.setQuantity(1);
+            cartItem.setPrice(product.getPrice()*quantity);
+            cartItem.setQuantity(quantity);
             cartItemRepository.save(cartItem);
             status = true;
         }else {
-            cartItem.setQuantity(cartItem.getQuantity()+1);
-            cartItem.setPrice(product.getPrice()+cartItem.getPrice());
+            cartItem.setQuantity(cartItem.getQuantity()+quantity);
+            cartItem.setPrice(cartItem.getPrice()+product.getPrice()*quantity);
             cartItemRepository.save(cartItem);
             status = true;
         }
