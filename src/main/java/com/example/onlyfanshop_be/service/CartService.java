@@ -1,6 +1,7 @@
 package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.CartDTO;
+import com.example.onlyfanshop_be.dto.request.AddToCartRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.Cart;
 import com.example.onlyfanshop_be.entity.CartItem;
@@ -31,8 +32,11 @@ public class CartService implements ICartService {
     private CartItemRepository cartItemRepository;
 
     @Override
-    public boolean addToCart(int productID, String username) {
+    public boolean addToCart(AddToCartRequest request) throws AppException {
         boolean status = false;
+        Integer productID = request.getProductId();
+        String username = request.getUserName();
+        Integer quantity = request.getQuantity();
         Cart userCart;
         boolean productExist = productRepository.existsById(productID);
         boolean userExist = userRepository.existsByUsername(username);
@@ -51,8 +55,8 @@ public class CartService implements ICartService {
             userCart.setUser(userRepository.findByUsername(username).get());
         }
         cartRepository.save(userCart);
-        if (cartItemService.addCartItem(userCart, productID)) {
-            userCart.setTotalPrice(userCart.getTotalPrice() + productRepository.findByProductID(productID).getPrice());
+        if (cartItemService.addCartItem(userCart, productID, quantity)) {
+            userCart.setTotalPrice(userCart.getTotalPrice() + productRepository.findByProductID(productID).getPrice()*quantity);
             cartRepository.save(userCart);
             status = true;
         }
