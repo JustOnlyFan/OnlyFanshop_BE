@@ -4,8 +4,10 @@ import com.example.onlyfanshop_be.dto.CartDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.Cart;
 import com.example.onlyfanshop_be.entity.CartItem;
+import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
+import com.example.onlyfanshop_be.repository.CartItemRepository;
 import com.example.onlyfanshop_be.repository.CartRepository;
 import com.example.onlyfanshop_be.repository.ProductRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
@@ -25,6 +27,8 @@ public class CartService implements ICartService {
     ProductRepository productRepository;
     @Autowired
     CartItemService cartItemService;
+    @Autowired
+    private CartItemRepository cartItemRepository;
 
     @Override
     public boolean addToCart(int productID, String username) {
@@ -54,6 +58,13 @@ public class CartService implements ICartService {
         }
 
         return status;
+    }
+
+    @Override
+    public void clearCart(String userName) {
+        Cart cart =  cartRepository.findByStatusAndUser_username("InProgress", userName).getFirst();
+        cartItemRepository.deleteAll(cart.getCartItems());
+        cartRepository.delete(cart);
     }
 
     public ApiResponse<CartDTO> getCart(int userId) {
