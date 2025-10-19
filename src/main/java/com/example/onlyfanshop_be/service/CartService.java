@@ -103,11 +103,10 @@ public class CartService implements ICartService {
         return cart;
     }
 
-    public ApiResponse<CartDTO> getCart(int userId) {
-        Optional<Cart> cartOptional = cartRepository.findByUser_UserIDAndStatus(userId, "InProgress");
+    public ApiResponse<CartDTO> getCart(int userId, String status) {
+        Optional<Cart> cartOptional = cartRepository.findByUser_UserIDAndStatus(userId, status);
         if (cartOptional.isPresent()) {
             Cart cart = cartOptional.get();
-
             return ApiResponse.<CartDTO>builder().data(CartDTO.builder().userId(userId).items(cart.getCartItems()).totalQuantity(cart.getCartItems().size()).build()).statusCode(200).message("Lấy giỏ hàng thành công").build();
         }else throw new AppException(ErrorCode.CART_NOTFOUND);
     }

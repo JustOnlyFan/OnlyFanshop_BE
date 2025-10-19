@@ -54,7 +54,7 @@ public class CartController {
 
     @GetMapping("/{userId}")
     public ApiResponse<CartDTO> getCart(@PathVariable int userId) {
-        return cartService.getCart(userId);
+        return cartService.getCart(userId,"InProgress");
     }
 
 }
