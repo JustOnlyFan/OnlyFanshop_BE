@@ -71,6 +71,38 @@ public class CartService implements ICartService {
         cartRepository.delete(cart);
     }
 
+    @Override
+    public Cart instantBuy(AddToCartRequest request) {
+
+        Cart cart = new Cart();
+        Integer productID = request.getProductId();
+        String username = request.getUserName();
+        Integer quantity = request.getQuantity();
+        List<Cart> carts =  cartRepository.findByStatusAndUser_username("InstantBuy", request.getUserName());
+        if(!carts.isEmpty()) {
+            for(Cart c : carts){
+                cartItemRepository.deleteAll(c.getCartItems());
+            }
+            cartRepository.deleteAll(carts);}
+
+        boolean productExist = productRepository.existsById(productID);
+        boolean userExist = userRepository.existsByUsername(username);
+        if (!productExist) {
+            throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
+        } else if (!userExist) {
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
+        cart.setStatus("InstantBuy");
+        cart.setTotalPrice(0.0);
+        cart.setUser(userRepository.findByUsername(username).get());
+        cartRepository.save(cart);
+        if (cartItemService.addCartItem(cart, productID, quantity)) {
+            cart.setTotalPrice(cart.getTotalPrice() + productRepository.findByProductID(productID).getPrice()*quantity);
+            cartRepository.save(cart);
+        }
+        return cart;
+    }
+
     public ApiResponse<CartDTO> getCart(int userId) {
         Optional<Cart> cartOptional = cartRepository.findByUser_UserIDAndStatus(userId, "InProgress");
         if (cartOptional.isPresent()) {

@@ -40,6 +40,18 @@ public class CartController {
 
     }
 
+    @PostMapping("/instantBuy")
+    public ApiResponse<Void> instantBuy(@RequestBody AddToCartRequest request) {
+        ApiResponse<Void> respone = new ApiResponse<>();
+        Cart cart = cartService.instantBuy(request);
+        if(cart!=null) {
+            respone.setMessage("Tạo giỏ hàng thanh toán thành công");
+        }else{ respone.setMessage("Có lỗi khi tạo giỏ hàng thanh toán");
+                respone.setStatusCode(201);
+        }
+        return respone;
+    }
+
     @GetMapping("/{userId}")
     public ApiResponse<CartDTO> getCart(@PathVariable int userId) {
         return cartService.getCart(userId);

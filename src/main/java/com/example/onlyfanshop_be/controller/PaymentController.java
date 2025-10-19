@@ -57,8 +57,13 @@ public class PaymentController {
         int userid = jwtTokenProvider.getUserIdFromJWT(token);
 
         // ✅ 3. Lấy cart tương ứng với user
-        Cart cart = cartRepository.findByUser_UserIDAndStatus(userid, "InProgress")
-                .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
+        Cart cart= cartRepository.findByUser_UserIDAndStatus(userid, "InstantBuy").orElse(null);
+        if (cart == null) {
+            cart = cartRepository.findByUser_UserIDAndStatus(userid, "InProgress")
+                    .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
+        }else {
+            cart.setStatus("InstantBuy*");
+            cartRepository.save(cart);}
 
         // ✅ 4. Gọi service xử lý thanh toán
         PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID(),address);
