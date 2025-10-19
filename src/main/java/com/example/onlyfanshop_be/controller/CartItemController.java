@@ -51,6 +51,25 @@ public class CartItemController {
 
         return  response;
     }
+    @GetMapping("/showInstantBuyItem")
+        public ApiResponse<List<CartItem>> showInstantBuyItem(@RequestParam String username){
+        boolean existUser = userRepository.existsByUsername(username);
+        if(!existUser){
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
+        ApiResponse<List<CartItem>> response = new ApiResponse<>();
+            List<Cart> carts = cartRepository.findByStatusAndUser_username("InstantBuy", username);
+            Cart cart =  carts.getFirst();
+            List<CartItem> cartItem = cartItemRepository.findByCart_CartID(cart.getCartID());
+            if (cartItem.isEmpty()) {
+                response.setData(Collections.emptyList());
+                response.setMessage("No cart found");
+                return response;
+            }
+            response.setData(cartItem);
+
+            return  response;
+        }
     @PostMapping("/addQuantity")
     public ApiResponse<Void> addQuantity(@RequestParam String username, @RequestParam Integer productID){
         ApiResponse<Void> response = new ApiResponse<>();
