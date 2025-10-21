@@ -32,6 +32,9 @@ public class Product {
 
     private String imageURL;
 
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean isActive = true;
+
     @ManyToOne
     @JoinColumn(name = "categoryID")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})

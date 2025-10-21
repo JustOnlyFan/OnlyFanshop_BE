@@ -20,7 +20,7 @@ public class ProductController {
     private IProductService iProductService;
 
     @PostMapping("/public/homepage")
-    public ResponseEntity<ApiResponse<HomepageResponse>> resetPassword(
+    public ResponseEntity<ApiResponse<HomepageResponse>> getHomepage(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer brandId,
@@ -68,5 +68,31 @@ public class ProductController {
     public String deleteProduct(@PathVariable Integer id) {
         iProductService.deleteProduct(id);
         return "Xóa sản phẩm có ID " + id + " thành công!";
+    }
+
+    @PutMapping("/image/{id}")
+    public ApiResponse<Void> updateImage(@PathVariable Integer id, @RequestParam String imgString) {
+         iProductService.updateImage(id, imgString);
+        return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
+    }
+    @PostMapping("/productList")
+    public ResponseEntity<ApiResponse<HomepageResponse>> productList(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer categoryId,
+            @RequestParam(required = false) Integer brandId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "ProductID") String sortBy,
+            @RequestParam(defaultValue = "DESC") String order) {
+
+        ApiResponse<HomepageResponse> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
+    @PutMapping("/active/{id}")
+    public ApiResponse<Void> updateActive(@PathVariable Integer id, @RequestParam boolean active) {
+        iProductService.updateActive(id,active );
+        return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
     }
 }

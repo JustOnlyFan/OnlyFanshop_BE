@@ -15,4 +15,5 @@ public class ProductDTO {
     private String briefDescription;
     private BrandDTO brand;
     private CategoryDTO category;
+    private boolean isActive;
 }

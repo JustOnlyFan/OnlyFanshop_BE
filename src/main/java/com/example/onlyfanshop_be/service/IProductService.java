@@ -16,4 +16,7 @@ public interface IProductService {
     public Product createProduct(ProductDetailRequest product);
     public ProductDetailDTO updateProduct(Integer id, ProductDetailRequest updatedProduct);
     public void deleteProduct(int id);
+    public void updateImage(int productId, String imageURL);
+    public ApiResponse<HomepageResponse> productList(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order);
+    public void updateActive(int productId, boolean active);
 }
