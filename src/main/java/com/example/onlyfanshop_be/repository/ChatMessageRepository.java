@@ -67,3 +67,5 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Intege
            "ORDER BY cm.sentAt DESC")
     Page<ChatMessage> findAllMessagesByUserId(@Param("userId") Integer userId, Pageable pageable);
 }
+
+

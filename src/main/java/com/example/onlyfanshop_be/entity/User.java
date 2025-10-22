@@ -35,6 +35,9 @@ public class User {
 
     private String phoneNumber;
     private String address;
+    
+    @Column(length = 500)
+    private String fcmToken;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
