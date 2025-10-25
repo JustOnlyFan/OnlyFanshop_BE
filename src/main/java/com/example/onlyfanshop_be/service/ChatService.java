@@ -374,18 +374,29 @@ public class ChatService {
                             
                             // Không gửi notification cho người gửi
                             if (!participantId.equals(senderId)) {
-                                // Lấy FCM token của participant
-                                userRepository.findById(Integer.parseInt(participantId))
-                                        .ifPresent(user -> {
-                                            if (user.getFcmToken() != null) {
-                                                fcmService.sendChatNotification(
-                                                        user.getFcmToken(),
-                                                        senderName,
-                                                        message,
-                                                        roomId
-                                                );
-                                            }
-                                        });
+                                // ✅ Handle "admin" participant ID - skip FCM notification for admin
+                                if ("admin".equals(participantId)) {
+                                    log.info("Skipping FCM notification for admin participant");
+                                    continue;
+                                }
+                                
+                                // ✅ Only parse numeric participant IDs
+                                try {
+                                    Integer userId = Integer.parseInt(participantId);
+                                    userRepository.findById(userId)
+                                            .ifPresent(user -> {
+                                                if (user.getFcmToken() != null) {
+                                                    fcmService.sendChatNotification(
+                                                            user.getFcmToken(),
+                                                            senderName,
+                                                            message,
+                                                            roomId
+                                                    );
+                                                }
+                                            });
+                                } catch (NumberFormatException e) {
+                                    log.warn("Skipping non-numeric participant ID: " + participantId);
+                                }
                             }
                         }
                     }
