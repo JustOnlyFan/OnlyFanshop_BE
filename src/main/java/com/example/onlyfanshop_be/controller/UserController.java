@@ -2,15 +2,19 @@ package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.ChangePasswordRequest;
+import com.example.onlyfanshop_be.dto.request.UpdateFCMTokenRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.IUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
+@Tag(name = "User Controller", description = "APIs for user management")
 public class UserController {
 
     @Autowired
@@ -47,6 +51,15 @@ public class UserController {
         String token = jwtTokenProvider.extractToken(request);
         userService.logout(token);
         return ApiResponse.<Void>builder().statusCode(200).message("Đăng xuất thành công!").build();
+    }
+
+    @PutMapping("/fcm-token")
+    @Operation(summary = "Update FCM token", description = "Update FCM token for push notifications")
+    public ApiResponse<Void> updateFCMToken(@RequestBody UpdateFCMTokenRequest request, HttpServletRequest httpRequest) {
+        String token = jwtTokenProvider.extractToken(httpRequest);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        userService.updateFCMToken(userId, request.getFcmToken());
+        return ApiResponse.<Void>builder().statusCode(200).message("FCM token updated successfully!").build();
     }
 
     @PutMapping("/changeAddress")

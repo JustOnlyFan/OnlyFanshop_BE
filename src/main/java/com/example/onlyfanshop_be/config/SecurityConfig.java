@@ -42,19 +42,21 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/login/**",
-                                "/swagger-ui/**",
-                                "/api/auth/google/**",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**",
-                                "/swagger-resources",
-                                "/webjars/**",
-                                "/product/public/**",
-                                "category/public/**",
-                                "brands/public/**",
-                                "/payment/public/**"
-                        ).permitAll()
+                            .requestMatchers(
+                                    "/login/**",
+                                    "/swagger-ui/**",
+                                    "/api/auth/google/**",
+                                    "/v3/api-docs/**",
+                                    "/swagger-resources/**",
+                                    "/swagger-resources",
+                                    "/webjars/**",
+                                    "/product/public/**",
+                                    "category/public/**",
+                                    "brands/public/**",
+                                    "/payment/public/**",
+                                    "/api/chat/test",
+                                    "/api/chat/clear-all-chat-data-public"
+                            ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

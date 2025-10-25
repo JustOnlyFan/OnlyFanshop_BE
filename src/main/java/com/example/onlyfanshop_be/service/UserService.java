@@ -96,6 +96,14 @@ public class UserService implements IUserService {
     }
 
     @Override
+    public void updateFCMToken(int userID, String fcmToken) {
+        User user = userRepository.findById(userID)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
+        user.setFcmToken(fcmToken);
+        userRepository.save(user);
+    }
+
+    @Override
     @Transactional
     public void logout(String token) {
         tokenRepository.deleteByToken(token);
