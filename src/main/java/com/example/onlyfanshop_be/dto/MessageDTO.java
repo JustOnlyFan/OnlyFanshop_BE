@@ -18,6 +18,8 @@ public class MessageDTO {
     private String senderName;
     private String message;
     
+    // Keep both for backward compatibility: epochMillis preferred by mobile
+    private Long epochMillis;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime timestamp;
     
