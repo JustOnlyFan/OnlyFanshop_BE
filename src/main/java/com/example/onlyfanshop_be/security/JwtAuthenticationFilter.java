@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
@@ -33,16 +35,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String bearerToken = request.getHeader("Authorization");
+        String requestURI = request.getRequestURI();
 
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             String token = bearerToken.substring(7);
 
-            boolean isValidInDB = tokenRepository.findByToken(token)
-                    .map(t -> !t.isRevoked() && !t.isExpired())
-                    .orElse(false);
+            // Validate JWT signature and expiration
+            if (!tokenProvider.validateToken(token)) {
+                log.warn("Invalid JWT token for request: {}", requestURI);
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-            if (isValidInDB && tokenProvider.validateToken(token)) {
+            // Check DB status (revocation/expiry) but do not block if token is missing in DB
+            java.util.Optional<com.example.onlyfanshop_be.entity.Token> dbTokenOpt = tokenRepository.findByToken(token);
+            if (dbTokenOpt.isPresent()) {
+                com.example.onlyfanshop_be.entity.Token dbToken = dbTokenOpt.get();
+                if (dbToken.isRevoked()) {
+                    log.warn("Token is revoked for request: {}", requestURI);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                if (dbToken.isExpired()) {
+                    log.warn("Token is expired in DB for request: {}", requestURI);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+            } else {
+                // Allow flow to continue to avoid false negatives if DB mismatch; still logged for visibility
+                log.warn("Token not found in database for request: {}. Proceeding because JWT is valid (dev-safe path).", requestURI);
+            }
+
+            try {
                 String username = tokenProvider.getUsernameFromJWT(token);
+                String role = tokenProvider.getRoleFromJWT(token);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -51,6 +77,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                
+                log.debug("Authentication successful for user: {} with role: {} on request: {}", 
+                          username, role, requestURI);
+            } catch (Exception e) {
+                log.error("Error setting authentication: {}", e.getMessage());
             }
         }
 

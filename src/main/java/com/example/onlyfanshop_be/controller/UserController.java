@@ -4,17 +4,24 @@ import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.ChangePasswordRequest;
 import com.example.onlyfanshop_be.dto.request.UpdateFCMTokenRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.entity.Token;
+import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.IUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
 @Tag(name = "User Controller", description = "APIs for user management")
+@Slf4j
 public class UserController {
 
     @Autowired
@@ -22,6 +29,9 @@ public class UserController {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+    
+    @Autowired
+    private TokenRepository tokenRepository;
 
     @GetMapping("/getUser")
     public ApiResponse<UserDTO> getUser(HttpServletRequest request) {
@@ -68,5 +78,74 @@ public class UserController {
         int userid = jwtTokenProvider.getUserIdFromJWT(token);
         userService.changeAddress(userid, address);
         return ApiResponse.<Void>builder().statusCode(200).message("Cập nhật địa chỉ thành công").build();
+    }
+    
+    @GetMapping("/token-status")
+    @Operation(summary = "Check token status", description = "Debug endpoint to check if token is valid and in database")
+    public ApiResponse<Map<String, Object>> checkTokenStatus(HttpServletRequest request) {
+        Map<String, Object> status = new HashMap<>();
+        
+        try {
+            String bearerToken = request.getHeader("Authorization");
+            
+            if (bearerToken == null || !bearerToken.startsWith("Bearer ")) {
+                status.put("error", "No Bearer token found in Authorization header");
+                return ApiResponse.<Map<String, Object>>builder()
+                        .statusCode(400)
+                        .message("No token provided")
+                        .data(status)
+                        .build();
+            }
+            
+            String token = bearerToken.substring(7);
+            status.put("tokenLength", token.length());
+            
+            // Check JWT validity
+            boolean isJwtValid = jwtTokenProvider.validateToken(token);
+            status.put("jwtValid", isJwtValid);
+            
+            if (isJwtValid) {
+                // Extract claims
+                try {
+                    String email = jwtTokenProvider.getEmailFromJWT(token);
+                    Integer userId = jwtTokenProvider.getUserIdFromJWT(token);
+                    String role = jwtTokenProvider.getRoleFromJWT(token);
+                    
+                    status.put("email", email);
+                    status.put("userId", userId);
+                    status.put("role", role);
+                } catch (Exception e) {
+                    status.put("claimError", e.getMessage());
+                }
+            }
+            
+            // Check database
+            Token dbToken = tokenRepository.findByToken(token).orElse(null);
+            status.put("inDatabase", dbToken != null);
+            
+            if (dbToken != null) {
+                status.put("revoked", dbToken.isRevoked());
+                status.put("expired", dbToken.isExpired());
+                status.put("userId", dbToken.getUser().getUserID());
+                status.put("username", dbToken.getUser().getUsername());
+            } else {
+                status.put("dbError", "Token not found in database. User needs to re-login.");
+            }
+            
+            return ApiResponse.<Map<String, Object>>builder()
+                    .statusCode(200)
+                    .message("Token status check completed")
+                    .data(status)
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("Error checking token status: {}", e.getMessage());
+            status.put("error", e.getMessage());
+            return ApiResponse.<Map<String, Object>>builder()
+                    .statusCode(500)
+                    .message("Error checking token status")
+                    .data(status)
+                    .build();
+        }
     }
 }
