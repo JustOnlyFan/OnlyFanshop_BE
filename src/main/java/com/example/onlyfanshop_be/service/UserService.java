@@ -3,15 +3,22 @@ package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.User;
+import com.example.onlyfanshop_be.enums.Role;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -108,4 +115,45 @@ public class UserService implements IUserService {
     public void logout(String token) {
         tokenRepository.deleteByToken(token);
     }
+
+    @Override
+    public ApiResponse<Page<UserDTO>> getAllUsers(
+            String keyword, String role, int page, int size,
+            String sortField, String sortDirection) {
+
+        Sort sort = sortDirection.equalsIgnoreCase("DESC")
+                ? Sort.by(sortField).descending()
+                : Sort.by(sortField).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Role enumRole = null;
+        if (role != null && !role.isBlank()) {
+            try {
+                enumRole = Role.valueOf(role.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid role: " + role);
+            }
+        }
+
+        Page<User> userPage = userRepository.searchUsers(keyword, enumRole, pageable);
+
+        Page<UserDTO> dtoPage = userPage.map(user -> {
+            UserDTO dto = new UserDTO();
+            dto.setUserID(user.getUserID());
+            dto.setUsername(user.getUsername());
+            dto.setEmail(user.getEmail());
+            dto.setPhoneNumber(user.getPhoneNumber());
+            dto.setAddress(user.getAddress());
+            dto.setRole(user.getRole());
+            return dto;
+        });
+
+        return ApiResponse.<Page<UserDTO>>builder()
+                .data(dtoPage)
+                .statusCode(200)
+                .message("Lấy danh sách người dùng thành công")
+                .build();
+    }
+
 }

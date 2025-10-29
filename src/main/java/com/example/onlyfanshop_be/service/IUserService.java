@@ -2,6 +2,9 @@ package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import org.springframework.data.domain.Page;
+
+import java.util.List;
 
 public interface IUserService {
     ApiResponse<UserDTO> getUserByID(int userID);
@@ -11,4 +14,11 @@ public interface IUserService {
     void changeAddress(int userID, String address);
     void updateFCMToken(int userID, String fcmToken);
     public void logout(String token);
+    public ApiResponse<Page<UserDTO>> getAllUsers(
+            String keyword,
+            String role,
+            int page,
+            int size,
+            String sortField,
+            String sortDirection);
 }

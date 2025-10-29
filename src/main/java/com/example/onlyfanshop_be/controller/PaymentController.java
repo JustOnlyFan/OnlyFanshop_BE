@@ -2,13 +2,11 @@ package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.PaymentDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.entity.Cart;
-import com.example.onlyfanshop_be.entity.Order;
-import com.example.onlyfanshop_be.entity.Payment;
-import com.example.onlyfanshop_be.entity.User;
+import com.example.onlyfanshop_be.entity.*;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.CartRepository;
+import com.example.onlyfanshop_be.repository.NotificationRepository;
 import com.example.onlyfanshop_be.repository.OrderRepository;
 import com.example.onlyfanshop_be.repository.PaymentRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
@@ -40,7 +38,8 @@ public class PaymentController {
     private final OrderRepository orderRepository;
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
-
+    @Autowired
+    private NotificationRepository notificationRepository;
     //    @GetMapping("/vn-pay")
 //    public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode,@RequestParam int cardId) {
 //        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode, cardId)).build();
@@ -77,24 +76,21 @@ public class PaymentController {
 
     @GetMapping("/public/vn-pay-callback")
     public void vnPayCallback(@RequestParam Map<String, String> params,
-                              @RequestParam(required = false) String address,  // ✅ Lấy address từ URL
+                              @RequestParam(required = false) String address,
                               HttpServletResponse response) throws IOException {
+
         String responseCode = params.get("vnp_ResponseCode");
         String paymentCode = params.get("vnp_TransactionNo");
         String amountStr = params.get("vnp_Amount");
         String cardIdStr = params.get("vnp_TxnRef");
-        System.out.println("đã call back");
-        // Kiểm tra transactionCode đã tồn tại chưa (tránh duplicate)
+
         boolean exists = paymentRepository.existsByTransactionCode(paymentCode);
-        if (exists) {
-            return;
-        }
+        if (exists) return;
 
         Payment payment = new Payment();
         payment.setTransactionCode(paymentCode);
-        payment.setAmount(amountStr != null ? Double.parseDouble(amountStr) / 100 : 0); // VNPay gửi amount * 100
+        payment.setAmount(amountStr != null ? Double.parseDouble(amountStr) / 100 : 0);
         payment.setPaymentDate(LocalDateTime.now());
-        System.out.println(responseCode);
         if ("00".equals(responseCode)) {
             // ✅ Giao dịch thành công
             Cart cart = cartRepository.findById(Integer.parseInt(cardIdStr))
@@ -108,32 +104,51 @@ public class PaymentController {
             Order order = new Order();
             order.setUser(user);
             order.setCart(cart);
-
-            // ✅ Ưu tiên lấy address từ param VNPay callback (nếu có)
-            if (address != null && !address.isEmpty()) {
-                order.setBillingAddress(address);
-            } else {
-                order.setBillingAddress(user.getAddress()); // fallback
-            }
-
+            order.setBillingAddress(
+                    (address != null && !address.isEmpty()) ? address : user.getAddress()
+            );
             order.setOrderStatus("confirmed");
             order.setOrderDate(LocalDateTime.now());
             order.setPaymentMethod("VNPay");
 
-            orderRepository.save(order);
+            order = orderRepository.save(order);
 
             payment.setPaymentStatus(true);
             payment.setOrder(order);
             paymentRepository.save(payment);
 
-            response.sendRedirect("https://onlyfanshop.app/payment-result?status=success&code=" + paymentCode);
+            // ✅ Tạo thông báo khi thanh toán thành công
+            Notification notification = Notification.builder()
+                    .user(user)
+                    .message("Thanh toán thành công đơn hàng #" + order.getOrderID())
+                    .isRead(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+
+            response.sendRedirect("https://onlyfanshop.app/payment-result?status=success&code="
+                    + paymentCode + "&order=" + order.getOrderID());
         } else {
-            // Giao dịch thất bại
+            // ❌ Giao dịch thất bại
             payment.setPaymentStatus(false);
             paymentRepository.save(payment);
+
+            // ✅ Tạo thông báo khi thanh toán thất bại
+            Notification notification = Notification.builder()
+                    .user(cartRepository.findById(Integer.parseInt(cardIdStr))
+                            .map(Cart::getUser)
+                            .orElse(null))
+                    .message("Thanh toán thất bại. Mã giao dịch: " + paymentCode)
+                    .isRead(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            if (notification.getUser() != null) {
+                notificationRepository.save(notification);
+            }
 
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=fail&code=" + paymentCode);
         }
     }
+
 }
 
