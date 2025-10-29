@@ -58,7 +58,9 @@ public class SecurityConfig {
                                     "/payment/public/**",
                                     "/api/chat/test",
                                     "/api/chat/clear-all-chat-data-public",
-                                    "/users/token-status"
+                                    "/users/token-status",
+                                    "/store-locations",
+                                    "/store-locations/**"
                             ).permitAll()
                         .anyRequest().authenticated()
                 )
