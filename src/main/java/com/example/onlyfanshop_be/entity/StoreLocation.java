@@ -15,6 +15,15 @@ public class StoreLocation {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Integer locationID;
 
+    @Column(nullable = false, length = 255)
+    private String name;
+
+    @Column(length = 500)
+    private String description;
+
+    @Column(length = 500)
+    private String imageUrl;
+
     @Column(nullable = false)
     private Double latitude;
 
@@ -23,5 +32,11 @@ public class StoreLocation {
 
     @Column(nullable = false, length = 255)
     private String address;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 100)
+    private String openingHours;
 }
 

@@ -32,9 +32,14 @@ public class StoreLocationService implements IStoreLocation {
     @Override
     public StoreLocation updateLocation(int id, StoreLocation newLocation) {
         StoreLocation existing = getLocationById(id);
+        existing.setName(newLocation.getName());
+        existing.setDescription(newLocation.getDescription());
+        existing.setImageUrl(newLocation.getImageUrl());
         existing.setLatitude(newLocation.getLatitude());
         existing.setLongitude(newLocation.getLongitude());
         existing.setAddress(newLocation.getAddress());
+        existing.setPhone(newLocation.getPhone());
+        existing.setOpeningHours(newLocation.getOpeningHours());
         return storeLocationRepository.save(existing);
     }
 
