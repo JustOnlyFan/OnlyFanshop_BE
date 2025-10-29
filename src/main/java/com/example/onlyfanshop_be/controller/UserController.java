@@ -13,8 +13,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -79,6 +81,19 @@ public class UserController {
         userService.changeAddress(userid, address);
         return ApiResponse.<Void>builder().statusCode(200).message("Cập nhật địa chỉ thành công").build();
     }
+    @GetMapping("/getAllUsers")
+    public ApiResponse<Page<UserDTO>> getAllUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "username") String sortField,
+            @RequestParam(defaultValue = "ASC") String sortDirection) {
+
+        return userService.getAllUsers(keyword, role, page, size, sortField, sortDirection);
+    }
+
+
     
     @GetMapping("/token-status")
     @Operation(summary = "Check token status", description = "Debug endpoint to check if token is valid and in database")

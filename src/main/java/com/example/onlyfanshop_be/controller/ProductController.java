@@ -85,7 +85,7 @@ public class ProductController {
             @RequestParam(defaultValue = "ProductID") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
 
-        ApiResponse<HomepageResponse> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
+        ApiResponse<HomepageResponse> response = iProductService.productList(keyword, categoryId, brandId, page, size, sortBy, order);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(response);

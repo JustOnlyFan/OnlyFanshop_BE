@@ -305,6 +305,7 @@ public class ProductService implements  IProductService {
                         .price(p.getPrice())
                         .imageURL(p.getImageURL())
                         .briefDescription(p.getBriefDescription())
+                        .isActive(p.isActive())
                         .brand(BrandDTO.builder()
                                 .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().intValue())
                                 .name(p.getBrand().getBrandName())
