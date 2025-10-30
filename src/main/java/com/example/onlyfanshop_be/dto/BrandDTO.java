@@ -10,4 +10,7 @@ import lombok.*;
 public class BrandDTO {
     private Integer brandID;
     private String name;
+    private String country;
+    private String description;
+    private boolean isActive;
 }

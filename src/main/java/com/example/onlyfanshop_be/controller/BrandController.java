@@ -30,13 +30,13 @@ public class BrandController {
         return brandService.getBrandById(id);
     }
 
-    @PostMapping
-    public Brand createBrand(@RequestBody Brand brand) {
+    @PostMapping("/create")
+    public Brand createBrand(@RequestBody BrandDTO brand) {
         return brandService.createBrand(brand);
     }
 
     @PutMapping("/{id}")
-    public Brand updateBrand(@PathVariable int id, @RequestBody Brand brand) {
+    public Brand updateBrand(@PathVariable int id, @RequestBody BrandDTO brand) {
         return brandService.updateBrand(id, brand);
     }
 
@@ -45,4 +45,10 @@ public class BrandController {
         brandService.deleteBrand(id);
         return "Xóa thương hiệu có ID " + id + " thành công!";
     }
+
+    @PutMapping("switchActive/{id}")
+    public Brand switchActive(@PathVariable int id, @RequestParam boolean active) {
+        return brandService.switchActive(id, active);
+    }
+
 }
