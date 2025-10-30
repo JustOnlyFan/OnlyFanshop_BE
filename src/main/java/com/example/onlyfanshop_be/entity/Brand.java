@@ -30,6 +30,9 @@ public class Brand {
     private String country;
     private String description;
 
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean isActive = true;
+
     @OneToMany(mappedBy = "brand")
     @JsonIgnore
     private List<Product> products;

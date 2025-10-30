@@ -165,7 +165,10 @@ public class ProductService implements  IProductService {
                 .brand(product.getBrand() != null
                         ? new BrandDTO(
                         product.getBrand().getBrandID(),
-                        product.getBrand().getBrandName()
+                        product.getBrand().getBrandName(),
+                        product.getBrand().getCountry(),
+                        product.getBrand().getDescription(),
+                        product.getBrand().isActive()
                 )
                         : null)
                 .category(product.getCategory() != null
@@ -247,7 +250,10 @@ public class ProductService implements  IProductService {
                 .imageURL(savedProduct.getImageURL())
                 .brand(savedProduct.getBrand() != null ? new BrandDTO(
                         savedProduct.getBrand().getBrandID(),
-                        savedProduct.getBrand().getBrandName()
+                        savedProduct.getBrand().getBrandName(),
+                        savedProduct.getBrand().getCountry(),
+                        savedProduct.getBrand().getDescription(),
+                        savedProduct.getBrand().isActive()
 
                 ) : null)
                 .category(savedProduct.getCategory() != null ? new CategoryDTO(
@@ -358,5 +364,16 @@ public class ProductService implements  IProductService {
             product.get().setActive(active);
             productRepository.save(product.get());
         }else throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
+    }
+
+    @Override
+    public void updateActiveByBrand(int brandID) {
+        Brand brand = brandRepository.findById(brandID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + brandID));
+        List<Product> listProduct = productRepository.findByBrand_BrandID(brandID);
+        for(Product p : listProduct) {
+            p.setActive(brand.isActive());
+            productRepository.save(p);
+        }
     }
 }

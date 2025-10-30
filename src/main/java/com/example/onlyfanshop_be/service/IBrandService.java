@@ -9,7 +9,8 @@ public interface IBrandService {
     List<BrandDTO> getAllBrands();
     List<Brand> getAllBrandsDetail();
     Brand getBrandById(int id);
-    Brand updateBrand(int id,Brand brand);
+    Brand updateBrand(int id,BrandDTO brand);
     void deleteBrand(int id);
-    Brand createBrand(Brand brand);
+    Brand createBrand(BrandDTO brand);
+    Brand switchActive(int id, boolean active);
 }

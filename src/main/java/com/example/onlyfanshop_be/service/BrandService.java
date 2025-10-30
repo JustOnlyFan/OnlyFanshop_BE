@@ -13,6 +13,8 @@ import java.util.List;
 public class BrandService implements IBrandService{
     @Autowired
     private BrandRepository brandRepository;
+    @Autowired
+    private ProductService productService;
     @Override
     public List<BrandDTO> getAllBrands() {
         List<Brand>list = brandRepository.findAll();
@@ -21,6 +23,9 @@ public class BrandService implements IBrandService{
             BrandDTO brandDTO = new BrandDTO();
             brandDTO.setBrandID(brand.getBrandID());
             brandDTO.setName(brand.getBrandName());
+            brandDTO.setDescription(brand.getDescription());
+            brandDTO.setCountry(brand.getCountry());
+            brandDTO.setActive(brand.isActive());
             listDTO.add(brandDTO);
         }
         return listDTO;
@@ -36,15 +41,31 @@ public class BrandService implements IBrandService{
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + id));
     }
     @Override
-    public Brand createBrand(Brand brand) {
-        return brandRepository.save(brand);
+    public Brand createBrand(BrandDTO brand) {
+        Brand b = new Brand();
+        b.setBrandName(brand.getName());
+        b.setDescription(brand.getDescription());
+        b.setCountry(brand.getCountry());
+        return brandRepository.save(b);
     }
+
     @Override
-    public Brand updateBrand(int id, Brand updatedBrand) {
+    public Brand switchActive(int id, boolean active) {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + id));
 
-        brand.setBrandName(updatedBrand.getBrandName());
+        brand.setActive(active);
+        brandRepository.save(brand);
+        productService.updateActiveByBrand(brand.getBrandID());
+        return brand;
+    }
+
+    @Override
+    public Brand updateBrand(int id, BrandDTO updatedBrand) {
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + id));
+
+        brand.setBrandName(updatedBrand.getName());
         brand.setCountry(updatedBrand.getCountry());
         brand.setDescription(updatedBrand.getDescription());
 
