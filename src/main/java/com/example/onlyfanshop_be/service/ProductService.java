@@ -376,4 +376,14 @@ public class ProductService implements  IProductService {
             productRepository.save(p);
         }
     }
+
+    @Override
+    public void updateActiveByCategory(int categoryID) {
+        Category category = categoryRepository.findById(categoryID).orElseThrow(() -> new RuntimeException("Khônng tìm thấy category: " + categoryID));
+        List<Product> listProduct = productRepository.findByCategory_CategoryID(categoryID);
+        for(Product p : listProduct) {
+            p.setActive(category.isActive());
+            productRepository.save(p);
+        }
+    }
 }

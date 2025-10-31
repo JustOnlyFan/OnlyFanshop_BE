@@ -23,6 +23,8 @@ public class Category {
 
     @Column(nullable = false, length = 100)
     private String categoryName;
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean isActive = true;
 
     @OneToMany(mappedBy = "category")
     @JsonIgnore

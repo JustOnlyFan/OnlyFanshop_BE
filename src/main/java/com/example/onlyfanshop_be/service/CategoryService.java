@@ -2,6 +2,7 @@ package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.entity.Category;
 import com.example.onlyfanshop_be.repository.CategoryRepository;
+import com.example.onlyfanshop_be.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,9 @@ import java.util.List;
 public class CategoryService {
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProductService productService;
 
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
@@ -31,6 +35,13 @@ public class CategoryService {
 
         category.setCategoryName(updatedCategory.getCategoryName());
         return categoryRepository.save(category);
+    }
+    public Category toggleActive(Integer id, boolean active) {
+        Category category = getCategoryById(id);
+        category.setActive(active);
+        categoryRepository.save(category);
+        productService.updateActiveByCategory(id);
+        return category;
     }
 
     public void deleteCategory(Integer id) {
