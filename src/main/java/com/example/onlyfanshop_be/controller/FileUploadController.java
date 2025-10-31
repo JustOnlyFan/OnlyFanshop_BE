@@ -7,8 +7,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/upload")
@@ -102,5 +105,18 @@ public class FileUploadController {
                     .build();
         }
     }
+
+    @PostMapping("/api/upload/store-image")
+    public ResponseEntity<ApiResponse<String>> uploadStoreImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = firebaseStorageService.uploadFileToFolder(file, "stores");
+            return ResponseEntity.ok(new ApiResponse<>(true, "Upload thành công", imageUrl));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError()
+                    .body(new ApiResponse<>(false, "Lỗi khi upload ảnh: " + e.getMessage(), null));
+        }
+    }
+
+
 
 }

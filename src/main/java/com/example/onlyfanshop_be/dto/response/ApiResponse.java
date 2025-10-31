@@ -19,4 +19,6 @@ public class ApiResponse <T> {
     private T data;
     private Date dateTime = new Date();
 
+    public ApiResponse(boolean b, String s, Object o) {
+    }
 }
