@@ -16,5 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, Integer>, JpaS
     Product findByProductID(int productID);
 
     List<Product> findByBrand_BrandID(Integer brandBrandID);
+
+    List<Product> findByCategory_CategoryID(Integer categoryCategoryID);
 }
 

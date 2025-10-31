@@ -3,6 +3,7 @@ package com.example.onlyfanshop_be.controller;
 import com.example.onlyfanshop_be.entity.Category;
 import com.example.onlyfanshop_be.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,7 +24,7 @@ public class CategoryController {
         return categoryService.getCategoryById(id);
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public Category createCategory(@RequestBody Category category) {
         return categoryService.createCategory(category);
     }
@@ -33,9 +34,13 @@ public class CategoryController {
         return categoryService.updateCategory(id, category);
     }
 
-    @DeleteMapping("/{id}")
-    public String deleteCategory(@PathVariable Integer id) {
+    @DeleteMapping("delete/{id}")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Integer id) {
         categoryService.deleteCategory(id);
-        return "Xóa danh mục có ID " + id + " thành công!";
+        return ResponseEntity.noContent().build();
+    }
+    @PutMapping("switchActive/{id}")
+    public Category toggleActiveCategory(@PathVariable Integer id, @RequestParam boolean active) {
+        return categoryService.toggleActive(id, active);
     }
 }

@@ -20,4 +20,5 @@ public interface IProductService {
     public ApiResponse<HomepageResponse> productList(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order);
     public void updateActive(int productId, boolean active);
     public void updateActiveByBrand(int brandID);
+    public void updateActiveByCategory(int categoryID);
 }
