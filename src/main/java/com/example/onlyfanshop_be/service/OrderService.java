@@ -12,9 +12,11 @@ import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 @Service
 public class OrderService implements IOrderService {
@@ -22,26 +24,53 @@ public class OrderService implements IOrderService {
     private OrderRepository orderRepository;
 
     @Override
-    public ApiResponse<List<OrderDTO>> getAllOrdersByUserID(int userId) {
-        List<Order> listOrder = orderRepository.findOrdersByUser_UserID(userId);
-        if (!listOrder.isEmpty()) {
-            List<OrderDTO> listOrderDTO = new ArrayList<>();
-            for (Order order : listOrder) {
+    public ApiResponse<List<OrderDTO>> getAllOrders(int userId, String status, String role) {
+        List<Order> listOrder;
 
-                OrderDTO orderDTO = new OrderDTO();
-                orderDTO.setOrderID(order.getOrderID());
-                orderDTO.setOrderDate(order.getOrderDate());
-                orderDTO.setOrderStatus(order.getOrderStatus());
-                orderDTO.setBillingAddress(order.getBillingAddress());
-                orderDTO.setPaymentMethod(order.getPaymentMethod());
-                Cart cart = order.getCart();
-
-                orderDTO.setTotalPrice(cart.getTotalPrice());
-                listOrderDTO.add(orderDTO);
+        // Nếu là admin thì lấy toàn bộ
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            if (status != null && !status.isEmpty()) {
+                listOrder = orderRepository.findOrdersByOrderStatus(status, Sort.by(Sort.Direction.DESC, "orderID"));
+            } else {
+                listOrder = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "orderID"));
             }
-            return ApiResponse.<List<OrderDTO>>builder().data(listOrderDTO).message("Tìm thấy danh sách order").statusCode(200).build();
-        } else throw new AppException(ErrorCode.CART_NOTFOUND);
+        } else {
+            // Nếu là user bình thường thì chỉ lấy theo userID
+            if (status != null && !status.isEmpty()) {
+                listOrder = orderRepository.findOrdersByUser_UserIDAndOrderStatus(userId, status, Sort.by(Sort.Direction.DESC, "orderID"));
+            } else {
+                listOrder = orderRepository.findOrdersByUser_UserID(userId, Sort.by(Sort.Direction.DESC, "orderID"));
+            }
+        }
+
+        if (listOrder.isEmpty()) {
+            return ApiResponse.<List<OrderDTO>>builder()
+                    .statusCode(200)
+                    .message("Không có đơn hàng nào")
+                    .data(Collections.emptyList())
+                    .build();
+        }
+
+        List<OrderDTO> listOrderDTO = new ArrayList<>();
+        for (Order order : listOrder) {
+            OrderDTO orderDTO = new OrderDTO();
+            orderDTO.setOrderID(order.getOrderID());
+            orderDTO.setOrderDate(order.getOrderDate());
+            orderDTO.setOrderStatus(order.getOrderStatus());
+            orderDTO.setBillingAddress(order.getBillingAddress());
+            orderDTO.setPaymentMethod(order.getPaymentMethod());
+            orderDTO.setTotalPrice(order.getCart().getTotalPrice());
+            listOrderDTO.add(orderDTO);
+        }
+
+        return ApiResponse.<List<OrderDTO>>builder()
+                .data(listOrderDTO)
+                .message("Tìm thấy danh sách order")
+                .statusCode(200)
+                .build();
     }
+
+
 
     @Override
     public ApiResponse<List<OrderDTO>> getAllOrders() {
@@ -91,5 +120,12 @@ public class OrderService implements IOrderService {
 
 
     }
-
+    @Override
+    public ApiResponse<Void> setOrderStatus(int orderId, String status){
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+        order.setOrderStatus(status);
+        orderRepository.save(order);
+        return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
+    }
 }
