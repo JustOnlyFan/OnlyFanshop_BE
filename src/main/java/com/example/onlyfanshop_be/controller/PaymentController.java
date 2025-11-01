@@ -107,7 +107,7 @@ public class PaymentController {
             order.setBillingAddress(
                     (address != null && !address.isEmpty()) ? address : user.getAddress()
             );
-            order.setOrderStatus("confirmed");
+            order.setOrderStatus("CONFIRMED");
             order.setOrderDate(LocalDateTime.now());
             order.setPaymentMethod("VNPay");
 
