@@ -26,10 +26,8 @@ public class Order {
     @Column(nullable = false)
     private LocalDateTime orderDate;
 
-    @ManyToOne
-    @JoinColumn(name = "cartID")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Cart cart;
+    @Column(nullable = false)
+    private Double totalPrice;
 
     @ManyToOne
     @JoinColumn(name = "userID")
@@ -39,4 +37,8 @@ public class Order {
     @OneToMany(mappedBy = "order")
     @JsonIgnore
     private List<Payment> payments;
+
+    @OneToMany(mappedBy = "order")
+    @JsonIgnore
+    private List<OrderItem> orderItems;
 }

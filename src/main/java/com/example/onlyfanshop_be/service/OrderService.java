@@ -61,7 +61,7 @@ public class OrderService implements IOrderService {
             orderDTO.setOrderStatus(order.getOrderStatus());
             orderDTO.setBillingAddress(order.getBillingAddress());
             orderDTO.setPaymentMethod(order.getPaymentMethod());
-            orderDTO.setTotalPrice(order.getCart().getTotalPrice());
+            //orderDTO.setTotalPrice(order.getCart().getTotalPrice());
             listOrderDTO.add(orderDTO);
         }
 
@@ -86,8 +86,8 @@ public class OrderService implements IOrderService {
                 orderDTO.setOrderStatus(order.getOrderStatus());
                 orderDTO.setBillingAddress(order.getBillingAddress());
                 orderDTO.setPaymentMethod(order.getPaymentMethod());
-                Cart cart = order.getCart();
-                orderDTO.setTotalPrice(cart.getTotalPrice());
+                //Cart cart = order.getCart();
+                //orderDTO.setTotalPrice(cart.getTotalPrice());
                 listOrderDTO.add(orderDTO);
             }
             return ApiResponse.<List<OrderDTO>>builder().data(listOrderDTO).message("Tìm thấy danh sách order").statusCode(200).build();
@@ -98,12 +98,12 @@ public class OrderService implements IOrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
         User user = order.getUser();
-        Cart cart = order.getCart();
+        //Cart cart = order.getCart();
 
         CartDTO cartDTO = CartDTO.builder()
                 .userId(user.getUserID())
-                .items(cart.getCartItems())
-                .totalQuantity(cart.getCartItems().stream().mapToInt(CartItem::getQuantity).sum())
+                //.items(cart.getCartItems())
+                //.totalQuantity(cart.getCartItems().stream().mapToInt(CartItem::getQuantity).sum())
                 .build();
 
         return ApiResponse.<OrderDetailsDTO>builder().data( OrderDetailsDTO.builder()
@@ -112,7 +112,7 @@ public class OrderService implements IOrderService {
                 .billingAddress(order.getBillingAddress())
                 .orderStatus(order.getOrderStatus())
                 .orderDate(order.getOrderDate())
-                .totalPrice(cart.getTotalPrice())
+                //.totalPrice(cart.getTotalPrice())
                 .address(user.getAddress())
                 .customerName(user.getUsername())
                 .email(user.getEmail())

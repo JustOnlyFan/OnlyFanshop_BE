@@ -5,10 +5,7 @@ import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.*;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.repository.CartRepository;
-import com.example.onlyfanshop_be.repository.NotificationRepository;
-import com.example.onlyfanshop_be.repository.OrderRepository;
-import com.example.onlyfanshop_be.repository.PaymentRepository;
+import com.example.onlyfanshop_be.repository.*;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.NotificationService;
 import com.example.onlyfanshop_be.service.PaymentService;
@@ -24,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -43,7 +42,10 @@ public class PaymentController {
     private NotificationRepository notificationRepository;
     @Autowired
     private NotificationService notificationService;
-
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+    @Autowired
+    private CartItemRepository cartItemRepository;
     //    @GetMapping("/vn-pay")
 //    public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode,@RequestParam int cardId) {
 //        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode, cardId)).build();
@@ -86,7 +88,7 @@ public class PaymentController {
         String responseCode = params.get("vnp_ResponseCode");
         String paymentCode = params.get("vnp_TransactionNo");
         String amountStr = params.get("vnp_Amount");
-        String cardIdStr = params.get("vnp_TxnRef");
+        String cardIdStr = params.get("vnp_TxnRef").split("_")[0];
 
         boolean exists = paymentRepository.existsByTransactionCode(paymentCode);
         if (exists) return;
@@ -99,15 +101,21 @@ public class PaymentController {
             // ✅ Giao dịch thành công
             Cart cart = cartRepository.findById(Integer.parseInt(cardIdStr))
                     .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-
-            cart.setStatus("PAID");
-            cartRepository.save(cart);
+            List<CartItem> cartItemsOrder = new ArrayList<>();
+            for(CartItem cartItem : cart.getCartItems()){
+                if (cartItem.isChecked()){
+                    cartItemsOrder.add(cartItem);
+                }
+            }
+//            cart.setStatus("PAID");
+//            cartRepository.save(cart);
 
             User user = cart.getUser();
 
             Order order = new Order();
             order.setUser(user);
-            order.setCart(cart);
+            order.setTotalPrice(payment.getAmount());
+            //order.setCart(cart);
             order.setBillingAddress(
                     (address != null && !address.isEmpty()) ? address : user.getAddress()
             );
@@ -116,6 +124,19 @@ public class PaymentController {
             order.setPaymentMethod("VNPay");
 
             order = orderRepository.save(order);
+            for (CartItem cartItem : cartItemsOrder) {
+                OrderItem orderItem = new OrderItem();
+                orderItem.setOrder(order);
+                orderItem.setProduct(cartItem.getProduct());
+                orderItem.setQuantity(cartItem.getQuantity());
+                orderItem.setPrice(cartItem.getPrice());
+                orderItemRepository.save(orderItem);
+                cartItemRepository.delete(cartItem);
+            }
+            if (cart.getStatus().equals("InstantBuy*")) {
+                cartRepository.delete(cart);
+            }
+
 
             payment.setPaymentStatus(true);
             payment.setOrder(order);

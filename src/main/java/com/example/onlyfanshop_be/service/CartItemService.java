@@ -20,7 +20,7 @@ public class CartItemService implements ICartItemService {
     private ProductRepository productRepository;
 
     @Override
-    public boolean addCartItem(Cart cart, int productID,  int quantity) {
+    public boolean addCartItem(Cart cart, int productID,  int quantity, boolean isInstantBuy) {
         boolean status = false;
         Product product = productRepository.findByProductID(productID);
         CartItem cartItem = cartItemRepository.findByCart_CartIDAndProduct_ProductID(cart.getCartID(), productID);
@@ -30,6 +30,9 @@ public class CartItemService implements ICartItemService {
             cartItem.setProduct(product);
             cartItem.setPrice(product.getPrice()*quantity);
             cartItem.setQuantity(quantity);
+            if (isInstantBuy) {
+                cartItem.setChecked(true);
+            }
             cartItemRepository.save(cartItem);
             status = true;
         }else {

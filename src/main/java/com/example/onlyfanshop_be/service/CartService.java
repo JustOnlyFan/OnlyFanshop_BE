@@ -51,12 +51,11 @@ public class CartService implements ICartService {
         } else {
             userCart = new Cart();
             userCart.setStatus("InProgress");
-            userCart.setTotalPrice(0.0);
             userCart.setUser(userRepository.findByUsername(username).get());
         }
         cartRepository.save(userCart);
-        if (cartItemService.addCartItem(userCart, productID, quantity)) {
-            userCart.setTotalPrice(userCart.getTotalPrice() + productRepository.findByProductID(productID).getPrice()*quantity);
+        if (cartItemService.addCartItem(userCart, productID, quantity, false)) {
+            //userCart.setTotalPrice(userCart.getTotalPrice() + productRepository.findByProductID(productID).getPrice()*quantity);
             cartRepository.save(userCart);
             status = true;
         }
@@ -93,11 +92,11 @@ public class CartService implements ICartService {
             throw new AppException(ErrorCode.USER_NOTEXISTED);
         }
         cart.setStatus("InstantBuy");
-        cart.setTotalPrice(0.0);
+        //cart.setTotalPrice(0.0);
         cart.setUser(userRepository.findByUsername(username).get());
         cartRepository.save(cart);
-        if (cartItemService.addCartItem(cart, productID, quantity)) {
-            cart.setTotalPrice(cart.getTotalPrice() + productRepository.findByProductID(productID).getPrice()*quantity);
+        if (cartItemService.addCartItem(cart, productID, quantity, true)) {
+            //cart.setTotalPrice(cart.getTotalPrice() + productRepository.findByProductID(productID).getPrice()*quantity);
             cartRepository.save(cart);
         }
         return cart;

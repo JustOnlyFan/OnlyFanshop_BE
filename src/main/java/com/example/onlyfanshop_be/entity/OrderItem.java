@@ -5,29 +5,29 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "CartItems")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class CartItem {
+@Table(name = "OrderItems")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer cartItemID;
+    private Integer orderItemID;
 
-    @Column(nullable = false)
     private Integer quantity;
 
-    @Column(nullable = false)
     private Double price;
 
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private boolean isChecked = false;
-
     @ManyToOne
-    @JoinColumn(name = "cartID")
+    @JoinColumn(name = "orderID")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Cart cart;
+    private Order order;
 
     @ManyToOne
     @JoinColumn(name = "productID")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Product product;
+
 }
