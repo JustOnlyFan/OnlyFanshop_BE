@@ -36,7 +36,7 @@ public class FirebaseStorageService {
     }
 
     public String uploadFileToFolder(MultipartFile file, String folderName) throws IOException {
-        String fileName = UUID.randomUUID() + "_" + sanitizeFileName(file.getOriginalFilename());
+        String fileName = UUID.randomUUID().toString() + "_" + sanitizeFileName(file.getOriginalFilename());
         Bucket bucket = StorageClient.getInstance().bucket();
 
         try (InputStream inputStream = file.getInputStream()) {

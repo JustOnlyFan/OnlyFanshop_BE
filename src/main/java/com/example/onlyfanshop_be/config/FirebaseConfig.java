@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 @Configuration
 public class FirebaseConfig {
@@ -18,8 +19,21 @@ public class FirebaseConfig {
     @PostConstruct
     public void init() throws IOException {
         if (FirebaseApp.getApps().isEmpty()) {
-            FileInputStream serviceAccount =
-                    new FileInputStream("onlyfan-f9406-firebase-adminsdk-fbsvc-80882fd511.json");
+            // Try to load from classpath first, then from file system
+            InputStream serviceAccount = null;
+            
+            try {
+                // Try loading from classpath (resources folder)
+                serviceAccount = getClass().getClassLoader().getResourceAsStream("onlyfan-f9406-firebase-adminsdk-fbsvc-80882fd511.json");
+                if (serviceAccount == null) {
+                    // If not found in classpath, try from file system (project root)
+                    serviceAccount = new FileInputStream("onlyfan-f9406-firebase-adminsdk-fbsvc-80882fd511.json");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Warning: Could not load Firebase credentials. Image upload will not work.");
+                System.err.println("Please ensure the Firebase JSON file exists in classpath or project root.");
+                return;
+            }
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))

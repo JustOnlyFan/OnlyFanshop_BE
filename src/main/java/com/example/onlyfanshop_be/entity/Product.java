@@ -25,6 +25,8 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String fullDescription;
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String technicalSpecifications;
 
     @Column(nullable = false)
