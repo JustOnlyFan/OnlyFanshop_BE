@@ -12,7 +12,8 @@ public enum ErrorCode {
     CART_NOTFOUND(1008,"Không tìm thấy cart"),
     WRONG_OLD_PASSWORD(1009,"Mật khẩu cũ không đúng"),
     LOCATION_NOT_FOUND(1010,"Không thể tìm thấy địa điểm"),
-    NOTIFICATION_NOT_FOUND(1011,"Không tìm thấy thông báo");
+    NOTIFICATION_NOT_FOUND(1011,"Không tìm thấy thông báo"),
+    BUY_METHOD_INVALID(1012,"Không thể xác định cách mua sản phẩm");
 
 
     private int code;
