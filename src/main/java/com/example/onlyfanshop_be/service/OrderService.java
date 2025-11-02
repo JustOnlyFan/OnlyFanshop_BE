@@ -193,7 +193,6 @@ public class OrderService implements IOrderService {
                     case "APPROVED":
                         message = "Đơn hàng #" + orderId + " của bạn đã được xác nhận!";
                         break;
-                    case "SHIPPING":
                     case "SHIPPED":
                         message = "Đơn hàng #" + orderId + " của bạn đang được giao!";
                         break;
