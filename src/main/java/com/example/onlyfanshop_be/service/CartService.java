@@ -83,6 +83,12 @@ public class CartService implements ICartService {
                 cartItemRepository.deleteAll(c.getCartItems());
             }
             cartRepository.deleteAll(carts);}
+        carts = cartRepository.findByStatusAndUser_username("Pending", username);
+        if(!carts.isEmpty()) {
+            for(Cart c : carts){
+                cartItemRepository.deleteAll(c.getCartItems());
+            }
+            cartRepository.deleteAll(carts);}
 
         boolean productExist = productRepository.existsById(productID);
         boolean userExist = userRepository.existsByUsername(username);
@@ -100,6 +106,13 @@ public class CartService implements ICartService {
             cartRepository.save(cart);
         }
         return cart;
+    }
+
+    @Override
+    public void deleteInstantCart(Integer userID) {
+        Cart cart = cartRepository.findByUser_UserIDAndStatus(userID, "InstantBuy").orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
+        cartItemRepository.deleteAll(cart.getCartItems());
+        cartRepository.delete(cart);
     }
 
     public ApiResponse<CartDTO> getCart(int userId, String status) {

@@ -8,4 +8,5 @@ public interface ICartService {
      boolean addToCart(AddToCartRequest request);
      void clearCart(String userName);
      Cart instantBuy(AddToCartRequest request);
+     void deleteInstantCart(Integer userID);
 }

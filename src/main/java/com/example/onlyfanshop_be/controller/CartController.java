@@ -57,4 +57,11 @@ public class CartController {
         return cartService.getCart(userId,"InProgress");
     }
 
+    @DeleteMapping("/deleteInstantCart")
+    public ApiResponse<Void> deleteInstantCart(@RequestParam Integer userID) {
+        ApiResponse<Void> respone = new ApiResponse<>();
+        cartService.deleteInstantCart(userID);
+        return respone;
+    }
+
 }

@@ -59,20 +59,25 @@ public class PaymentController {
             @RequestParam Double amount,
             @RequestParam String bankCode,
             @RequestParam String address,
+            @RequestParam String buyMethod
             @RequestParam(required = false) String recipientPhoneNumber
     ) {
         // ✅ 1. Lấy token từ header
         String token = jwtTokenProvider.extractToken(request);
         int userid = jwtTokenProvider.getUserIdFromJWT(token);
-
+        Cart cart;
         // ✅ 3. Lấy cart tương ứng với user
-        Cart cart= cartRepository.findByUser_UserIDAndStatus(userid, "InstantBuy").orElse(null);
-        if (cart == null) {
+        if(buyMethod.equals("Instant")) {
+            cart= cartRepository.findByUser_UserIDAndStatus(userid, "InstantBuy").orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
+            cart.setStatus("Pending");
+            cartRepository.save(cart);
+        }else if (buyMethod.equals("ByCart")){
             cart = cartRepository.findByUser_UserIDAndStatus(userid, "InProgress")
                     .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-        }else {
-            cart.setStatus("InstantBuy*");
-            cartRepository.save(cart);}
+        } else{
+            throw new AppException(ErrorCode.BUY_METHOD_INVALID);
+        }
+
 
         // ✅ 4. Gọi service xử lý thanh toán
         PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID(), address, recipientPhoneNumber);
@@ -152,7 +157,7 @@ public class PaymentController {
                 orderItemRepository.save(orderItem);
                 cartItemRepository.delete(cartItem);
             }
-            if (cart.getStatus().equals("InstantBuy*")) {
+            if (cart.getStatus().equals("Pending")) {
                 cartRepository.delete(cart);
             }
 
