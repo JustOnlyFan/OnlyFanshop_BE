@@ -36,7 +36,7 @@ public class OrderService implements IOrderService {
                 orderDTO.setPaymentMethod(order.getPaymentMethod());
                 Cart cart = order.getCart();
 
-                orderDTO.setTotalPrice(cart.getTotalPrice());
+                //orderDTO.setTotalPrice(cart.getTotalPrice());
                 listOrderDTO.add(orderDTO);
             }
             return ApiResponse.<List<OrderDTO>>builder().data(listOrderDTO).message("Tìm thấy danh sách order").statusCode(200).build();
@@ -56,7 +56,7 @@ public class OrderService implements IOrderService {
                 orderDTO.setBillingAddress(order.getBillingAddress());
                 orderDTO.setPaymentMethod(order.getPaymentMethod());
                 Cart cart = order.getCart();
-                orderDTO.setTotalPrice(cart.getTotalPrice());
+                //orderDTO.setTotalPrice(cart.getTotalPrice());
                 listOrderDTO.add(orderDTO);
             }
             return ApiResponse.<List<OrderDTO>>builder().data(listOrderDTO).message("Tìm thấy danh sách order").statusCode(200).build();
@@ -81,7 +81,7 @@ public class OrderService implements IOrderService {
                 .billingAddress(order.getBillingAddress())
                 .orderStatus(order.getOrderStatus())
                 .orderDate(order.getOrderDate())
-                .totalPrice(cart.getTotalPrice())
+                //.totalPrice(cart.getTotalPrice())
                 .address(user.getAddress())
                 .customerName(user.getUsername())
                 .email(user.getEmail())

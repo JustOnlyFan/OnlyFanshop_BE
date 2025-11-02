@@ -8,6 +8,7 @@ import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.CartItemRepository;
 import com.example.onlyfanshop_be.repository.CartRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +36,7 @@ public class CartItemController {
         Cart cart = new Cart();
         if(carts.isEmpty()){
             cart.setStatus("InProgress");
-            cart.setTotalPrice(0.0);
+            //cart.setTotalPrice(0.0);
             cart.setUser(userRepository.findByUsername(username).get());
         }else {
             cart =  carts.getFirst();
@@ -44,7 +45,7 @@ public class CartItemController {
         List<CartItem> cartItem = cartItemRepository.findByCart_CartID(cart.getCartID());
         if (cartItem.isEmpty()) {
             response.setData(Collections.emptyList());
-            response.setMessage("No cart found");
+            response.setMessage("No item found");
             return response;
         }
         response.setData(cartItem);
@@ -63,7 +64,7 @@ public class CartItemController {
             List<CartItem> cartItem = cartItemRepository.findByCart_CartID(cart.getCartID());
             if (cartItem.isEmpty()) {
                 response.setData(Collections.emptyList());
-                response.setMessage("No cart found");
+                response.setMessage("No items found");
                 return response;
             }
             response.setData(cartItem);
@@ -81,7 +82,7 @@ public class CartItemController {
         CartItem cartItem = cartItemRepository.findByCart_CartIDAndProduct_ProductID(cart.getCartID(), productID);
         cartItem.setQuantity(cartItem.getQuantity() + 1);
         cartItem.setPrice(cartItem.getPrice() + cartItem.getProduct().getPrice());
-        cart.setTotalPrice(cart.getTotalPrice() + cartItem.getProduct().getPrice());
+        //cart.setTotalPrice(cart.getTotalPrice() + cartItem.getProduct().getPrice());
         cartRepository.save(cart);
         cartItemRepository.save(cartItem);
         return   response;
@@ -97,7 +98,7 @@ public class CartItemController {
         Cart cart = cartRepository.findByStatusAndUser_username("Inprogress", username).getFirst();
         CartItem cartItem = cartItemRepository.findByCart_CartIDAndProduct_ProductID(cart.getCartID(), productID);
         cartItem.setQuantity(cartItem.getQuantity()-1);
-        cart.setTotalPrice(cart.getTotalPrice() - cartItem.getProduct().getPrice());
+        //cart.setTotalPrice(cart.getTotalPrice() - cartItem.getProduct().getPrice());
         cartRepository.save(cart);
         if(cartItem.getQuantity() == 0){
             cartItemRepository.delete(cartItem);
@@ -106,5 +107,14 @@ public class CartItemController {
             cartItemRepository.save(cartItem);
         }
         return response;
+    }
+
+    @PutMapping("/onCheck")
+    public ApiResponse<Void> onCheck(@RequestParam Integer cartItemID){
+        ApiResponse<Void> response = new ApiResponse<>();
+        CartItem item =cartItemRepository.findById(cartItemID).orElseThrow(()->new AppException(ErrorCode.PRODUCT_NOTEXISTED));
+        item.setChecked(!item.isChecked());
+        cartItemRepository.save(item);
+        return   response;
     }
 }

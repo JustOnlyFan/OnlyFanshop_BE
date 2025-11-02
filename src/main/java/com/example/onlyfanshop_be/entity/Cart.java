@@ -14,9 +14,6 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer cartID;
 
-    @Column(nullable = false)
-    private Double totalPrice;
-
     @Column(nullable = false, length = 50)
     private String status;
 
@@ -28,8 +25,4 @@ public class Cart {
     @OneToMany(mappedBy = "cart")
     @JsonIgnore
     private List<CartItem> cartItems;
-
-    @OneToMany(mappedBy = "cart")
-    @JsonIgnore
-    private List<Order> orders;
 }
