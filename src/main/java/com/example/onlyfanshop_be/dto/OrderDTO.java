@@ -23,4 +23,10 @@ public class OrderDTO {
 
     private Double totalPrice;
 
+    // First product info for list display
+    private String firstProductName;
+    private String firstProductImage;
+    private Integer firstProductQuantity;
+    private Double firstProductPrice;
+
 }

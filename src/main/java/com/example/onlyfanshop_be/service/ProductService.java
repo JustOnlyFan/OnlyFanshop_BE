@@ -222,6 +222,11 @@ public class ProductService implements  IProductService {
         product.setFullDescription(updatedProduct.getFullDescription());
         product.setTechnicalSpecifications(updatedProduct.getTechnicalSpecifications());
         product.setPrice(updatedProduct.getPrice());
+        
+        // Cập nhật Image URL (nếu có)
+        if (updatedProduct.getImageURL() != null && !updatedProduct.getImageURL().isEmpty()) {
+            product.setImageURL(updatedProduct.getImageURL());
+        }
 
         // Cập nhật Category (nếu có)
         if (updatedProduct.getCategoryID()!= null) {
