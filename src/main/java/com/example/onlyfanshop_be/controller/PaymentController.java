@@ -3,10 +3,14 @@ package com.example.onlyfanshop_be.controller;
 import com.example.onlyfanshop_be.dto.PaymentDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.*;
+import com.example.onlyfanshop_be.enums.DeliveryType;
+import com.example.onlyfanshop_be.enums.OrderStatus;
+import com.example.onlyfanshop_be.enums.PaymentMethod;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.*;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
+import com.example.onlyfanshop_be.service.NotificationService;
 import com.example.onlyfanshop_be.service.PaymentService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,6 +44,8 @@ public class PaymentController {
     @Autowired
     private NotificationRepository notificationRepository;
     @Autowired
+    private NotificationService notificationService;
+    @Autowired
     private OrderItemRepository orderItemRepository;
     @Autowired
     private CartItemRepository cartItemRepository;
@@ -54,6 +60,7 @@ public class PaymentController {
             @RequestParam String bankCode,
             @RequestParam String address,
             @RequestParam String buyMethod
+            @RequestParam(required = false) String recipientPhoneNumber
     ) {
         // ✅ 1. Lấy token từ header
         String token = jwtTokenProvider.extractToken(request);
@@ -73,7 +80,7 @@ public class PaymentController {
 
 
         // ✅ 4. Gọi service xử lý thanh toán
-        PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID(),address);
+        PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID(), address, recipientPhoneNumber);
 
         return ApiResponse.<PaymentDTO.VNPayResponse>builder()
                 .statusCode(200)
@@ -85,6 +92,7 @@ public class PaymentController {
     @GetMapping("/public/vn-pay-callback")
     public void vnPayCallback(@RequestParam Map<String, String> params,
                               @RequestParam(required = false) String address,
+                              @RequestParam(required = false) String recipientPhoneNumber,
                               HttpServletResponse response) throws IOException {
 
         String responseCode = params.get("vnp_ResponseCode");
@@ -117,13 +125,27 @@ public class PaymentController {
             Order order = new Order();
             order.setUser(user);
             order.setTotalPrice(payment.getAmount());
-            //order.setCart(cart);
             order.setBillingAddress(
                     (address != null && !address.isEmpty()) ? address : user.getAddress()
             );
-            order.setOrderStatus("CONFIRMED");
+            order.setOrderStatus(OrderStatus.PENDING);
             order.setOrderDate(LocalDateTime.now());
-            order.setPaymentMethod("VNPay");
+            order.setPaymentMethod(PaymentMethod.VNPAY);
+            // Set delivery type - default to HOME_DELIVERY if no store info in address
+            order.setDeliveryType(DeliveryType.HOME_DELIVERY);
+            // Set shipping address from parameter, fallback to user address if not provided
+            if (address != null && !address.isEmpty()) {
+                order.setShippingAddress(address);
+            } else if (user.getAddress() != null && !user.getAddress().isEmpty()) {
+                order.setShippingAddress(user.getAddress());
+            }
+
+            // Set recipient phone number
+            if (recipientPhoneNumber != null && !recipientPhoneNumber.isEmpty()) {
+                order.setRecipientPhoneNumber(recipientPhoneNumber);
+            } else if (user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()) {
+                order.setRecipientPhoneNumber(user.getPhoneNumber());
+            }
 
             order = orderRepository.save(order);
             for (CartItem cartItem : cartItemsOrder) {
@@ -144,38 +166,35 @@ public class PaymentController {
             payment.setOrder(order);
             paymentRepository.save(payment);
 
-            // ✅ Tạo thông báo khi thanh toán thành công
-            Notification notification = Notification.builder()
-                    .user(user)
-                    .message("Thanh toán thành công đơn hàng #" + order.getOrderID())
-                    .isRead(false)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            notificationRepository.save(notification);
+            // ✅ Gọi service gửi thông báo (tự động lưu DB + đẩy Firebase)
+            notificationService.sendNotification(
+                    user.getUserID(),
+                    "Thanh toán thành công đơn hàng #" + order.getOrderID()
+            );
 
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=success&code="
                     + paymentCode + "&order=" + order.getOrderID());
+
         } else {
             // ❌ Giao dịch thất bại
             payment.setPaymentStatus(false);
             paymentRepository.save(payment);
 
-            // ✅ Tạo thông báo khi thanh toán thất bại
-            Notification notification = Notification.builder()
-                    .user(cartRepository.findById(Integer.parseInt(cardIdStr))
-                            .map(Cart::getUser)
-                            .orElse(null))
-                    .message("Thanh toán thất bại. Mã giao dịch: " + paymentCode)
-                    .isRead(false)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            if (notification.getUser() != null) {
-                notificationRepository.save(notification);
-            }
+            cartRepository.findById(Integer.parseInt(cardIdStr)).ifPresent(cart -> {
+                User user = cart.getUser();
+                if (user != null) {
+                    // ✅ Gọi service gửi thông báo thất bại
+                    notificationService.sendNotification(
+                            user.getUserID(),
+                            "Thanh toán thất bại. Mã giao dịch: " + paymentCode
+                    );
+                }
+            });
 
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=fail&code=" + paymentCode);
         }
     }
+
 
 }
 

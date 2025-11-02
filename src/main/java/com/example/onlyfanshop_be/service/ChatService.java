@@ -120,12 +120,18 @@ public class ChatService {
                                         .orElse(null);
                                 
                                 if (customerId != null) {
-                                    User customer = getCachedUser(customerId);
-                                    
                                     String lastMessage = roomSnapshot.child("lastMessage").getValue(String.class);
                                     Long lastMessageTime = roomSnapshot.child("lastMessageTime").getValue(Long.class);
                                     
-                                    String customerName = customer != null ? customer.getUsername() : "Customer " + customerId;
+                                    // ✅ Fix: Extract customerName từ roomId thay vì query database
+                                    // Room ID format: chatRoom_username_userId (ví dụ: chatRoom_huy_4)
+                                    // Điều này đảm bảo luôn đúng ngay cả khi dùng chung account ID ở database local khác nhau
+                                    String customerName = extractCustomerNameFromRoomId(roomId);
+                                    if (customerName == null || customerName.isEmpty()) {
+                                        // Fallback: Thử lấy từ database nếu không extract được từ roomId
+                                        User customer = getCachedUser(customerId);
+                                        customerName = customer != null ? customer.getUsername() : "Customer " + customerId;
+                                    }
                                     
                                     ChatRoomDTO roomDTO = ChatRoomDTO.builder()
                                             .roomId(roomId)
@@ -184,6 +190,29 @@ public class ChatService {
             return user;
         } catch (Exception e) {
             log.error("Error getting user: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    // ✅ Extract customer name từ roomId
+    // Room ID format: chatRoom_username_userId (ví dụ: chatRoom_huy_4)
+    private String extractCustomerNameFromRoomId(String roomId) {
+        try {
+            if (roomId != null && roomId.startsWith("chatRoom_")) {
+                String[] parts = roomId.split("_");
+                // parts[0] = "chatRoom"
+                // parts[1] = username (e.g., "huy", "NTT")
+                // parts[2] = userId (e.g., "4")
+                if (parts.length >= 3) {
+                    return parts[1]; // Return username
+                } else if (parts.length == 2) {
+                    // Fallback for old format: chatRoom_userId
+                    return null; // Cannot extract username, return null to use fallback
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("Error extracting customer name from room ID: " + e.getMessage());
             return null;
         }
     }

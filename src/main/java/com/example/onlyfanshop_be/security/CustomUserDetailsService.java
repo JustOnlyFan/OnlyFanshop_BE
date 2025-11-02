@@ -27,11 +27,12 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (!roleName.startsWith("ROLE_")) {
             roleName = "ROLE_" + roleName;
         }
-
+        String safePassword = (user.getPasswordHash() == null || user.getPasswordHash().isEmpty())
+                ? "N/A" : user.getPasswordHash();
         // Trả về đối tượng UserDetails cho Spring Security
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
-                user.getPasswordHash(),
+                safePassword,
                 List.of(new SimpleGrantedAuthority(roleName))
         );
     }

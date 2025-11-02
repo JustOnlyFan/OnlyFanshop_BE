@@ -68,8 +68,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             try {
                 String username = tokenProvider.getUsernameFromJWT(token);
-                String role = tokenProvider.getRoleFromJWT(token);
+                if (username == null || username.isEmpty()) {
+                    log.warn("JWT does not contain a valid username for request: {}", requestURI);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (userDetails == null) {
+                    log.warn("User not found for username extracted from JWT: {}", username);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                if (userDetails.getAuthorities() == null) {
+                    log.warn("UserDetails has null authorities for username: {}", username);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
@@ -77,12 +93,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                log.debug("Authentication successful for user: {} with role: {} on request: {}", 
-                          username, role, requestURI);
+
+                log.debug("Authentication successful for user: {} with role: {} on request: {}",
+                        username, userDetails.getAuthorities(), requestURI);
+
             } catch (Exception e) {
-                log.error("Error setting authentication: {}", e.getMessage());
+                log.error("Error setting authentication: ", e);
             }
+
         }
 
         filterChain.doFilter(request, response);
