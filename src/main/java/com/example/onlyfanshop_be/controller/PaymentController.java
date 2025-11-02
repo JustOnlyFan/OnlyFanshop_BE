@@ -10,6 +10,7 @@ import com.example.onlyfanshop_be.repository.NotificationRepository;
 import com.example.onlyfanshop_be.repository.OrderRepository;
 import com.example.onlyfanshop_be.repository.PaymentRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
+import com.example.onlyfanshop_be.service.NotificationService;
 import com.example.onlyfanshop_be.service.PaymentService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,6 +41,9 @@ public class PaymentController {
     private JwtTokenProvider jwtTokenProvider;
     @Autowired
     private NotificationRepository notificationRepository;
+    @Autowired
+    private NotificationService notificationService;
+
     //    @GetMapping("/vn-pay")
 //    public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode,@RequestParam int cardId) {
 //        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode, cardId)).build();
@@ -117,38 +121,35 @@ public class PaymentController {
             payment.setOrder(order);
             paymentRepository.save(payment);
 
-            // ✅ Tạo thông báo khi thanh toán thành công
-            Notification notification = Notification.builder()
-                    .user(user)
-                    .message("Thanh toán thành công đơn hàng #" + order.getOrderID())
-                    .isRead(false)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            notificationRepository.save(notification);
+            // ✅ Gọi service gửi thông báo (tự động lưu DB + đẩy Firebase)
+            notificationService.sendNotification(
+                    user.getUserID(),
+                    "Thanh toán thành công đơn hàng #" + order.getOrderID()
+            );
 
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=success&code="
                     + paymentCode + "&order=" + order.getOrderID());
+
         } else {
             // ❌ Giao dịch thất bại
             payment.setPaymentStatus(false);
             paymentRepository.save(payment);
 
-            // ✅ Tạo thông báo khi thanh toán thất bại
-            Notification notification = Notification.builder()
-                    .user(cartRepository.findById(Integer.parseInt(cardIdStr))
-                            .map(Cart::getUser)
-                            .orElse(null))
-                    .message("Thanh toán thất bại. Mã giao dịch: " + paymentCode)
-                    .isRead(false)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            if (notification.getUser() != null) {
-                notificationRepository.save(notification);
-            }
+            cartRepository.findById(Integer.parseInt(cardIdStr)).ifPresent(cart -> {
+                User user = cart.getUser();
+                if (user != null) {
+                    // ✅ Gọi service gửi thông báo thất bại
+                    notificationService.sendNotification(
+                            user.getUserID(),
+                            "Thanh toán thất bại. Mã giao dịch: " + paymentCode
+                    );
+                }
+            });
 
             response.sendRedirect("https://onlyfanshop.app/payment-result?status=fail&code=" + paymentCode);
         }
     }
+
 
 }
 

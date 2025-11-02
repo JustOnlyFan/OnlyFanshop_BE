@@ -23,6 +23,8 @@ public class OrderService implements IOrderService {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private NotificationService notificationService;
     @Override
     public ApiResponse<List<OrderDTO>> getAllOrders(int userId, String status, String role) {
         List<Order> listOrder;
@@ -121,11 +123,44 @@ public class OrderService implements IOrderService {
 
     }
     @Override
-    public ApiResponse<Void> setOrderStatus(int orderId, String status){
+    public ApiResponse<Void> setOrderStatus(int orderId, String status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+
         order.setOrderStatus(status);
         orderRepository.save(order);
-        return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
+
+        // ✅ Gửi thông báo cho người dùng
+        User user = order.getUser();
+        if (user != null) {
+            String message;
+
+            switch (status.toUpperCase()) {
+                case "CONFIRMED":
+                    message = "Đơn hàng #" + orderId + " của bạn đã được xác nhận!";
+                    break;
+                case "SHIPPING":
+                    message = "Đơn hàng #" + orderId + " của bạn đang được giao!";
+                    break;
+                case "COMPLETED":
+                    message = "Đơn hàng #" + orderId + " của bạn đã hoàn tất. Cảm ơn bạn đã mua hàng!";
+                    break;
+                case "CANCELLED":
+                    message = "Đơn hàng #" + orderId + " của bạn đã bị hủy.";
+                    break;
+                default:
+                    message = "Trạng thái đơn hàng #" + orderId + " đã được cập nhật: " + status;
+                    break;
+            }
+
+            // ✅ Gọi service gửi thông báo
+            notificationService.sendNotification(user.getUserID(), message);
+        }
+
+        return ApiResponse.<Void>builder()
+                .message("Cập nhật thành công")
+                .statusCode(200)
+                .build();
     }
+
 }
