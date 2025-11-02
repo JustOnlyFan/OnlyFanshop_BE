@@ -7,10 +7,7 @@ import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.IOrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,11 +19,16 @@ public class OrderController {
     @Autowired
     private IOrderService orderService;
     @GetMapping("/getOrders")
-    public ApiResponse<List<OrderDTO>> getOrders(HttpServletRequest request) {
+    public ApiResponse<List<OrderDTO>> getOrders(
+            HttpServletRequest request,
+            @RequestParam(required = false) String status) {
+
         String token = jwtTokenProvider.extractToken(request);
-        int userid = jwtTokenProvider.getUserIdFromJWT(token);
-        return orderService.getAllOrdersByUserID(userid);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        String role = jwtTokenProvider.getRoleFromJWT(token);
+        return orderService.getAllOrders(userId, status, role);
     }
+
 
     @GetMapping("/getAllOrders")
     public ApiResponse<List<OrderDTO>> getAllOrders(HttpServletRequest request) {
@@ -36,5 +38,9 @@ public class OrderController {
     @GetMapping("/getOrderDetails")
     public ApiResponse<OrderDetailsDTO> getOrderDetail(@RequestParam int orderId) {
         return orderService.getOrderDetails(orderId);
+    }
+    @PutMapping("/setOrderStatus")
+    public ApiResponse<Void> setOrderStatus(@RequestParam int orderId, String status) {
+        return orderService.setOrderStatus(orderId, status);
     }
 }
