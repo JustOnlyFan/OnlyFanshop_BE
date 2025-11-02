@@ -27,25 +27,12 @@ public class OrderService implements IOrderService {
     public ApiResponse<List<OrderDTO>> getAllOrders(int userId, String status, String role) {
         List<Order> listOrder;
 
-<<<<<<< HEAD
-                OrderDTO orderDTO = new OrderDTO();
-                orderDTO.setOrderID(order.getOrderID());
-                orderDTO.setOrderDate(order.getOrderDate());
-                orderDTO.setOrderStatus(order.getOrderStatus());
-                orderDTO.setBillingAddress(order.getBillingAddress());
-                orderDTO.setPaymentMethod(order.getPaymentMethod());
-                Cart cart = order.getCart();
-
-                //orderDTO.setTotalPrice(cart.getTotalPrice());
-                listOrderDTO.add(orderDTO);
-=======
         // Nếu là admin thì lấy toàn bộ
         if ("ADMIN".equalsIgnoreCase(role)) {
             if (status != null && !status.isEmpty()) {
                 listOrder = orderRepository.findOrdersByOrderStatus(status, Sort.by(Sort.Direction.DESC, "orderID"));
             } else {
                 listOrder = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "orderID"));
->>>>>>> aa75b7489582609c60cdfbea313b1d2a2d80dfe5
             }
         } else {
             // Nếu là user bình thường thì chỉ lấy theo userID
@@ -72,7 +59,7 @@ public class OrderService implements IOrderService {
             orderDTO.setOrderStatus(order.getOrderStatus());
             orderDTO.setBillingAddress(order.getBillingAddress());
             orderDTO.setPaymentMethod(order.getPaymentMethod());
-            orderDTO.setTotalPrice(order.getCart().getTotalPrice());
+            //orderDTO.setTotalPrice(order.getCart().getTotalPrice());
             listOrderDTO.add(orderDTO);
         }
 
@@ -97,7 +84,7 @@ public class OrderService implements IOrderService {
                 orderDTO.setOrderStatus(order.getOrderStatus());
                 orderDTO.setBillingAddress(order.getBillingAddress());
                 orderDTO.setPaymentMethod(order.getPaymentMethod());
-                Cart cart = order.getCart();
+                //Cart cart = order.getCart();
                 //orderDTO.setTotalPrice(cart.getTotalPrice());
                 listOrderDTO.add(orderDTO);
             }
@@ -109,12 +96,12 @@ public class OrderService implements IOrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
         User user = order.getUser();
-        Cart cart = order.getCart();
+        //Cart cart = order.getCart();
 
         CartDTO cartDTO = CartDTO.builder()
                 .userId(user.getUserID())
-                .items(cart.getCartItems())
-                .totalQuantity(cart.getCartItems().stream().mapToInt(CartItem::getQuantity).sum())
+                //.items(cart.getCartItems())
+                //.totalQuantity(cart.getCartItems().stream().mapToInt(CartItem::getQuantity).sum())
                 .build();
 
         return ApiResponse.<OrderDetailsDTO>builder().data( OrderDetailsDTO.builder()
