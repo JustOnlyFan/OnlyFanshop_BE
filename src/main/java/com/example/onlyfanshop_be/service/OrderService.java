@@ -178,8 +178,16 @@ public class OrderService implements IOrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
 
+        if (status == null || status.trim().isEmpty()) {
+            return ApiResponse.<Void>builder()
+                    .statusCode(400)
+                    .message("Trạng thái đơn hàng không được để trống")
+                    .build();
+        }
+
         try {
-            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            String statusUpper = status.toUpperCase().trim();
+            OrderStatus orderStatus = OrderStatus.valueOf(statusUpper);
             order.setOrderStatus(orderStatus);
             orderRepository.save(order);
 
@@ -188,17 +196,18 @@ public class OrderService implements IOrderService {
             if (user != null) {
                 String message;
 
-                switch (status.toUpperCase()) {
-                    case "CONFIRMED":
-                    case "APPROVED":
-                        message = "Đơn hàng #" + orderId + " của bạn đã được xác nhận!";
+                switch (statusUpper) {
+                    case "PICKING":
+                        message = "Đơn hàng #" + orderId + " của bạn đã được duyệt và đang chờ lấy hàng!";
                         break;
                     case "SHIPPING":
-                    case "SHIPPED":
                         message = "Đơn hàng #" + orderId + " của bạn đang được giao!";
                         break;
-                    case "COMPLETED":
-                        message = "Đơn hàng #" + orderId + " của bạn đã hoàn tất. Cảm ơn bạn đã mua hàng!";
+                    case "DELIVERED":
+                        message = "Đơn hàng #" + orderId + " của bạn đã được giao thành công!";
+                        break;
+                    case "RETURNS_REFUNDS":
+                        message = "Đơn hàng #" + orderId + " của bạn đang được xử lý hoàn trả/hoàn tiền.";
                         break;
                     case "CANCELLED":
                         message = "Đơn hàng #" + orderId + " của bạn đã bị hủy.";
@@ -219,7 +228,10 @@ public class OrderService implements IOrderService {
         } catch (IllegalArgumentException e) {
             return ApiResponse.<Void>builder()
                     .statusCode(400)
-                    .message("Trạng thái đơn hàng không hợp lệ: " + status)
+                    .message("Trạng thái đơn hàng không hợp lệ: " + status + ". Các giá trị hợp lệ: " + 
+                            String.join(", ", java.util.Arrays.stream(OrderStatus.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)))
                     .build();
         }
     }
@@ -262,17 +274,17 @@ public class OrderService implements IOrderService {
 
     @Override
     public ApiResponse<List<OrderDTO>> getOrdersConfirmed(int userId, String role) {
-        return getOrdersByStatus(userId, OrderStatus.APPROVED, role);
+        return getOrdersByStatus(userId, OrderStatus.PICKING, role);
     }
 
     @Override
     public ApiResponse<List<OrderDTO>> getOrdersShipping(int userId, String role) {
-        return getOrdersByStatus(userId, OrderStatus.SHIPPED, role);
+        return getOrdersByStatus(userId, OrderStatus.SHIPPING, role);
     }
 
     @Override
     public ApiResponse<List<OrderDTO>> getOrdersCompleted(int userId, String role) {
-        return getOrdersByStatus(userId, OrderStatus.COMPLETED, role);
+        return getOrdersByStatus(userId, OrderStatus.DELIVERED, role);
     }
 
     private ApiResponse<List<OrderDTO>> getOrdersByStatus(int userId, OrderStatus status, String role) {

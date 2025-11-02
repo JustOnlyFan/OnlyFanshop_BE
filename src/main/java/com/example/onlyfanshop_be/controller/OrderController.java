@@ -44,7 +44,7 @@ public class OrderController {
         return orderService.getOrderDetails(orderId);
     }
     @PutMapping("/setOrderStatus")
-    public ApiResponse<Void> setOrderStatus(@RequestParam int orderId, String status) {
+    public ApiResponse<Void> setOrderStatus(@RequestParam int orderId, @RequestParam String status) {
         return orderService.setOrderStatus(orderId, status);
     }
 
