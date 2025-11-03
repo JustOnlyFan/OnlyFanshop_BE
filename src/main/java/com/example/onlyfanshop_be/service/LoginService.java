@@ -8,6 +8,7 @@ import com.example.onlyfanshop_be.entity.Token;
 import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.enums.AuthProvider;
 import com.example.onlyfanshop_be.enums.Role;
+import com.example.onlyfanshop_be.enums.TokenType;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.TokenRepository;
@@ -21,6 +22,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -55,17 +57,30 @@ public class LoginService implements ILoginService{
                 });
                 tokenRepository.saveAll(validUserTokens);
 
-                // 🔹 Sinh JWT mới
-                String jwtToken = jwtTokenProvider.generateToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
+                // 🔹 Sinh Access/Refresh token mới
+                String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
+                String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getUserID(), user.getRole());
 
                 // 🔹 Lưu token vào DB
                 Token tokenEntity = Token.builder()
                         .user(user)
-                        .token(jwtToken)
+                        .token(accessToken)
                         .expired(false)
                         .revoked(false)
+                        .type(TokenType.ACCESS)
+                        .expiresAt(Instant.now().plusSeconds(60L*jwtAccessTtlMinutes()))
                         .build();
                 tokenRepository.save(tokenEntity);
+
+                Token refreshEntity = Token.builder()
+                        .user(user)
+                        .token(refreshToken)
+                        .expired(false)
+                        .revoked(false)
+                        .type(TokenType.REFRESH)
+                        .expiresAt(Instant.now().plusSeconds(60L*60L*24L*jwtRefreshTtlDays()))
+                        .build();
+                tokenRepository.save(refreshEntity);
 
                 // 🔹 Trả về UserDTO kèm token
                  return ApiResponse.<UserDTO>builder().data(UserDTO.builder()
@@ -76,11 +91,81 @@ public class LoginService implements ILoginService{
                         .address(user.getAddress())
                         .role(user.getRole())
                         .authProvider(user.getAuthProvider())
-                        .token(jwtToken)
+                        .token(accessToken)
+                        .refreshToken(refreshToken)
                         .build()).message("Đăng nhập thành công").statusCode(200).build();
             } else throw new AppException(ErrorCode.WRONGPASS);
 
         } else throw new AppException(ErrorCode.USER_NOTEXISTED);
+    }
+
+    @Override
+    public ApiResponse<UserDTO> refreshToken(String refreshToken) {
+        var tokenOpt = tokenRepository.findByToken(refreshToken);
+        if (tokenOpt.isEmpty()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        var dbToken = tokenOpt.get();
+        if (dbToken.isRevoked() || dbToken.isExpired()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        if (dbToken.getType() == null || dbToken.getType() != TokenType.REFRESH) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        User user = dbToken.getUser();
+
+        // Revoke all existing access tokens
+        List<Token> accessTokens = tokenRepository.findAllByUser_UserIDAndTypeAndExpiredFalseAndRevokedFalse(user.getUserID(), TokenType.ACCESS);
+        accessTokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
+        tokenRepository.saveAll(accessTokens);
+
+        String newAccess = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
+        Token accessEntity = Token.builder()
+                .user(user)
+                .token(newAccess)
+                .expired(false)
+                .revoked(false)
+                .type(TokenType.ACCESS)
+                .expiresAt(Instant.now().plusSeconds(60L*jwtAccessTtlMinutes()))
+                .build();
+        tokenRepository.save(accessEntity);
+
+        return ApiResponse.<UserDTO>builder()
+                .statusCode(200)
+                .message("Refresh thành công")
+                .data(UserDTO.builder()
+                        .userID(user.getUserID())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .phoneNumber(user.getPhoneNumber())
+                        .address(user.getAddress())
+                        .role(user.getRole())
+                        .authProvider(user.getAuthProvider())
+                        .token(newAccess)
+                        .refreshToken(refreshToken)
+                        .build())
+                .build();
+    }
+
+    private long jwtAccessTtlMinutes() {
+        try {
+            var field = jwtTokenProvider.getClass().getDeclaredField("accessTtlMinutes");
+            field.setAccessible(true);
+            return (long) field.get(jwtTokenProvider);
+        } catch (Exception e) { return 30L; }
+    }
+
+    private long jwtRefreshTtlDays() {
+        try {
+            var field = jwtTokenProvider.getClass().getDeclaredField("refreshTtlDays");
+            field.setAccessible(true);
+            return (long) field.get(jwtTokenProvider);
+        } catch (Exception e) { return 7L; }
     }
 
     private final Map<String, OTPDetails> otpStorage = new HashMap<>();
@@ -173,6 +258,11 @@ public class LoginService implements ILoginService{
         User user = userOpt.get();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+
+        // Revoke all tokens of this user
+        List<Token> tokens = tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID());
+        tokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
+        tokenRepository.saveAll(tokens);
         return ApiResponse.<Void>builder().statusCode(200).message("Đổi mật khẩu thành công, hãy đăng nhập").build();
     }
 }

@@ -26,12 +26,16 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final TokenRepository tokenRepository; // ✅ thêm repository
 
+    private final LoginRateLimitFilter loginRateLimitFilter;
+
     public SecurityConfig(JwtTokenProvider tokenProvider,
                           CustomUserDetailsService userDetailsService,
-                          TokenRepository tokenRepository) {
+                          TokenRepository tokenRepository,
+                          LoginRateLimitFilter loginRateLimitFilter) {
         this.tokenProvider = tokenProvider;
         this.userDetailsService = userDetailsService;
         this.tokenRepository = tokenRepository;
+        this.loginRateLimitFilter = loginRateLimitFilter;
     }
 
     @Bean
@@ -53,8 +57,8 @@ public class SecurityConfig {
                                     "/swagger-resources",
                                     "/webjars/**",
                                     "/product/public/**",
-                                    "category/public/**",
-                                    "brands/public/**",
+                                    "/category/public/**",
+                                    "/brands/public/**",
                                     "/payment/public/**",
                                     "/api/chat/test",
                                     "/api/chat/clear-all-chat-data-public",
@@ -64,6 +68,7 @@ public class SecurityConfig {
                             ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

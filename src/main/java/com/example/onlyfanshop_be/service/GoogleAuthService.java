@@ -6,6 +6,7 @@ import com.example.onlyfanshop_be.entity.Token;
 import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.enums.AuthProvider;
 import com.example.onlyfanshop_be.enums.Role;
+import com.example.onlyfanshop_be.enums.TokenType;
 import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.time.Instant;
 
 @Service
 public class GoogleAuthService {
@@ -45,9 +47,25 @@ public class GoogleAuthService {
             // Revoke các token cũ
             tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID())
                     .forEach(t -> { t.setExpired(true); t.setRevoked(true); });
-            // Tạo token mới với custom claims
-            String jwtToken = jwtTokenProvider.generateToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
-            tokenRepository.save(Token.builder().user(user).token(jwtToken).expired(false).revoked(false).build());
+            // Tạo Access/Refresh token mới
+            String access = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
+            String refresh = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getUserID(), user.getRole());
+            tokenRepository.save(Token.builder()
+                    .user(user)
+                    .token(access)
+                    .expired(false)
+                    .revoked(false)
+                    .type(TokenType.ACCESS)
+                    .expiresAt(Instant.now().plusSeconds(60L*30L))
+                    .build());
+            tokenRepository.save(Token.builder()
+                    .user(user)
+                    .token(refresh)
+                    .expired(false)
+                    .revoked(false)
+                    .type(TokenType.REFRESH)
+                    .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
+                    .build());
 
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
@@ -60,7 +78,8 @@ public class GoogleAuthService {
             userDTO.setAddress(user.getAddress());
             userDTO.setRole(user.getRole());
             userDTO.setAuthProvider(user.getAuthProvider());
-            userDTO.setToken(jwtToken);
+            userDTO.setToken(access);
+            userDTO.setRefreshToken(refresh);
             response.setData(userDTO);
             return response;
         } else {
@@ -77,9 +96,25 @@ public class GoogleAuthService {
             User savedUser = userRepository.save(newUser);
             System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getUserID());
 
-            // Tạo token mới cho user mới
-            String jwtToken = jwtTokenProvider.generateToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole(), savedUser.getUsername());
-            tokenRepository.save(Token.builder().user(savedUser).token(jwtToken).expired(false).revoked(false).build());
+            // Tạo Access/Refresh token cho user mới
+            String access = jwtTokenProvider.generateAccessToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole(), savedUser.getUsername());
+            String refresh = jwtTokenProvider.generateRefreshToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole());
+            tokenRepository.save(Token.builder()
+                    .user(savedUser)
+                    .token(access)
+                    .expired(false)
+                    .revoked(false)
+                    .type(TokenType.ACCESS)
+                    .expiresAt(Instant.now().plusSeconds(60L*30L))
+                    .build());
+            tokenRepository.save(Token.builder()
+                    .user(savedUser)
+                    .token(refresh)
+                    .expired(false)
+                    .revoked(false)
+                    .type(TokenType.REFRESH)
+                    .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
+                    .build());
 
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
@@ -92,7 +127,8 @@ public class GoogleAuthService {
             userDTO.setAddress(newUser.getAddress());
             userDTO.setRole(newUser.getRole());
             userDTO.setAuthProvider(newUser.getAuthProvider());
-            userDTO.setToken(jwtToken);
+            userDTO.setToken(access);
+            userDTO.setRefreshToken(refresh);
             response.setData(userDTO);
             return response;
         }

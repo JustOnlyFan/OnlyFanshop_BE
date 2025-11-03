@@ -13,25 +13,47 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Component
 public class JwtTokenProvider {
     @Value("${JWT_SECRET}")
     private String JWT_SECRET;
+    @Value("${jwt.access.ttlMinutes:30}")
+    private long accessTtlMinutes;
+    @Value("${jwt.refresh.ttlDays:7}")
+    private long refreshTtlDays;
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
     }
 
-    public String generateToken(String email, int userId, Role role, String username) {
-        Date now = new Date();
-
+    public String generateAccessToken(String email, int userId, Role role, String username) {
+        Instant now = Instant.now();
+        Instant exp = now.plus(accessTtlMinutes, ChronoUnit.MINUTES);
         return Jwts.builder()
-                .setSubject(email) // sub = email
-                .setIssuedAt(now)
+                .setSubject(email)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(exp))
                 .addClaims(Map.of(
                         "userId", userId,
                         "role", role,
                         "username", username
+                ))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateRefreshToken(String email, int userId, Role role) {
+        Instant now = Instant.now();
+        Instant exp = now.plus(refreshTtlDays, ChronoUnit.DAYS);
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(exp))
+                .addClaims(Map.of(
+                        "userId", userId,
+                        "role", role
                 ))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();

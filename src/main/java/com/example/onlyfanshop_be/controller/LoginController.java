@@ -3,12 +3,12 @@ package com.example.onlyfanshop_be.controller;
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
+import com.example.onlyfanshop_be.dto.request.RefreshTokenRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.ILoginService;
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -84,6 +84,11 @@ public class LoginController {
             @RequestParam String email,
             @RequestParam String newPassword) {
         return loginService.resetPassword(email, newPassword);
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<UserDTO> refresh(@RequestBody RefreshTokenRequest request) {
+        return loginService.refreshToken(request.getRefreshToken());
     }
 
 }

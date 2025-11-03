@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -55,22 +56,26 @@ public class ProductController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public Product createProduct(@RequestBody ProductDetailRequest product) {
         return iProductService.createProduct(product);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ProductDetailDTO updateProduct(@PathVariable Integer id, @RequestBody ProductDetailRequest product) {
         return iProductService.updateProduct(id, product);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleteProduct(@PathVariable Integer id) {
         iProductService.deleteProduct(id);
         return "Xóa sản phẩm có ID " + id + " thành công!";
     }
 
     @PutMapping("/image/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ApiResponse<Void> updateImage(@PathVariable Integer id, @RequestParam String imgString) {
          iProductService.updateImage(id, imgString);
         return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
@@ -91,6 +96,7 @@ public class ProductController {
                 .body(response);
     }
     @PutMapping("/active/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ApiResponse<Void> updateActive(@PathVariable Integer id, @RequestParam boolean active) {
         iProductService.updateActive(id,active );
         return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();

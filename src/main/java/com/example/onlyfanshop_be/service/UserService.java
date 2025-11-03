@@ -8,6 +8,7 @@ import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
+import com.example.onlyfanshop_be.entity.Token;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -92,6 +93,11 @@ public class UserService implements IUserService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+
+        // Revoke all tokens after password change
+        List<Token> tokens = tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(userID);
+        tokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
+        tokenRepository.saveAll(tokens);
     }
 
     @Override
