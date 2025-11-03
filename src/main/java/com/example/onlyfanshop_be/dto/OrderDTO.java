@@ -29,4 +29,8 @@ public class OrderDTO {
     private Integer firstProductQuantity;
     private Double firstProductPrice;
 
+    // List of all products in order
+    private List<OrderItemLiteDTO> products;
+    private Integer totalProductCount;
+
 }

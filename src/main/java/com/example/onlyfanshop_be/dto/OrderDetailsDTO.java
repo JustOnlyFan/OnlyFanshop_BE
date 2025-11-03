@@ -31,4 +31,5 @@ public class OrderDetailsDTO {
 
     // ✅ Giỏ hàng hoặc danh sách sản phẩm
     private CartDTO cartDTO;          // Nếu bạn muốn lấy toàn bộ giỏ hàng
+    private java.util.List<OrderItemLiteDTO> itemsLite; // Danh sách nhẹ để client dễ dùng
 }

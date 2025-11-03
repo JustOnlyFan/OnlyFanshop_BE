@@ -13,7 +13,8 @@ public enum ErrorCode {
     WRONG_OLD_PASSWORD(1009,"Mật khẩu cũ không đúng"),
     LOCATION_NOT_FOUND(1010,"Không thể tìm thấy địa điểm"),
     NOTIFICATION_NOT_FOUND(1011,"Không tìm thấy thông báo"),
-    BUY_METHOD_INVALID(1012,"Không thể xác định cách mua sản phẩm");
+    BUY_METHOD_INVALID(1012,"Không thể xác định cách mua sản phẩm"),
+    UNAUTHORIZED(1013, "Không được phép");
 
 
     private int code;

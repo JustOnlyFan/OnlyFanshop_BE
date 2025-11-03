@@ -1,7 +1,9 @@
 package com.example.onlyfanshop_be.entity;
 
+import com.example.onlyfanshop_be.enums.TokenType;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.Instant;
 
 @Entity
 @Table(name = "Tokens")
@@ -21,6 +23,13 @@ public class Token {
 
     private boolean expired;   // true nếu token hết hạn
     private boolean revoked;   // true nếu user logout
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TokenType type;     // ACCESS hoặc REFRESH
+
+    @Column(nullable = true)
+    private Instant expiresAt;  // thời điểm hết hạn (nullable để migrate an toàn)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userID")

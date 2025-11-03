@@ -20,4 +20,5 @@ public class UserDTO {
     private Role role;
     private AuthProvider authProvider;
     private String token;
+    private String refreshToken;
 }

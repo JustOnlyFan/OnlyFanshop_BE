@@ -82,7 +82,7 @@ public class OrderService implements IOrderService {
             orderDTO.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
             orderDTO.setTotalPrice(order.getTotalPrice());
             
-            // Get first product info from orderItems
+            // Get first product info and all products from orderItems
             List<com.example.onlyfanshop_be.entity.OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderID(order.getOrderID());
             if (orderItems != null && !orderItems.isEmpty()) {
                 com.example.onlyfanshop_be.entity.OrderItem firstItem = orderItems.get(0);
@@ -92,6 +92,22 @@ public class OrderService implements IOrderService {
                     orderDTO.setFirstProductQuantity(firstItem.getQuantity());
                     orderDTO.setFirstProductPrice(firstItem.getPrice());
                 }
+                
+                // Build list of all products
+                List<com.example.onlyfanshop_be.dto.OrderItemLiteDTO> productList = new ArrayList<>();
+                int totalCount = 0;
+                for (com.example.onlyfanshop_be.entity.OrderItem item : orderItems) {
+                    com.example.onlyfanshop_be.dto.OrderItemLiteDTO lite = com.example.onlyfanshop_be.dto.OrderItemLiteDTO.builder()
+                            .productName(item.getProduct() != null ? item.getProduct().getProductName() : null)
+                            .imageURL(item.getProduct() != null ? item.getProduct().getImageURL() : null)
+                            .quantity(item.getQuantity())
+                            .price(item.getPrice())
+                            .build();
+                    productList.add(lite);
+                    totalCount += item.getQuantity() != null ? item.getQuantity() : 0;
+                }
+                orderDTO.setProducts(productList);
+                orderDTO.setTotalProductCount(totalCount);
             }
             
             listOrderDTO.add(orderDTO);
@@ -128,20 +144,33 @@ public class OrderService implements IOrderService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
         User user = order.getUser();
 
-        // Tìm cart có status = "PAID" của user này (cart được dùng để tạo order này)
-        // Lấy cart gần nhất với orderDate hoặc cart có status = "PAID"
-        Cart cart = null;
-        Optional<Cart> paidCartOpt = cartRepository.findByUser_UserIDAndStatus(user.getUserID(), "PAID");
-        if (paidCartOpt.isPresent()) {
-            cart = paidCartOpt.get();
-        }
-
+        // Lấy các item thuộc đơn hàng (đúng dữ liệu hiển thị chi tiết đơn)
+        List<com.example.onlyfanshop_be.entity.OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderID(order.getOrderID());
         CartDTO cartDTO = null;
-        if (cart != null && cart.getCartItems() != null) {
+        java.util.List<com.example.onlyfanshop_be.dto.OrderItemLiteDTO> lite = new java.util.ArrayList<>();
+        if (orderItems != null && !orderItems.isEmpty()) {
+            List<CartItem> mapped = new java.util.ArrayList<>();
+            for (com.example.onlyfanshop_be.entity.OrderItem oi : orderItems) {
+                CartItem ci = new CartItem();
+                ci.setQuantity(oi.getQuantity() != null ? oi.getQuantity() : 0);
+                ci.setPrice(oi.getPrice() != null ? oi.getPrice() : 0d);
+                ci.setProduct(oi.getProduct());
+                mapped.add(ci);
+
+                // build lite dto
+                com.example.onlyfanshop_be.dto.OrderItemLiteDTO l = com.example.onlyfanshop_be.dto.OrderItemLiteDTO.builder()
+                        .productName(oi.getProduct() != null ? oi.getProduct().getProductName() : null)
+                        .imageURL(oi.getProduct() != null ? oi.getProduct().getImageURL() : null)
+                        .quantity(oi.getQuantity())
+                        .price(oi.getPrice())
+                        .build();
+                lite.add(l);
+            }
+            int totalQty = mapped.stream().mapToInt(CartItem::getQuantity).sum();
             cartDTO = CartDTO.builder()
                     .userId(user.getUserID())
-                    .items(cart.getCartItems())
-                    .totalQuantity(cart.getCartItems().stream().mapToInt(CartItem::getQuantity).sum())
+                    .items(mapped)
+                    .totalQuantity(totalQty)
                     .build();
         }
 
@@ -169,6 +198,7 @@ public class OrderService implements IOrderService {
                 .email(user.getEmail())
                 .phone(recipientPhone)
                 .cartDTO(cartDTO)
+                .itemsLite(lite)
                 .build()).build();
 
 
@@ -316,7 +346,7 @@ public class OrderService implements IOrderService {
             orderDTO.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
             orderDTO.setTotalPrice(order.getTotalPrice());
             
-            // Get first product info from orderItems
+            // Get first product info and all products from orderItems
             List<com.example.onlyfanshop_be.entity.OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderID(order.getOrderID());
             if (orderItems != null && !orderItems.isEmpty()) {
                 com.example.onlyfanshop_be.entity.OrderItem firstItem = orderItems.get(0);
@@ -326,6 +356,22 @@ public class OrderService implements IOrderService {
                     orderDTO.setFirstProductQuantity(firstItem.getQuantity());
                     orderDTO.setFirstProductPrice(firstItem.getPrice());
                 }
+                
+                // Build list of all products
+                List<com.example.onlyfanshop_be.dto.OrderItemLiteDTO> productList = new ArrayList<>();
+                int totalCount = 0;
+                for (com.example.onlyfanshop_be.entity.OrderItem item : orderItems) {
+                    com.example.onlyfanshop_be.dto.OrderItemLiteDTO lite = com.example.onlyfanshop_be.dto.OrderItemLiteDTO.builder()
+                            .productName(item.getProduct() != null ? item.getProduct().getProductName() : null)
+                            .imageURL(item.getProduct() != null ? item.getProduct().getImageURL() : null)
+                            .quantity(item.getQuantity())
+                            .price(item.getPrice())
+                            .build();
+                    productList.add(lite);
+                    totalCount += item.getQuantity() != null ? item.getQuantity() : 0;
+                }
+                orderDTO.setProducts(productList);
+                orderDTO.setTotalProductCount(totalCount);
             }
             
             listOrderDTO.add(orderDTO);

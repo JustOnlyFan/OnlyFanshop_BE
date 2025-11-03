@@ -6,10 +6,11 @@ import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 
 public interface ILoginService {
-    public ApiResponse<UserDTO> login(LoginRequest loginRequest);
-    public ApiResponse<UserDTO> register(RegisterRequest registerRequest);
-    public String generateOTP(String email);
-    public boolean validateOTP(String email, String otp);
-    public void sendOTP(String to, String otp);
-    public ApiResponse<Void> resetPassword(String email, String newPassword);
+    ApiResponse<UserDTO> login(LoginRequest loginRequest);
+    ApiResponse<UserDTO> register(RegisterRequest request);
+    String generateOTP(String email);
+    boolean validateOTP(String email, String otp);
+    void sendOTP(String to, String otp);
+    ApiResponse<Void> resetPassword(String email, String newPassword);
+    ApiResponse<UserDTO> refreshToken(String refreshToken);
 }
