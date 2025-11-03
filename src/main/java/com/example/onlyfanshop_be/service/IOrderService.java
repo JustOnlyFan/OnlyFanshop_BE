@@ -13,7 +13,8 @@ public interface IOrderService {
     public ApiResponse<Void> setOrderStatus(int orderId, String status);
     public ApiResponse<Void> cancelOrder(int orderId, int userId, String role);
     public ApiResponse<List<OrderDTO>> getOrdersPending(int userId, String role);
-    public ApiResponse<List<OrderDTO>> getOrdersConfirmed(int userId, String role);
+    public ApiResponse<List<OrderDTO>> getOrdersPicking(int userId, String role);
     public ApiResponse<List<OrderDTO>> getOrdersShipping(int userId, String role);
     public ApiResponse<List<OrderDTO>> getOrdersCompleted(int userId, String role);
+    public ApiResponse<Void> deleteAllOrders();
 }

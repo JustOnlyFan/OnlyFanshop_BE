@@ -13,9 +13,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentService {
     private final VNPAYConfig vnPayConfig;
-    public PaymentDTO.VNPayResponse createVnPayPayment(HttpServletRequest request, Double amount, String bankCode, int cartId, String address, String recipientPhoneNumber) {
+    public PaymentDTO.VNPayResponse createVnPayPayment(HttpServletRequest request, Double amount, String bankCode, int cartId, String address, String recipientPhoneNumber, String clientType) {
         long amountValue = Math.round(amount * 100); // nhân 100 theo quy định VNPay
-        Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig(cartId, address, recipientPhoneNumber);
+        Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig(cartId, address, recipientPhoneNumber, clientType);
 
         vnpParamsMap.put("vnp_Amount", String.valueOf(amountValue));
 

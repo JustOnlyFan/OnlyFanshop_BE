@@ -1,5 +1,4 @@
 package com.example.onlyfanshop_be.entity;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,6 +22,5 @@ public class Cart {
     private User user;
 
     @OneToMany(mappedBy = "cart")
-    @JsonIgnore
     private List<CartItem> cartItems;
 }

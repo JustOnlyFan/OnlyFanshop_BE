@@ -21,6 +21,12 @@ public class VNPAYConfig {
     private String vnp_PayUrl;
     @Value("${RETURN_URL}")
     private String vnp_ReturnUrl;
+    @Getter
+    @Value("${WEB_BASE_URL:http://localhost:3000}")
+    private String webBaseUrl;
+    @Getter
+    @Value("${APP_DEEP_LINK:https://onlyfanshop.app}")
+    private String appDeepLink;
     @Value("${TMN_CODE}")
     private String vnp_TmnCode;
     @Getter
@@ -33,7 +39,7 @@ public class VNPAYConfig {
     @Value("${ORDER_TYPE}")
     private String orderType;
 
-    public Map<String, String> getVNPayConfig(int cartId, String address, String recipientPhoneNumber) {
+    public Map<String, String> getVNPayConfig(int cartId, String address, String recipientPhoneNumber, String clientType) {
         Map<String, String> vnpParamsMap = new HashMap<>();
         vnpParamsMap.put("vnp_Version", this.vnp_Version);
         vnpParamsMap.put("vnp_Command", this.vnp_Command);
@@ -45,7 +51,8 @@ public class VNPAYConfig {
         vnpParamsMap.put("vnp_Locale", "vn");
         String encodedAddress = URLEncoder.encode(address != null ? address : "", StandardCharsets.UTF_8);
         String encodedPhone = URLEncoder.encode(recipientPhoneNumber != null ? recipientPhoneNumber : "", StandardCharsets.UTF_8);
-        String returnUrl = vnp_ReturnUrl + "?address=" + encodedAddress;
+        String encodedClientType = URLEncoder.encode(clientType != null ? clientType : "web", StandardCharsets.UTF_8);
+        String returnUrl = vnp_ReturnUrl + "?address=" + encodedAddress + "&clientType=" + encodedClientType;
         if (recipientPhoneNumber != null && !recipientPhoneNumber.isEmpty()) {
             returnUrl += "&recipientPhoneNumber=" + encodedPhone;
         }
