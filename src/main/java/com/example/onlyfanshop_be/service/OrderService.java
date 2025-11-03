@@ -273,7 +273,7 @@ public class OrderService implements IOrderService {
     }
 
     @Override
-    public ApiResponse<List<OrderDTO>> getOrdersConfirmed(int userId, String role) {
+    public ApiResponse<List<OrderDTO>> getOrdersPicking(int userId, String role) {
         return getOrdersByStatus(userId, OrderStatus.PICKING, role);
     }
 
@@ -336,6 +336,32 @@ public class OrderService implements IOrderService {
                 .message("Tìm thấy danh sách order")
                 .statusCode(200)
                 .build();
+    }
+
+    @Override
+    public ApiResponse<Void> deleteAllOrders() {
+        try {
+            // Get all orders
+            List<Order> allOrders = orderRepository.findAll();
+            
+            // Delete all order items first
+            for (Order order : allOrders) {
+                orderItemRepository.deleteAll(orderItemRepository.findByOrder_OrderID(order.getOrderID()));
+            }
+            
+            // Delete all orders
+            orderRepository.deleteAll();
+            
+            return ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Đã xóa tất cả đơn hàng thành công")
+                    .build();
+        } catch (Exception e) {
+            return ApiResponse.<Void>builder()
+                    .statusCode(500)
+                    .message("Lỗi khi xóa đơn hàng: " + e.getMessage())
+                    .build();
+        }
     }
 
 }

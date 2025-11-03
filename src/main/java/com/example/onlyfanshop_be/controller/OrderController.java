@@ -67,12 +67,12 @@ public class OrderController {
         return orderService.getOrdersPending(userId, role);
     }
 
-    @GetMapping("/getOrdersConfirmed")
-    public ApiResponse<List<OrderDTO>> getOrdersConfirmed(HttpServletRequest request) {
+    @GetMapping("/getOrdersPicking")
+    public ApiResponse<List<OrderDTO>> getOrdersPicking(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
         int userId = jwtTokenProvider.getUserIdFromJWT(token);
         String role = jwtTokenProvider.getRoleFromJWT(token);
-        return orderService.getOrdersConfirmed(userId, role);
+        return orderService.getOrdersPicking(userId, role);
     }
 
     @GetMapping("/getOrdersShipping")
@@ -89,5 +89,21 @@ public class OrderController {
         int userId = jwtTokenProvider.getUserIdFromJWT(token);
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersCompleted(userId, role);
+    }
+
+    @DeleteMapping("/deleteAllOrders")
+    public ApiResponse<Void> deleteAllOrders(HttpServletRequest request) {
+        String token = jwtTokenProvider.extractToken(request);
+        String role = jwtTokenProvider.getRoleFromJWT(token);
+        
+        // Only admin can delete all orders
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ApiResponse.<Void>builder()
+                    .statusCode(403)
+                    .message("Chỉ admin mới có quyền xóa tất cả đơn hàng")
+                    .build();
+        }
+        
+        return orderService.deleteAllOrders();
     }
 }

@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,7 +24,7 @@ public class CartItem {
 
     @ManyToOne
     @JoinColumn(name = "cartID")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
     private Cart cart;
 
     @ManyToOne
