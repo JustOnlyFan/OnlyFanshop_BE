@@ -314,6 +314,11 @@ public class OrderService implements IOrderService {
         return getOrdersByStatus(userId, OrderStatus.DELIVERED, role);
     }
 
+    @Override
+    public ApiResponse<List<OrderDTO>> getOrdersCancelled(int userId, String role) {
+        return getOrdersByStatus(userId, OrderStatus.CANCELLED, role);
+    }
+
     private ApiResponse<List<OrderDTO>> getOrdersByStatus(int userId, OrderStatus status, String role) {
         List<Order> listOrder;
 

@@ -12,5 +12,6 @@ public class BrandDTO {
     private String name;
     private String country;
     private String description;
+    private String imageURL;
     private boolean isActive;
 }

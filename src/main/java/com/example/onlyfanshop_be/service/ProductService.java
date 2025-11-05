@@ -74,6 +74,7 @@ public class ProductService implements  IProductService {
                         .brand(BrandDTO.builder()
                                 .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().intValue())
                                 .name(p.getBrand().getBrandName())
+                                .imageURL(p.getBrand().getImageURL())
                                 .build())
                         .category(new CategoryDTO(
                                 p.getCategory().getCategoryID(),
@@ -97,6 +98,7 @@ public class ProductService implements  IProductService {
                 .map(b -> BrandDTO.builder()
                         .brandID(b.getBrandID() == null ? null : b.getBrandID().intValue())
                         .name(b.getBrandName())
+                        .imageURL(b.getImageURL())
                         .build())
                 .toList();
 
@@ -133,6 +135,7 @@ public class ProductService implements  IProductService {
                 .brand(BrandDTO.builder()
                         .brandID(product.getBrand().getBrandID() == null ? null : product.getBrand().getBrandID().intValue())
                         .name(product.getBrand().getBrandName())
+                        .imageURL(product.getBrand().getImageURL())
                         .build())
                 .category(new CategoryDTO(
                         product.getCategory().getCategoryID(),
@@ -168,6 +171,7 @@ public class ProductService implements  IProductService {
                         product.getBrand().getBrandName(),
                         product.getBrand().getCountry(),
                         product.getBrand().getDescription(),
+                        product.getBrand().getImageURL(),
                         product.getBrand().isActive()
                 )
                         : null)
@@ -258,6 +262,7 @@ public class ProductService implements  IProductService {
                         savedProduct.getBrand().getBrandName(),
                         savedProduct.getBrand().getCountry(),
                         savedProduct.getBrand().getDescription(),
+                        savedProduct.getBrand().getImageURL(),
                         savedProduct.getBrand().isActive()
 
                 ) : null)
@@ -320,6 +325,7 @@ public class ProductService implements  IProductService {
                         .brand(BrandDTO.builder()
                                 .brandID(p.getBrand().getBrandID() == null ? null : p.getBrand().getBrandID().intValue())
                                 .name(p.getBrand().getBrandName())
+                                .imageURL(p.getBrand().getImageURL())
                                 .build())
                         .category(new CategoryDTO(
                                 p.getCategory().getCategoryID(),
@@ -343,6 +349,7 @@ public class ProductService implements  IProductService {
                 .map(b -> BrandDTO.builder()
                         .brandID(b.getBrandID() == null ? null : b.getBrandID().intValue())
                         .name(b.getBrandName())
+                        .imageURL(b.getImageURL())
                         .build())
                 .toList();
 

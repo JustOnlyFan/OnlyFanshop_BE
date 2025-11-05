@@ -28,7 +28,10 @@ public class Brand {
     private String brandName;
 
     private String country;
+
     private String description;
+
+    private String imageURL;
 
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private boolean isActive = true;

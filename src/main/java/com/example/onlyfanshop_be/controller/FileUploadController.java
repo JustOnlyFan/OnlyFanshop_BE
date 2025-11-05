@@ -117,6 +117,34 @@ public class FileUploadController {
         }
     }
 
-
+    @PostMapping(value = "/brand-image", consumes = "multipart/form-data")
+    @Operation(summary = "Upload brand image to Firebase brands folder")
+    public ApiResponse<String> uploadBrandImage(
+            @Parameter(
+                    description = "File image upload for brand",
+                    required = true,
+                    content = @Content(mediaType = "multipart/form-data",
+                            schema = @Schema(type = "string", format = "binary"))
+            )
+            @RequestParam("file") MultipartFile file
+    ) {
+        try {
+            System.out.println("🔵 Upload brand image - File name: " + file.getOriginalFilename());
+            String imageUrl = firebaseStorageService.uploadFileToFolder(file, "brands");
+            System.out.println("✅ Brand image uploaded successfully to brands folder: " + imageUrl);
+            return ApiResponse.<String>builder()
+                    .statusCode(200)
+                    .message("Upload thành công")
+                    .data(imageUrl)
+                    .build();
+        } catch (Exception e) {
+            System.err.println("❌ Error uploading brand image: " + e.getMessage());
+            e.printStackTrace();
+            return ApiResponse.<String>builder()
+                    .statusCode(500)
+                    .message("Upload thất bại: " + e.getMessage())
+                    .build();
+        }
+    }
 
 }
