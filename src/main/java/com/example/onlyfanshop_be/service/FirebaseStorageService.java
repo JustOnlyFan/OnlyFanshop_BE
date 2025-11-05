@@ -13,13 +13,6 @@ import java.util.UUID;
 @Service
 public class FirebaseStorageService {
 
-    /**
-     * Tạo URL đã ký để client upload file trực tiếp lên Firebase Storage.
-     * @param fileName tên file mong muốn (ví dụ: product/uuid_image.jpg)
-     * @param contentType MIME type của file (ví dụ: image/jpeg)
-     * @return Signed URL cho phép PUT file
-     */
-
     public String uploadFile(MultipartFile file) throws IOException {
         String fileName = UUID.randomUUID().toString() + "_" + sanitizeFileName(file.getOriginalFilename());
         Bucket bucket = StorageClient.getInstance().bucket();
@@ -38,15 +31,22 @@ public class FirebaseStorageService {
     public String uploadFileToFolder(MultipartFile file, String folderName) throws IOException {
         String fileName = UUID.randomUUID().toString() + "_" + sanitizeFileName(file.getOriginalFilename());
         Bucket bucket = StorageClient.getInstance().bucket();
+        String fullPath = folderName + "/" + fileName;
+        
+        System.out.println("📁 Uploading to folder: " + folderName);
+        System.out.println("📄 Full path: " + fullPath);
 
         try (InputStream inputStream = file.getInputStream()) {
-            Blob blob = bucket.create(folderName + "/" + fileName, inputStream, file.getContentType());
-            return String.format(
+            Blob blob = bucket.create(fullPath, inputStream, file.getContentType());
+            String imageUrl = String.format(
                     "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media",
                     bucket.getName(),
                     blob.getName().replace("/", "%2F")
             );
+            System.out.println("✅ File uploaded successfully. URL: " + imageUrl);
+            return imageUrl;
         } catch (IOException e) {
+            System.err.println("❌ Error uploading file to folder " + folderName + ": " + e.getMessage());
             throw new IOException("Lỗi upload file: " + e.getMessage(), e);
         }
     }

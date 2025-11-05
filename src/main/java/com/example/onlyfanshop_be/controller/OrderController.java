@@ -37,8 +37,6 @@ public class OrderController {
         return orderService.getAllOrders();
     }
 
-
-
     @GetMapping("/getOrderDetails")
     public ApiResponse<OrderDetailsDTO> getOrderDetail(@RequestParam int orderId) {
         return orderService.getOrderDetails(orderId);
@@ -89,6 +87,14 @@ public class OrderController {
         int userId = jwtTokenProvider.getUserIdFromJWT(token);
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersCompleted(userId, role);
+    }
+
+    @GetMapping("/getOrdersCancelled")
+    public ApiResponse<List<OrderDTO>> getOrdersCancelled(HttpServletRequest request) {
+        String token = jwtTokenProvider.extractToken(request);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        String role = jwtTokenProvider.getRoleFromJWT(token);
+        return orderService.getOrdersCancelled(userId, role);
     }
 
     @DeleteMapping("/deleteAllOrders")
