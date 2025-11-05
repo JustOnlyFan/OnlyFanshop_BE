@@ -5,6 +5,7 @@ import com.example.onlyfanshop_be.dto.OrderDetailsDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IOrderService {
     public ApiResponse<List<OrderDTO>> getAllOrders(int userId, String status, String role);
@@ -17,4 +18,5 @@ public interface IOrderService {
     public ApiResponse<List<OrderDTO>> getOrdersShipping(int userId, String role);
     public ApiResponse<List<OrderDTO>> getOrdersCompleted(int userId, String role);
     public ApiResponse<Void> deleteAllOrders();
+    public Map<String, Long> countOrderBadgesByUser(int userId);
 }
