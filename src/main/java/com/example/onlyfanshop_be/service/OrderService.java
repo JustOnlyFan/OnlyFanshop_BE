@@ -18,10 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class OrderService implements IOrderService {
@@ -414,5 +411,12 @@ public class OrderService implements IOrderService {
                     .build();
         }
     }
-
+    @Override
+    public Map<String, Long> countOrderBadgesByUser(int userId) {
+        Map<String, Long> result = new HashMap<>();
+        result.put("pending", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.PENDING));
+        result.put("shipping", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.SHIPPING));
+        result.put("delivered", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.DELIVERED));
+        return result;
+    }
 }

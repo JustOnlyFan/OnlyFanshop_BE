@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("order")
@@ -112,4 +113,17 @@ public class OrderController {
         
         return orderService.deleteAllOrders();
     }
+    @GetMapping("/badgeCount")
+    public ApiResponse<Map<String, Long>> getOrderBadgeCount(HttpServletRequest request) {
+        String token = jwtTokenProvider.extractToken(request);
+        Integer userId = jwtTokenProvider.getUserIdFromJWT(token);
+        Map<String, Long> badgeCount = orderService.countOrderBadgesByUser(userId);
+
+        return ApiResponse.<Map<String, Long>>builder()
+                .statusCode(200)
+                .message("Lấy số lượng đơn hàng thành công")
+                .data(badgeCount)
+                .build();
+    }
+
 }
