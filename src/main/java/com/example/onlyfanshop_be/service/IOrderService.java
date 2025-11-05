@@ -16,5 +16,6 @@ public interface IOrderService {
     public ApiResponse<List<OrderDTO>> getOrdersPicking(int userId, String role);
     public ApiResponse<List<OrderDTO>> getOrdersShipping(int userId, String role);
     public ApiResponse<List<OrderDTO>> getOrdersCompleted(int userId, String role);
+    public ApiResponse<List<OrderDTO>> getOrdersCancelled(int userId, String role);
     public ApiResponse<Void> deleteAllOrders();
 }

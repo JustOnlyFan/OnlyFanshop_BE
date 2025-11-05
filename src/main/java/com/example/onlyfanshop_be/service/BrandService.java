@@ -25,6 +25,7 @@ public class BrandService implements IBrandService{
             brandDTO.setName(brand.getBrandName());
             brandDTO.setDescription(brand.getDescription());
             brandDTO.setCountry(brand.getCountry());
+            brandDTO.setImageURL(brand.getImageURL());
             brandDTO.setActive(brand.isActive());
             listDTO.add(brandDTO);
         }
@@ -46,6 +47,7 @@ public class BrandService implements IBrandService{
         b.setBrandName(brand.getName());
         b.setDescription(brand.getDescription());
         b.setCountry(brand.getCountry());
+        b.setImageURL(brand.getImageURL());
         return brandRepository.save(b);
     }
 
@@ -68,6 +70,7 @@ public class BrandService implements IBrandService{
         brand.setBrandName(updatedBrand.getName());
         brand.setCountry(updatedBrand.getCountry());
         brand.setDescription(updatedBrand.getDescription());
+        brand.setImageURL(updatedBrand.getImageURL());
 
         return brandRepository.save(brand);
     }
