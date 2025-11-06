@@ -83,11 +83,14 @@ public class ProductService implements  IProductService {
                         .build()
                 )
                 .toList();
-
+        Long maxPrice = productRepository.findMaxPrice();
+        Long minPrice = productRepository.findMinPrice();
         HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
                 .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
                 .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
                 .sortOption(sortBy + "_" + order.toLowerCase())
+                .maxPrice(maxPrice)
+                .minPrice(minPrice)
                 .build();
 
         List<CategoryDTO> categories = categoryRepository.findAll().stream()
@@ -334,11 +337,15 @@ public class ProductService implements  IProductService {
                         .build()
                 )
                 .toList();
+        Long maxPrice = productRepository.findMaxPrice();
+        Long minPrice = productRepository.findMinPrice();
 
         HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
                 .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
                 .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
                 .sortOption(sortBy + "_" + order.toLowerCase())
+                .maxPrice(maxPrice)
+                .minPrice(minPrice)
                 .build();
 
         List<CategoryDTO> categories = categoryRepository.findAll().stream()

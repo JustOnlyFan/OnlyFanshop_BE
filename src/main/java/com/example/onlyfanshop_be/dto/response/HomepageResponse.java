@@ -28,5 +28,7 @@ public class HomepageResponse {
         private String selectedCategory;
         private String selectedBrand;
         private String sortOption;
+        private Long maxPrice;
+        private Long minPrice;
     }
 }
