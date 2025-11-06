@@ -93,6 +93,7 @@ public class ChatService {
 
         public List<ChatRoomDTO> getChatRoomsForAdmin() {
         try {
+            log.info("Getting chat rooms for admin...");
             CompletableFuture<List<ChatRoomDTO>> future = new CompletableFuture<>();
             
             databaseReference.child("Conversations").addListenerForSingleValueEvent(new ValueEventListener() {
@@ -100,8 +101,11 @@ public class ChatService {
                 public void onDataChange(DataSnapshot snapshot) {
                     List<ChatRoomDTO> rooms = new ArrayList<>();
                     
+                    log.info("Firebase snapshot exists: " + snapshot.exists() + ", children count: " + snapshot.getChildrenCount());
+                    
                     if (snapshot.exists()) {
                         for (DataSnapshot roomSnapshot : snapshot.getChildren()) {
+                            log.info("Processing room: " + roomSnapshot.getKey());
                             try {
                                 String roomId = roomSnapshot.getKey();
                                 
@@ -109,17 +113,66 @@ public class ChatService {
                                 Map<String, Boolean> participants = new HashMap<>();
                                 DataSnapshot participantsSnapshot = roomSnapshot.child("participants");
                                 
-                                for (DataSnapshot participant : participantsSnapshot.getChildren()) {
-                                    participants.put(participant.getKey(), true);
+                                log.info("Room " + roomId + " participants snapshot exists: " + participantsSnapshot.exists());
+                                
+                                if (participantsSnapshot.exists()) {
+                                    for (DataSnapshot participant : participantsSnapshot.getChildren()) {
+                                        String participantKey = participant.getKey();
+                                        participants.put(participantKey, true);
+                                        log.info("Found participant: " + participantKey);
+                                    }
+                                } else {
+                                    log.warn("No participants found in room: " + roomId);
                                 }
                                 
-                                // Lấy thông tin customer (không phải admin, không phải Firebase UID dài)
-                                String customerId = participants.keySet().stream()
-                                        .filter(id -> !id.equals("admin") && id.length() < 20)
-                                        .findFirst()
-                                        .orElse(null);
+                                log.info("All participants in room " + roomId + ": " + participants.keySet());
+                                
+                                // Lấy thông tin customer (không phải admin)
+                                // ✅ Fix: Ưu tiên customer ID (số), nếu không có thì lấy bất kỳ ID nào không phải admin
+                                String customerId = null;
+                                
+                                // Bước 1: Tìm customer ID là số (ưu tiên)
+                                for (String id : participants.keySet()) {
+                                    if (!id.equals("admin") && id.matches("\\d+")) {
+                                        customerId = id;
+                                        log.info("Found numeric customer ID: " + customerId);
+                                        break;
+                                    }
+                                }
+                                
+                                // Bước 2: Nếu không có customer ID số, thử extract từ roomId
+                                if (customerId == null) {
+                                    // Room ID format: chatRoom_username_userId
+                                    if (roomId != null && roomId.startsWith("chatRoom_")) {
+                                        String[] parts = roomId.split("_");
+                                        if (parts.length >= 3) {
+                                            String extractedId = parts[2];
+                                            if (extractedId.matches("\\d+")) {
+                                                customerId = extractedId;
+                                                log.info("Extracted customer ID from roomId: " + customerId);
+                                                // ✅ Thêm customer ID vào participants nếu chưa có
+                                                databaseReference.child("Conversations").child(roomId)
+                                                    .child("participants").child(customerId).setValueAsync(true);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Bước 3: Nếu vẫn không có, lấy bất kỳ ID nào không phải admin (fallback)
+                                if (customerId == null) {
+                                    customerId = participants.keySet().stream()
+                                            .filter(id -> !id.equals("admin"))
+                                            .findFirst()
+                                            .orElse(null);
+                                    if (customerId != null) {
+                                        log.warn("Using non-numeric participant ID as customer ID: " + customerId + " (may be Firebase UID)");
+                                    }
+                                }
+                                
+                                log.info("Final customer ID for room " + roomId + ": " + customerId);
                                 
                                 if (customerId != null) {
+                                    log.info("Found customer ID: " + customerId + " in room: " + roomId);
                                     String lastMessage = roomSnapshot.child("lastMessage").getValue(String.class);
                                     Long lastMessageTime = roomSnapshot.child("lastMessageTime").getValue(Long.class);
                                     
@@ -132,6 +185,8 @@ public class ChatService {
                                         User customer = getCachedUser(customerId);
                                         customerName = customer != null ? customer.getUsername() : "Customer " + customerId;
                                     }
+                                    
+                                    log.info("Creating ChatRoomDTO for room: " + roomId + ", customer: " + customerName);
                                     
                                     ChatRoomDTO roomDTO = ChatRoomDTO.builder()
                                             .roomId(roomId)
@@ -147,6 +202,8 @@ public class ChatService {
                                             .build();
                                     
                                     rooms.add(roomDTO);
+                                } else {
+                                    log.warn("No customer ID found in room: " + roomId + ", participants: " + participants.keySet());
                                 }
                             } catch (Exception e) {
                                 log.error("Error processing room: " + e.getMessage());
@@ -154,8 +211,11 @@ public class ChatService {
                         }
                         
                         rooms.sort((a, b) -> b.getLastMessageTime().compareTo(a.getLastMessageTime()));
+                    } else {
+                        log.warn("No conversations found in Firebase");
                     }
                     
+                    log.info("Returning " + rooms.size() + " chat rooms");
                     future.complete(rooms);
                 }
                 
@@ -293,21 +353,42 @@ public class ChatService {
         
         String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId;
 
+        log.info("Getting or creating chat room for customer: " + customerId + ", roomId: " + roomId);
+
         CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         databaseReference.child("Conversations").child(roomId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 if (!snapshot.exists()) {
+                    log.info("Room does not exist, creating new room: " + roomId);
                     Map<String, Object> roomData = new HashMap<>();
                     Map<String, Boolean> participants = new HashMap<>();
                     participants.put("admin", true);
-                    participants.put(customerId, true);
+                    participants.put(customerId, true); // ✅ Lưu customer ID (số) thay vì Firebase UID
                     roomData.put("participants", participants);
                     roomData.put("createdAt", System.currentTimeMillis());
                     roomData.put("lastMessage", "Chat started");
                     roomData.put("lastMessageTime", System.currentTimeMillis());
                     databaseReference.child("Conversations").child(roomId).setValueAsync(roomData);
+                    log.info("Room created successfully: " + roomId);
+                } else {
+                    log.info("Room already exists: " + roomId);
+                    // ✅ Đảm bảo customer ID có trong participants (nếu chưa có)
+                    DataSnapshot participantsSnapshot = snapshot.child("participants");
+                    boolean hasCustomerId = false;
+                    if (participantsSnapshot.exists()) {
+                        for (DataSnapshot participant : participantsSnapshot.getChildren()) {
+                            if (participant.getKey().equals(customerId)) {
+                                hasCustomerId = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!hasCustomerId) {
+                        log.info("Adding customer ID to participants: " + customerId);
+                        databaseReference.child("Conversations").child(roomId).child("participants").child(customerId).setValueAsync(true);
+                    }
                 }
                 future.complete(true);
             }
