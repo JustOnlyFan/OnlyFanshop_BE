@@ -416,7 +416,7 @@ public class OrderService implements IOrderService {
         Map<String, Long> result = new HashMap<>();
         result.put("pending", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.PENDING));
         result.put("shipping", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.SHIPPING));
-        result.put("delivered", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.DELIVERED));
+        result.put("picking", orderRepository.countByUser_UserIDAndOrderStatus(userId, OrderStatus.PICKING));
         return result;
     }
 }

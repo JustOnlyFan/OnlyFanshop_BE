@@ -258,7 +258,7 @@ public class PaymentController {
             order.setBillingAddress(
                     (address != null && !address.isEmpty()) ? address : user.getAddress()
             );
-            order.setOrderStatus(OrderStatus.PENDING);
+            order.setOrderStatus(OrderStatus.PICKING);
             order.setOrderDate(LocalDateTime.now());
             order.setPaymentMethod(PaymentMethod.VNPAY);
             // Set delivery type - default to HOME_DELIVERY if no store info in address
@@ -315,17 +315,6 @@ public class PaymentController {
             // ❌ Giao dịch thất bại
             payment.setPaymentStatus(false);
             paymentRepository.save(payment);
-
-            cartRepository.findById(Integer.parseInt(cardIdStr)).ifPresent(cart -> {
-                User user = cart.getUser();
-                if (user != null) {
-                    // ✅ Gọi service gửi thông báo thất bại
-                    notificationService.sendNotification(
-                            user.getUserID(),
-                            "Thanh toán thất bại. Mã giao dịch: " + paymentCode
-                    );
-                }
-            });
 
             // ✅ Redirect theo client type
             String redirectUrl;
