@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -23,5 +24,10 @@ public interface ProductRepository extends JpaRepository<Product, Integer>, JpaS
     @Override
     @EntityGraph(attributePaths = {"brand", "category"})
     Page<Product> findAll(Specification<Product> spec, Pageable pageable);
+    @Query("SELECT MAX(p.price) FROM Product p WHERE p.isActive = true")
+    Long findMaxPrice();
+
+    @Query("SELECT MIN(p.price) FROM Product p WHERE p.isActive = true")
+    Long findMinPrice();
 }
 
