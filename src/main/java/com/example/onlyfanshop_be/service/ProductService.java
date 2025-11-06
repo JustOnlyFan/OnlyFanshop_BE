@@ -93,15 +93,16 @@ public class ProductService implements  IProductService {
                 .minPrice(minPrice)
                 .build();
 
-        List<CategoryDTO> categories = categoryRepository.findAll().stream()
+        List<CategoryDTO> categories = categoryRepository.findByIsActiveTrue().stream()
                 .map(c -> new CategoryDTO(c.getCategoryID(), c.getCategoryName()))
                 .toList();
 
-        List<BrandDTO> brands = brandRepository.findAll().stream()
+        List<BrandDTO> brands = brandRepository.findByIsActiveTrue().stream()
                 .map(b -> BrandDTO.builder()
                         .brandID(b.getBrandID() == null ? null : b.getBrandID().intValue())
                         .name(b.getBrandName())
                         .imageURL(b.getImageURL())
+                        .isActive(b.isActive())
                         .build())
                 .toList();
 
