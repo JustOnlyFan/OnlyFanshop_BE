@@ -16,14 +16,18 @@ import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class LoginService implements ILoginService{
@@ -231,11 +235,36 @@ public class LoginService implements ILoginService{
 
     @Override
     public void sendOTP(String to, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Xác thực email - OTP");
-        message.setText("Mã OTP của bạn là: " + otp + " (hết hạn sau 5 phút)");
-        mailSender.send(message);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setTo(to);
+            helper.setSubject("🔐 Xác thực email - Mã OTP OnlyFanShop");
+            helper.setText(buildOTPEmailTemplate(otp), true);
+            
+            mailSender.send(message);
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể gửi email OTP: " + e.getMessage(), e);
+        }
+    }
+
+    private String buildOTPEmailTemplate(String otp) {
+        try (InputStream inputStream = getClass().getClassLoader()
+                .getResourceAsStream("templates/OtpTemplate.html")) {
+            
+            if (inputStream == null) {
+                throw new RuntimeException("Không tìm thấy file template: templates/OtpTemplate.html");
+            }
+            
+            String template = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            
+            // Thay thế placeholder {OTP} bằng mã OTP thực tế
+            return template.replace("{OTP}", otp);
+            
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi khi đọc file template: " + e.getMessage(), e);
+        }
     }
 
     @Getter
