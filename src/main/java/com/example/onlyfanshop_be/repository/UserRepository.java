@@ -1,8 +1,7 @@
 package com.example.onlyfanshop_be.repository;
 
-
+import com.example.onlyfanshop_be.entity.Role;
 import com.example.onlyfanshop_be.entity.User;
-import com.example.onlyfanshop_be.enums.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,25 +13,29 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Integer> {
-    Optional<User> findByUsername(String username);
+public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
-    boolean existsByUsername(String username);
+    Optional<User> findByFullName(String fullName);
     boolean existsByEmail(String email);
+    boolean existsByFullName(String fullName);
+    List<User> findByRoleId(Byte roleId);
     List<User> findByRole(Role role);
 
-    @Query("SELECT DISTINCT u FROM User u WHERE u.userID IN " +
-           "(SELECT DISTINCT cm.sender.userID FROM ChatMessage cm WHERE cm.receiver.userID = :adminId) " +
-           "OR u.userID IN " +
-           "(SELECT DISTINCT cm.receiver.userID FROM ChatMessage cm WHERE cm.sender.userID = :adminId)")
-    List<User> findUsersWhoChattedWithAdmin(@Param("adminId") Integer adminId);
+    @Query("SELECT DISTINCT u FROM User u WHERE u.id IN " +
+           "(SELECT DISTINCT cm.sender.id FROM ChatMessage cm WHERE cm.receiver.id = :adminId) " +
+           "OR u.id IN " +
+           "(SELECT DISTINCT cm.receiver.id FROM ChatMessage cm WHERE cm.sender.id = :adminId)")
+    List<User> findUsersWhoChattedWithAdmin(@Param("adminId") Long adminId);
+    
     @Query("SELECT u FROM User u " +
-            "WHERE (:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "WHERE (:keyword IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "   OR u.phoneNumber LIKE CONCAT('%', :keyword, '%')) " +
-            "AND (:role IS NULL OR u.role = :role)")
-    Page<User> searchUsers(@Param("keyword") String keyword, @Param("role") Role role, Pageable pageable);
-
-
+            "   OR u.phone LIKE CONCAT('%', :keyword, '%')) " +
+            "AND (:role IS NULL OR u.roleId = :roleId)")
+    Page<User> searchUsers(@Param("keyword") String keyword, @Param("roleId") Byte roleId, Pageable pageable);
+    
+    // Legacy method for backward compatibility
+    @Query("SELECT u FROM User u WHERE u.roleId = :roleId")
+    Page<User> searchUsersByRole(@Param("roleId") Byte roleId, Pageable pageable);
 }
 

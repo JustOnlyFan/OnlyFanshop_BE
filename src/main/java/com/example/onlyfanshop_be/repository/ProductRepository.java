@@ -15,19 +15,41 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer>, JpaSpecificationExecutor<Product> {
-    Product findByProductID(int productID);
+    // Legacy method for backward compatibility
+    @Deprecated
+    default Product findByProductID(int productID) {
+        return findById(productID).orElse(null);
+    }
 
-    List<Product> findByBrand_BrandID(Integer brandBrandID);
+    List<Product> findByBrandId(Integer brandId);
 
-    List<Product> findByCategory_CategoryID(Integer categoryCategoryID);
+    List<Product> findByCategoryId(Integer categoryId);
 
     @Override
-    @EntityGraph(attributePaths = {"brand", "category"})
+    @EntityGraph(attributePaths = {"brand", "category", "warranty"})
     Page<Product> findAll(Specification<Product> spec, Pageable pageable);
-    @Query("SELECT MAX(p.price) FROM Product p WHERE p.isActive = true")
-    Long findMaxPrice();
+    
+    @EntityGraph(attributePaths = {"brand", "category", "warranty"})
+    java.util.Optional<Product> findById(Integer id);
+    
+    @Query("SELECT MAX(p.basePrice) FROM Product p WHERE p.status = 'active'")
+    java.math.BigDecimal findMaxPrice();
 
-    @Query("SELECT MIN(p.price) FROM Product p WHERE p.isActive = true")
-    Long findMinPrice();
+    @Query("SELECT MIN(p.basePrice) FROM Product p WHERE p.status = 'active'")
+    java.math.BigDecimal findMinPrice();
+    
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.brandId = :brandId")
+    Long countByBrandId(Integer brandId);
+    
+    // Legacy methods for backward compatibility
+    @Deprecated
+    default List<Product> findByBrand_BrandID(Integer brandBrandID) {
+        return findByBrandId(brandBrandID);
+    }
+    
+    @Deprecated
+    default List<Product> findByCategory_CategoryID(Integer categoryCategoryID) {
+        return findByCategoryId(categoryCategoryID);
+    }
 }
 

@@ -87,6 +87,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
+                // Log authorities before creating authentication
+                System.out.println("JwtAuthenticationFilter: UserDetails authorities: " + userDetails.getAuthorities());
+                for (var authority : userDetails.getAuthorities()) {
+                    System.out.println("JwtAuthenticationFilter: Authority: " + authority.getAuthority());
+                }
+                
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());
@@ -94,7 +100,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("Authentication successful for user: {} with role: {} on request: {}",
+                // Verify authentication was set
+                var contextAuth = SecurityContextHolder.getContext().getAuthentication();
+                System.out.println("JwtAuthenticationFilter: SecurityContext authentication set: " + (contextAuth != null));
+                if (contextAuth != null) {
+                    System.out.println("JwtAuthenticationFilter: SecurityContext authorities: " + contextAuth.getAuthorities());
+                }
+                
+                log.info("Authentication successful for user: {} with authorities: {} on request: {}",
                         username, userDetails.getAuthorities(), requestURI);
 
             } catch (Exception e) {

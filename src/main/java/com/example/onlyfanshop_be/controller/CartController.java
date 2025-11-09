@@ -32,7 +32,9 @@ public class CartController {
 
     @PostMapping("/clear")
     public ApiResponse<Void> clearCart(@RequestParam String username) {
-        boolean checkUser = userRepository.findByUsername(username).isPresent();
+        // Try to find user by email first, if not found, try as userId
+        boolean checkUser = userRepository.findByEmail(username).isPresent() ||
+                (username.matches("\\d+") && userRepository.findById(Long.parseLong(username)).isPresent());
         if (checkUser) {
             cartService.clearCart(username);
             return ApiResponse.<Void>builder().message("Đã xóa toàn bộ").statusCode(200).build();

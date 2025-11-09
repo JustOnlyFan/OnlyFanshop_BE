@@ -4,12 +4,21 @@ import com.example.onlyfanshop_be.config.VNPAYConfig;
 import com.example.onlyfanshop_be.dto.PaymentDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.*;
-import com.example.onlyfanshop_be.enums.DeliveryType;
 import com.example.onlyfanshop_be.enums.OrderStatus;
 import com.example.onlyfanshop_be.enums.PaymentMethod;
+import com.example.onlyfanshop_be.enums.PaymentStatus;
+import com.example.onlyfanshop_be.enums.PaymentTransactionStatus;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.repository.*;
+import com.example.onlyfanshop_be.repository.CartItemRepository;
+import com.example.onlyfanshop_be.repository.CartRepository;
+import com.example.onlyfanshop_be.repository.NotificationRepository;
+import com.example.onlyfanshop_be.repository.OrderItemRepository;
+import com.example.onlyfanshop_be.repository.OrderRepository;
+import com.example.onlyfanshop_be.repository.PaymentRepository;
+import com.example.onlyfanshop_be.repository.SalesChannelRepository;
+import com.example.onlyfanshop_be.repository.UserAddressRepository;
+import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.NotificationService;
 import com.example.onlyfanshop_be.service.PaymentService;
@@ -25,10 +34,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/payment")
@@ -53,9 +65,68 @@ public class PaymentController {
     @Autowired
     private CartItemRepository cartItemRepository;
     @Autowired
-    private StoreLocationRepository storeLocationRepository;
-    @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private UserAddressRepository userAddressRepository;
+    @Autowired
+    private SalesChannelRepository salesChannelRepository;
+    
+    // Helper method to generate order code
+    private String generateOrderCode(Long userId) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        return "ORD" + timestamp + userId;
+    }
+    
+    // Helper method to create or find UserAddress
+    private UserAddress getOrCreateUserAddress(User user, String address, String recipientPhone) {
+        // Try to find default address first
+        Optional<UserAddress> defaultAddressOpt = userAddressRepository.findByUserIdAndIsDefault(user.getId(), true);
+        if (defaultAddressOpt.isPresent()) {
+            return defaultAddressOpt.get();
+        }
+        
+        // If address string is provided, try to parse and create
+        if (address != null && !address.isEmpty()) {
+            // For simplicity, create a new address with addressLine1 = address
+            // In production, you might want to parse the address string more carefully
+            UserAddress newAddress = UserAddress.builder()
+                    .userId(user.getId())
+                    .fullName(user.getFullName())
+                    .phone(recipientPhone != null ? recipientPhone : (user.getPhone() != null ? user.getPhone() : ""))
+                    .addressLine1(address)
+                    .country("Vietnam")
+                    .isDefault(true)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            return userAddressRepository.save(newAddress);
+        }
+        
+        // If no address provided, create a default one
+        UserAddress newAddress = UserAddress.builder()
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .phone(user.getPhone() != null ? user.getPhone() : "")
+                .addressLine1("")
+                .country("Vietnam")
+                .isDefault(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        return userAddressRepository.save(newAddress);
+    }
+    
+    // Helper method to calculate subtotal and total from cart items
+    private BigDecimal[] calculateOrderTotals(List<CartItem> cartItems, BigDecimal shippingFee, BigDecimal discountTotal) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (CartItem item : cartItems) {
+            if (item.getUnitPriceSnapshot() != null && item.getQuantity() != null) {
+                BigDecimal itemTotal = item.getUnitPriceSnapshot().multiply(BigDecimal.valueOf(item.getQuantity()));
+                subtotal = subtotal.add(itemTotal);
+            }
+        }
+        BigDecimal totalAmount = subtotal.add(shippingFee != null ? shippingFee : BigDecimal.ZERO)
+                .subtract(discountTotal != null ? discountTotal : BigDecimal.ZERO);
+        return new BigDecimal[]{subtotal, totalAmount};
+    }
     //    @GetMapping("/vn-pay")
 //    public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode,@RequestParam int cardId) {
 //        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode, cardId)).build();
@@ -72,23 +143,15 @@ public class PaymentController {
     ) {
         // ✅ 1. Lấy token từ header
         String token = jwtTokenProvider.extractToken(request);
-        int userid = jwtTokenProvider.getUserIdFromJWT(token);
+        Long userId = jwtTokenProvider.getUserIdFromJWT(token);
         Cart cart;
-        // ✅ 3. Lấy cart tương ứng với user
-        if(buyMethod.equals("Instant")) {
-            cart= cartRepository.findByUser_UserIDAndStatus(userid, "InstantBuy").orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-            cart.setStatus("Pending");
-            cartRepository.save(cart);
-        }else if (buyMethod.equals("ByCart")){
-            cart = cartRepository.findByUser_UserIDAndStatus(userid, "InProgress")
-                    .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-        } else{
-            throw new AppException(ErrorCode.BUY_METHOD_INVALID);
-        }
+        // ✅ 2. Lấy cart tương ứng với user (no status field in new schema)
+        cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
 
-
-        // ✅ 4. Gọi service xử lý thanh toán
-        PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(request, amount, bankCode, cart.getCartID(), address, recipientPhoneNumber, clientType);
+        // ✅ 3. Gọi service xử lý thanh toán
+        PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(
+                request, amount, bankCode, cart.getId().intValue(), address, recipientPhoneNumber, clientType);
 
         return ApiResponse.<PaymentDTO.VNPayResponse>builder()
                 .statusCode(200)
@@ -110,98 +173,93 @@ public class PaymentController {
         try {
             // ✅ 1. Lấy token từ header
             String token = jwtTokenProvider.extractToken(request);
-            int userid = jwtTokenProvider.getUserIdFromJWT(token);
+            Long userId = jwtTokenProvider.getUserIdFromJWT(token);
             
-            // ✅ 2. Lấy cart tương ứng với user
-            Cart cart;
-            if (buyMethod.equals("Instant")) {
-                cart = cartRepository.findByUser_UserIDAndStatus(userid, "InstantBuy")
-                        .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-                cart.setStatus("Pending");
-                cartRepository.save(cart);
-            } else if (buyMethod.equals("ByCart")) {
-                cart = cartRepository.findByUser_UserIDAndStatus(userid, "InProgress")
-                        .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-            } else {
-                throw new AppException(ErrorCode.BUY_METHOD_INVALID);
-            }
+            // ✅ 2. Lấy cart tương ứng với user (no status field in new schema)
+            Cart cart = cartRepository.findByUserId(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
 
             // ✅ 3. Lấy user
-            User user = userRepository.findById(userid)
+            User user = userRepository.findById(userId)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
 
-            // ✅ 4. Tạo order
-            Order order = new Order();
-            order.setUser(user);
-            order.setTotalPrice(totalPrice);
-            order.setBillingAddress(
-                    (address != null && !address.isEmpty()) ? address : user.getAddress()
-            );
-            order.setOrderStatus(OrderStatus.PENDING);
-            order.setOrderDate(LocalDateTime.now());
-            order.setPaymentMethod(PaymentMethod.COD);
+            // ✅ 4. Tạo hoặc lấy UserAddress
+            UserAddress userAddress = getOrCreateUserAddress(user, address, recipientPhoneNumber);
             
-            // ✅ 5. Set delivery type và address
-            if (deliveryType != null && deliveryType.equalsIgnoreCase("IN_STORE_PICKUP") && storeId != null) {
-                order.setDeliveryType(DeliveryType.IN_STORE_PICKUP);
-                StoreLocation store = storeLocationRepository.findById(storeId)
-                        .orElseThrow(() -> new AppException(ErrorCode.LOCATION_NOT_FOUND));
-                order.setPickupStore(store);
-                // Use store address as shipping address
-                order.setShippingAddress(store.getAddress());
-            } else {
-                order.setDeliveryType(DeliveryType.HOME_DELIVERY);
-                // Set shipping address from parameter, fallback to user address if not provided
-                if (address != null && !address.isEmpty()) {
-                    order.setShippingAddress(address);
-                } else if (user.getAddress() != null && !user.getAddress().isEmpty()) {
-                    order.setShippingAddress(user.getAddress());
-                }
+            // ✅ 5. Lấy sales channel (default: website)
+            SalesChannel salesChannel = salesChannelRepository.findByCode("website")
+                    .orElse(salesChannelRepository.findById(1)
+                            .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND)));
+
+            // ✅ 6. Lấy cart items
+            List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
+            if (cartItems.isEmpty()) {
+                throw new AppException(ErrorCode.CART_NOTFOUND);
             }
 
-            // ✅ 6. Set recipient phone number
-            if (recipientPhoneNumber != null && !recipientPhoneNumber.isEmpty()) {
-                order.setRecipientPhoneNumber(recipientPhoneNumber);
-            } else if (user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()) {
-                order.setRecipientPhoneNumber(user.getPhoneNumber());
-            }
+            // ✅ 7. Tính toán subtotal và total
+            BigDecimal shippingFee = BigDecimal.ZERO; // Can be calculated based on delivery type
+            BigDecimal discountTotal = BigDecimal.ZERO;
+            BigDecimal[] totals = calculateOrderTotals(cartItems, shippingFee, discountTotal);
+            BigDecimal subtotal = totals[0];
+            BigDecimal totalAmount = totals[1];
 
-            // ✅ 7. Lưu order
+            // ✅ 8. Tạo order
+            Order order = Order.builder()
+                    .userId(user.getId())
+                    .addressId(userAddress.getId())
+                    .channelId(salesChannel.getId())
+                    .orderCode(generateOrderCode(user.getId()))
+                    .status(OrderStatus.pending)
+                    .paymentMethod(PaymentMethod.cod)
+                    .paymentStatus(PaymentStatus.unpaid)
+                    .shippingMethod(deliveryType != null ? deliveryType : "HOME_DELIVERY")
+                    .shippingFee(shippingFee)
+                    .discountTotal(discountTotal)
+                    .subtotal(subtotal)
+                    .totalAmount(totalAmount)
+                    .createdAt(LocalDateTime.now())
+                    .build();
             order = orderRepository.save(order);
 
-            // ✅ 8. Tạo order items từ cart items
-            List<CartItem> cartItemsOrder = new ArrayList<>();
-            for (CartItem cartItem : cart.getCartItems()) {
-                if ("InProgress".equals(cart.getStatus()) || cartItem.isChecked()) {
-                    cartItemsOrder.add(cartItem);
+            // ✅ 9. Tạo order items từ cart items
+            for (CartItem cartItem : cartItems) {
+                Product product = cartItem.getProduct();
+                if (product == null) {
+                    continue; // Skip if product is null
                 }
-            }
-
-            for (CartItem cartItem : cartItemsOrder) {
-                OrderItem orderItem = new OrderItem();
-                orderItem.setOrder(order);
-                orderItem.setProduct(cartItem.getProduct());
-                orderItem.setQuantity(cartItem.getQuantity());
-                orderItem.setPrice(cartItem.getPrice());
+                
+                BigDecimal unitPrice = cartItem.getUnitPriceSnapshot() != null ? 
+                        cartItem.getUnitPriceSnapshot() : BigDecimal.ZERO;
+                Integer quantity = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
+                BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+                
+                OrderItem orderItem = OrderItem.builder()
+                        .orderId(order.getId())
+                        .productId(cartItem.getProductId())
+                        .productName(product.getName() != null ? product.getName() : "")
+                        .sku(product.getSku())
+                        .unitPrice(unitPrice)
+                        .quantity(quantity)
+                        .lineTotal(lineTotal)
+                        .build();
                 orderItemRepository.save(orderItem);
-                cartItemRepository.delete(cartItem);
             }
+            
+            // ✅ 10. Xóa cart items và cart
+            cartItemRepository.deleteAll(cartItems);
+            cartRepository.delete(cart);
 
-            // ✅ 9. Xóa cart nếu status là "Pending"
-            if (cart.getStatus().equals("Pending")) {
-                cartRepository.delete(cart);
-            }
-
-            // ✅ 10. Gửi thông báo
+            // ✅ 11. Gửi thông báo
             notificationService.sendNotification(
-                    user.getUserID(),
-                    "Đơn hàng #" + order.getOrderID() + " đã được tạo thành công! Chờ xác nhận."
+                    user.getId().intValue(),
+                    "Đơn hàng #" + order.getOrderCode() + " đã được tạo thành công! Chờ xác nhận."
             );
 
             return ApiResponse.<Integer>builder()
                     .statusCode(200)
                     .message("Tạo đơn hàng COD thành công")
-                    .data(order.getOrderID())
+                    .data(order.getId().intValue())
                     .build();
 
         } catch (AppException e) {
@@ -229,91 +287,118 @@ public class PaymentController {
         String amountStr = params.get("vnp_Amount");
         String cardIdStr = params.get("vnp_TxnRef").split("_")[0];
 
-        boolean exists = paymentRepository.existsByTransactionCode(paymentCode);
+        boolean exists = paymentRepository.existsByProviderTxnId(paymentCode);
         if (exists) return;
 
-        Payment payment = new Payment();
-        payment.setTransactionCode(paymentCode);
-        payment.setAmount(amountStr != null ? Double.parseDouble(amountStr) / 100 : 0);
-        payment.setPaymentDate(LocalDateTime.now());
+        BigDecimal amount = amountStr != null ? 
+                BigDecimal.valueOf(Double.parseDouble(amountStr) / 100) : BigDecimal.ZERO;
+        
+        Payment payment = Payment.builder()
+                .providerTxnId(paymentCode)
+                .amount(amount)
+                .method(PaymentMethod.online_gateway)
+                .status(PaymentTransactionStatus.pending)
+                .createdAt(LocalDateTime.now())
+                .build();
+        
         if ("00".equals(responseCode)) {
             // ✅ Giao dịch thành công
-            Cart cart = cartRepository.findById(Integer.parseInt(cardIdStr))
+            Cart cart = cartRepository.findById(Long.parseLong(cardIdStr))
                     .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
-            List<CartItem> cartItemsOrder = new ArrayList<>();
-            // For "InProgress" cart (ByCart), include all items. For other statuses, only include checked items
-            for(CartItem cartItem : cart.getCartItems()){
-                if ("InProgress".equals(cart.getStatus()) || cartItem.isChecked()){
-                    cartItemsOrder.add(cartItem);
-                }
-            }
-//            cart.setStatus("PAID");
-//            cartRepository.save(cart);
+            
+            User user = userRepository.findById(cart.getUserId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
 
-            User user = cart.getUser();
+            // Get all cart items (no status field in new schema)
+            List<CartItem> cartItemsOrder = cartItemRepository.findByCartId(cart.getId());
 
-            Order order = new Order();
-            order.setUser(user);
-            order.setTotalPrice(payment.getAmount());
-            order.setBillingAddress(
-                    (address != null && !address.isEmpty()) ? address : user.getAddress()
-            );
-            order.setOrderStatus(OrderStatus.PICKING);
-            order.setOrderDate(LocalDateTime.now());
-            order.setPaymentMethod(PaymentMethod.VNPAY);
-            // Set delivery type - default to HOME_DELIVERY if no store info in address
-            order.setDeliveryType(DeliveryType.HOME_DELIVERY);
-            // Set shipping address from parameter, fallback to user address if not provided
-            if (address != null && !address.isEmpty()) {
-                order.setShippingAddress(address);
-            } else if (user.getAddress() != null && !user.getAddress().isEmpty()) {
-                order.setShippingAddress(user.getAddress());
-            }
+            // ✅ Tạo hoặc lấy UserAddress
+            UserAddress userAddress = getOrCreateUserAddress(user, address, recipientPhoneNumber);
+            
+            // ✅ Lấy sales channel (default: website)
+            SalesChannel salesChannel = salesChannelRepository.findByCode("website")
+                    .orElse(salesChannelRepository.findById(1)
+                            .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND)));
 
-            // Set recipient phone number
-            if (recipientPhoneNumber != null && !recipientPhoneNumber.isEmpty()) {
-                order.setRecipientPhoneNumber(recipientPhoneNumber);
-            } else if (user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()) {
-                order.setRecipientPhoneNumber(user.getPhoneNumber());
-            }
+            // ✅ Tính toán subtotal và total
+            BigDecimal shippingFee = BigDecimal.ZERO;
+            BigDecimal discountTotal = BigDecimal.ZERO;
+            BigDecimal[] totals = calculateOrderTotals(cartItemsOrder, shippingFee, discountTotal);
+            BigDecimal subtotal = totals[0];
+            BigDecimal totalAmount = totals[1];
 
+            // ✅ Tạo order
+            Order order = Order.builder()
+                    .userId(user.getId())
+                    .addressId(userAddress.getId())
+                    .channelId(salesChannel.getId())
+                    .orderCode(generateOrderCode(user.getId()))
+                    .status(OrderStatus.confirmed)
+                    .paymentMethod(PaymentMethod.online_gateway)
+                    .paymentStatus(PaymentStatus.paid)
+                    .shippingMethod("HOME_DELIVERY")
+                    .shippingFee(shippingFee)
+                    .discountTotal(discountTotal)
+                    .subtotal(subtotal)
+                    .totalAmount(totalAmount)
+                    .createdAt(LocalDateTime.now())
+                    .confirmedAt(LocalDateTime.now())
+                    .build();
             order = orderRepository.save(order);
+            
+            // ✅ Tạo order items từ cart items
             for (CartItem cartItem : cartItemsOrder) {
-                OrderItem orderItem = new OrderItem();
-                orderItem.setOrder(order);
-                orderItem.setProduct(cartItem.getProduct());
-                orderItem.setQuantity(cartItem.getQuantity());
-                orderItem.setPrice(cartItem.getPrice());
+                Product product = cartItem.getProduct();
+                if (product == null) {
+                    continue; // Skip if product is null
+                }
+                
+                BigDecimal unitPrice = cartItem.getUnitPriceSnapshot() != null ? 
+                        cartItem.getUnitPriceSnapshot() : BigDecimal.ZERO;
+                Integer quantity = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
+                BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+                
+                OrderItem orderItem = OrderItem.builder()
+                        .orderId(order.getId())
+                        .productId(cartItem.getProductId())
+                        .productName(product.getName() != null ? product.getName() : "")
+                        .sku(product.getSku())
+                        .unitPrice(unitPrice)
+                        .quantity(quantity)
+                        .lineTotal(lineTotal)
+                        .build();
                 orderItemRepository.save(orderItem);
-                cartItemRepository.delete(cartItem);
             }
-            if (cart.getStatus().equals("Pending")) {
-                cartRepository.delete(cart);
-            }
+            
+            // ✅ Xóa cart items và cart
+            cartItemRepository.deleteAll(cartItemsOrder);
+            cartRepository.delete(cart);
 
-
-            payment.setPaymentStatus(true);
-            payment.setOrder(order);
+            // ✅ Cập nhật payment
+            payment.setOrderId(order.getId());
+            payment.setStatus(PaymentTransactionStatus.success);
+            payment.setUpdatedAt(LocalDateTime.now());
             paymentRepository.save(payment);
 
             // ✅ Gọi service gửi thông báo (tự động lưu DB + đẩy Firebase)
             notificationService.sendNotification(
-                    user.getUserID(),
-                    "Thanh toán thành công đơn hàng #" + order.getOrderID()
+                    user.getId().intValue(),
+                    "Thanh toán thành công đơn hàng #" + order.getOrderCode()
             );
 
             // ✅ Redirect theo client type
             String redirectUrl;
             if ("web".equalsIgnoreCase(clientType)) {
-                redirectUrl = vnPayConfig.getWebBaseUrl() + "/payment-result?status=success&code=" + paymentCode + "&order=" + order.getOrderID();
+                redirectUrl = vnPayConfig.getWebBaseUrl() + "/payment-result?status=success&code=" + paymentCode + "&order=" + order.getId();
             } else {
-                redirectUrl = vnPayConfig.getAppDeepLink() + "/payment-result?status=success&code=" + paymentCode + "&order=" + order.getOrderID();
+                redirectUrl = vnPayConfig.getAppDeepLink() + "/payment-result?status=success&code=" + paymentCode + "&order=" + order.getId();
             }
             response.sendRedirect(redirectUrl);
 
         } else {
             // ❌ Giao dịch thất bại
-            payment.setPaymentStatus(false);
+            payment.setStatus(PaymentTransactionStatus.failed);
+            payment.setUpdatedAt(LocalDateTime.now());
             paymentRepository.save(payment);
 
             // ✅ Redirect theo client type

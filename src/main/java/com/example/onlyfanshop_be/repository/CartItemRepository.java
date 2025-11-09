@@ -7,10 +7,25 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface CartItemRepository extends JpaRepository<CartItem, Integer> {
-    List<CartItem> findByCart_CartID(Integer CartID);
-    CartItem findByCart_CartIDAndProduct_ProductID(Integer CartID, Integer ProductID);
+public interface CartItemRepository extends JpaRepository<CartItem, Long> {
+    List<CartItem> findByCartId(Long cartId);
+    Optional<CartItem> findByCartIdAndProductId(Long cartId, Long productId);
+    
+    // Legacy methods for backward compatibility
+    @Deprecated
+    default List<CartItem> findByCart_CartID(Integer CartID) {
+        return findByCartId(CartID != null ? CartID.longValue() : null);
+    }
+    
+    @Deprecated
+    default CartItem findByCart_CartIDAndProduct_ProductID(Integer CartID, Integer ProductID) {
+        return findByCartIdAndProductId(
+                CartID != null ? CartID.longValue() : null,
+                ProductID != null ? ProductID.longValue() : null
+        ).orElse(null);
+    }
 }
 

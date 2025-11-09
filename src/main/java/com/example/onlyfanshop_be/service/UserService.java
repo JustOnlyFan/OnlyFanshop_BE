@@ -2,11 +2,14 @@ package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.entity.Role;
 import com.example.onlyfanshop_be.entity.User;
-import com.example.onlyfanshop_be.enums.Role;
+import com.example.onlyfanshop_be.entity.UserAddress;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
+import com.example.onlyfanshop_be.repository.RoleRepository;
 import com.example.onlyfanshop_be.repository.TokenRepository;
+import com.example.onlyfanshop_be.repository.UserAddressRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.entity.Token;
 import jakarta.transaction.Transactional;
@@ -18,7 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,21 +31,36 @@ public class UserService implements IUserService {
     private UserRepository userRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
+    private UserAddressRepository userAddressRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    
     @Override
     public ApiResponse<UserDTO> getUserByID(int userID) {
-        Optional<User> userOtp = userRepository.findById(userID);
+        Optional<User> userOtp = userRepository.findById((long) userID);
         if (userOtp.isPresent()) {
             User user = userOtp.get();
-            return ApiResponse.<UserDTO>builder().message("Thành công").statusCode(200).data(UserDTO.builder()
-                    .userID(user.getUserID())
+            UserDTO dto = UserDTO.builder()
+                    .userID(user.getId())
                     .email(user.getEmail())
-                    .phoneNumber(user.getPhoneNumber())
-                    .address(user.getAddress())
-                    .username(user.getUsername())
-                    .role(user.getRole())
-                    .authProvider(user.getAuthProvider())
-                    .build()).build();
+                    .fullName(user.getFullName())
+                    .username(user.getFullName()) // For backward compatibility
+                    .phoneNumber(user.getPhone())
+                    .phone(user.getPhone())
+                    .status(user.getStatus())
+                    .build();
+            
+            // Load role if needed
+            if (user.getRoleId() != null) {
+                roleRepository.findById(user.getRoleId()).ifPresent(role -> {
+                    dto.setRole(role);
+                    dto.setRoleName(role.getName());
+                });
+            }
+            
+            return ApiResponse.<UserDTO>builder().message("Thành công").statusCode(200).data(dto).build();
         }else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
 
@@ -51,15 +69,25 @@ public class UserService implements IUserService {
         Optional<User> userOtp = userRepository.findByEmail(email);
         if (userOtp.isPresent()) {
             User user = userOtp.get();
-            return ApiResponse.<UserDTO>builder().message("Thành công").statusCode(200).data(UserDTO.builder()
-                    .userID(user.getUserID())
+            UserDTO dto = UserDTO.builder()
+                    .userID(user.getId())
                     .email(user.getEmail())
-                    .phoneNumber(user.getPhoneNumber())
-                    .address(user.getAddress())
-                    .username(user.getUsername())
-                    .role(user.getRole())
-                    .authProvider(user.getAuthProvider())
-                    .build()).build();
+                    .fullName(user.getFullName())
+                    .username(user.getFullName()) // For backward compatibility
+                    .phoneNumber(user.getPhone())
+                    .phone(user.getPhone())
+                    .status(user.getStatus())
+                    .build();
+            
+            // Load role if needed
+            if (user.getRoleId() != null) {
+                roleRepository.findById(user.getRoleId()).ifPresent(role -> {
+                    dto.setRole(role);
+                    dto.setRoleName(role.getName());
+                });
+            }
+            
+            return ApiResponse.<UserDTO>builder().message("Thành công").statusCode(200).data(dto).build();
         }else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
 
@@ -68,23 +96,49 @@ public class UserService implements IUserService {
         Optional<User> userOtp = userRepository.findById(userDTO.getUserID());
         if (userOtp.isPresent()) {
             User user = userOtp.get();
-            user.setAddress(userDTO.getAddress());
-            user.setPhoneNumber(userDTO.getPhoneNumber());
+            
+            // Update phone
+            if (userDTO.getPhoneNumber() != null) {
+                user.setPhone(userDTO.getPhoneNumber());
+            } else if (userDTO.getPhone() != null) {
+                user.setPhone(userDTO.getPhone());
+            }
+            
+            // Update full name
+            if (userDTO.getFullName() != null) {
+                user.setFullName(userDTO.getFullName());
+            } else if (userDTO.getUsername() != null) {
+                user.setFullName(userDTO.getUsername());
+            }
+            
             userRepository.save(user);
-            return ApiResponse.<UserDTO>builder().message("Cập nhật thành công").statusCode(200).data(UserDTO.builder()
-                    .userID(user.getUserID())
+            
+            UserDTO responseDto = UserDTO.builder()
+                    .userID(user.getId())
                     .email(user.getEmail())
-                    .phoneNumber(user.getPhoneNumber())
-                    .address(user.getAddress())
-                    .username(user.getUsername())
-                    .build()).build();
+                    .fullName(user.getFullName())
+                    .username(user.getFullName())
+                    .phoneNumber(user.getPhone())
+                    .phone(user.getPhone())
+                    .status(user.getStatus())
+                    .build();
+            
+            // Load role
+            if (user.getRoleId() != null) {
+                roleRepository.findById(user.getRoleId()).ifPresent(role -> {
+                    responseDto.setRole(role);
+                    responseDto.setRoleName(role.getName());
+                });
+            }
+            
+            return ApiResponse.<UserDTO>builder().message("Cập nhật thành công").statusCode(200).data(responseDto).build();
         }
         else throw new AppException(ErrorCode.USER_NOTEXISTED);
     }
 
     @Override
     public void changePassword(int userID, String oldPassword, String newPassword) {
-        User user = userRepository.findById(userID)
+        User user = userRepository.findById((long) userID)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_EXISTED));
 
         if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
@@ -95,22 +149,40 @@ public class UserService implements IUserService {
         userRepository.save(user);
 
         // Revoke all tokens after password change
-        List<Token> tokens = tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(userID);
+        List<Token> tokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(user.getId());
         tokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
         tokenRepository.saveAll(tokens);
     }
 
     @Override
     public void changeAddress(int userID, String address) {
-        User user = userRepository.findById(userID)
+        User user = userRepository.findById((long) userID)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_EXISTED));
-        user.setAddress(address);
-        userRepository.save(user);
+        
+        // Update or create default address
+        Optional<UserAddress> defaultAddress = userAddressRepository.findByUserIdAndIsDefault(user.getId(), true);
+        if (defaultAddress.isPresent()) {
+            UserAddress addr = defaultAddress.get();
+            addr.setAddressLine1(address);
+            userAddressRepository.save(addr);
+        } else {
+            // Create new default address
+            UserAddress newAddress = UserAddress.builder()
+                    .userId(user.getId())
+                    .fullName(user.getFullName())
+                    .phone(user.getPhone() != null ? user.getPhone() : "")
+                    .addressLine1(address)
+                    .isDefault(true)
+                    .country("Vietnam")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            userAddressRepository.save(newAddress);
+        }
     }
 
     @Override
     public void updateFCMToken(int userID, String fcmToken) {
-        User user = userRepository.findById(userID)
+        User user = userRepository.findById((long) userID)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
         user.setFcmToken(fcmToken);
         userRepository.save(user);
@@ -133,25 +205,37 @@ public class UserService implements IUserService {
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Role enumRole = null;
+        Byte roleId = null;
         if (role != null && !role.isBlank()) {
-            try {
-                enumRole = Role.valueOf(role.toUpperCase());
-            } catch (IllegalArgumentException e) {
+            // Find role by name
+            Optional<Role> roleEntity = roleRepository.findByName(role.toLowerCase());
+            if (roleEntity.isPresent()) {
+                roleId = roleEntity.get().getId();
+            } else {
                 throw new IllegalArgumentException("Invalid role: " + role);
             }
         }
 
-        Page<User> userPage = userRepository.searchUsers(keyword, enumRole, pageable);
+        Page<User> userPage = userRepository.searchUsers(keyword, roleId, pageable);
 
         Page<UserDTO> dtoPage = userPage.map(user -> {
             UserDTO dto = new UserDTO();
-            dto.setUserID(user.getUserID());
-            dto.setUsername(user.getUsername());
+            dto.setUserID(user.getId());
+            dto.setUsername(user.getFullName());
+            dto.setFullName(user.getFullName());
             dto.setEmail(user.getEmail());
-            dto.setPhoneNumber(user.getPhoneNumber());
-            dto.setAddress(user.getAddress());
-            dto.setRole(user.getRole());
+            dto.setPhoneNumber(user.getPhone());
+            dto.setPhone(user.getPhone());
+            dto.setStatus(user.getStatus());
+            
+            // Load role
+            if (user.getRoleId() != null) {
+                roleRepository.findById(user.getRoleId()).ifPresent(roleEntity -> {
+                    dto.setRole(roleEntity);
+                    dto.setRoleName(roleEntity.getName());
+                });
+            }
+            
             return dto;
         });
 

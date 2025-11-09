@@ -35,13 +35,13 @@ public class ChatMessage {
     @Column(columnDefinition = "TEXT")
     private String metadata; // JSON string for additional data
 
-    @ManyToOne
-    @JoinColumn(name = "senderID")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id", columnDefinition = "BIGINT UNSIGNED")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User sender;
 
-    @ManyToOne
-    @JoinColumn(name = "receiverID")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receiver_id", columnDefinition = "BIGINT UNSIGNED")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User receiver;
 

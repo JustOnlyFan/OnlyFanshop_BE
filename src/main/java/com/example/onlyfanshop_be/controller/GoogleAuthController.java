@@ -52,7 +52,8 @@ public class GoogleAuthController {
             List<User> users = userRepository.findAll();
             System.out.println("Total users in database: " + users.size());
             for (User user : users) {
-                System.out.println("User: " + user.getEmail() + " - " + user.getUsername() + " - " + user.getRole() + " - " + user.getAuthProvider());
+                String roleName = user.getRole() != null ? user.getRole().getName() : "N/A";
+                System.out.println("User: " + user.getEmail() + " - " + user.getUsername() + " - Role: " + roleName);
             }
             return "Total users: " + users.size() + " - Check console for details";
         } catch (Exception e) {
@@ -68,13 +69,13 @@ public class GoogleAuthController {
             Optional<User> user = userRepository.findByEmail(email);
             if (user.isPresent()) {
                 User existingUser = user.get();
+                String roleName = existingUser.getRole() != null ? existingUser.getRole().getName() : "N/A";
                 return ApiResponse.<String>builder()
                         .statusCode(200)
                         .message("Email đã tồn tại")
                         .data("Email: " + existingUser.getEmail() +
                               ", Username: " + existingUser.getUsername() +
-                              ", AuthProvider: " + existingUser.getAuthProvider() +
-                              ", Role: " + existingUser.getRole())
+                              ", Role: " + roleName)
                         .build();
             } else {
                 return ApiResponse.<String>builder()

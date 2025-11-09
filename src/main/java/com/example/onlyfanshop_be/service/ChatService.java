@@ -27,10 +27,10 @@ public class ChatService {
 
     public String createChatRoom(CreateChatRoomRequest request, String adminId) {
         // Lấy thông tin customer để tạo room ID
-        User customer = userRepository.findById(Integer.parseInt(request.getCustomerId()))
+        User customer = userRepository.findById(Long.parseLong(request.getCustomerId()))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         
-        String roomId = "chatRoom_" + customer.getUsername() + "_" + request.getCustomerId();
+        String roomId = "chatRoom_" + customer.getFullName() + "_" + request.getCustomerId();
 
         // Tạo conversation trong Firebase
         Map<String, Object> roomData = new HashMap<>();
@@ -57,12 +57,12 @@ public class ChatService {
         String messageId = databaseReference.child("Messages").child(request.getRoomId()).push().getKey();
         
         // Lấy thông tin người gửi
-        User sender = userRepository.findById(Integer.parseInt(senderId))
+        User sender = userRepository.findById(Long.parseLong(senderId))
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("senderId", senderId);
-        messageData.put("senderName", sender.getUsername());
+        messageData.put("senderName", sender.getFullName());
         messageData.put("message", request.getMessage());
         messageData.put("timestamp", System.currentTimeMillis());
         messageData.put("isRead", false);
@@ -243,7 +243,7 @@ public class ChatService {
         }
         
         try {
-            User user = userRepository.findById(Integer.parseInt(userId)).orElse(null);
+            User user = userRepository.findById(Long.parseLong(userId)).orElse(null);
             if (user != null) {
                 userCache.put(userId, user);
             }
@@ -348,10 +348,10 @@ public class ChatService {
     }
 
     public String getOrCreateChatRoom(String customerId) {
-        User customer = userRepository.findById(Integer.parseInt(customerId))
+        User customer = userRepository.findById(Long.parseLong(customerId))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         
-        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId;
+        String roomId = "chatRoom_" + customer.getFullName() + "_" + customerId;
 
         log.info("Getting or creating chat room for customer: " + customerId + ", roomId: " + roomId);
 
@@ -428,7 +428,7 @@ public class ChatService {
                                 
                                 // ✅ Only parse numeric participant IDs
                                 try {
-                                    Integer userId = Integer.parseInt(participantId);
+                                    Long userId = Long.parseLong(participantId);
                                     userRepository.findById(userId)
                                             .ifPresent(user -> {
                                                 if (user.getFcmToken() != null) {

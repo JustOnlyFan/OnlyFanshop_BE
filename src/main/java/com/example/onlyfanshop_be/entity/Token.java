@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "Tokens")
+@Table(name = "tokens")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,7 +31,10 @@ public class Token {
     @Column(nullable = true)
     private Instant expiresAt;  // thời điểm hết hạn (nullable để migrate an toàn)
 
+    @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    private Long userId;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "userID")
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
 }

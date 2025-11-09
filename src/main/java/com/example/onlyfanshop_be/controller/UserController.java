@@ -38,14 +38,14 @@ public class UserController {
     @GetMapping("/getUser")
     public ApiResponse<UserDTO> getUser(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userid = jwtTokenProvider.getUserIdFromJWT(token);
+        int userid = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         return userService.getUserByID(userid);
     }
 
     @PutMapping("/updateUser")
     public ApiResponse<UserDTO> updateUser(@RequestBody UserDTO userDTO, HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        Long userId = jwtTokenProvider.getUserIdFromJWT(token);
         userDTO.setUserID(userId);
         return userService.updateUser(userDTO);
     }
@@ -53,7 +53,7 @@ public class UserController {
     @PutMapping("/changePassword")
     public ApiResponse<Void> changePassword(@RequestBody ChangePasswordRequest request, HttpServletRequest httpRequest) {
         String token = jwtTokenProvider.extractToken(httpRequest);
-        int userid = jwtTokenProvider.getUserIdFromJWT(token);
+        int userid = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         userService.changePassword(userid, request.getOldPassword(), request.getNewPassword());
         return ApiResponse.<Void>builder().statusCode(200).message("Đổi mật khẩu thành công!").build();
     }
@@ -69,7 +69,7 @@ public class UserController {
     @Operation(summary = "Update FCM token", description = "Update FCM token for push notifications")
     public ApiResponse<Void> updateFCMToken(@RequestBody UpdateFCMTokenRequest request, HttpServletRequest httpRequest) {
         String token = jwtTokenProvider.extractToken(httpRequest);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         userService.updateFCMToken(userId, request.getFcmToken());
         return ApiResponse.<Void>builder().statusCode(200).message("FCM token updated successfully!").build();
     }
@@ -77,7 +77,7 @@ public class UserController {
     @PutMapping("/changeAddress")
     public ApiResponse<Void> changeAddress(@RequestParam String address, HttpServletRequest httpRequest) {
         String token = jwtTokenProvider.extractToken(httpRequest);
-        int userid = jwtTokenProvider.getUserIdFromJWT(token);
+        int userid = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         userService.changeAddress(userid, address);
         return ApiResponse.<Void>builder().statusCode(200).message("Cập nhật địa chỉ thành công").build();
     }
@@ -123,7 +123,7 @@ public class UserController {
                 // Extract claims
                 try {
                     String email = jwtTokenProvider.getEmailFromJWT(token);
-                    Integer userId = jwtTokenProvider.getUserIdFromJWT(token);
+                    Long userId = jwtTokenProvider.getUserIdFromJWT(token);
                     String role = jwtTokenProvider.getRoleFromJWT(token);
                     
                     status.put("email", email);

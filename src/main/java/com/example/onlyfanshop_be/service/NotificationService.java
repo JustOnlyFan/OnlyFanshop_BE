@@ -24,7 +24,7 @@ public class NotificationService {
     private UserRepository userRepository;
 
     public ApiResponse<List<NotificationDTO>> getNotifications(int userId) {
-        List<Notification> list = notificationRepository.findByUser_UserIDOrderByCreatedAtDesc(userId);
+        List<Notification> list = notificationRepository.findByUserIdOrderByCreatedAtDesc((long) userId);
         if(list.isEmpty()){
             throw new AppException(ErrorCode.NOTIFICATION_NOT_FOUND);
         }
@@ -32,10 +32,12 @@ public class NotificationService {
         for(Notification notification : list){
             NotificationDTO dto = new NotificationDTO();
             dto.setNotificationID(notification.getNotificationID());
-            dto.setUsername(notification.getUser().getUsername());
+            if (notification.getUser() != null) {
+                dto.setUsername(notification.getUser().getFullName());
+                dto.setUserID(notification.getUser().getId().intValue());
+            }
             dto.setCreatedAt(notification.getCreatedAt());
             dto.setMessage(notification.getMessage());
-            dto.setUserID(notification.getUser().getUserID());
             dto.setIsRead(notification.getIsRead());
 
             listDTO.add(dto);
@@ -44,12 +46,12 @@ public class NotificationService {
     }
     public void sendNotification(int userId, String message) {
         // 1. Lưu vào MySQL
-        Optional<User> user = userRepository.findById(userId);
+        Optional<User> user = userRepository.findById((long) userId);
         if(user.isEmpty()){
             throw new AppException(ErrorCode.USER_NOTEXISTED);
         }
         Notification noti = Notification.builder()
-                .user(user.get())
+                .userId(user.get().getId())
                 .message(message)
                 .isRead(false)
                 .createdAt(LocalDateTime.now())
@@ -59,7 +61,7 @@ public class NotificationService {
         // 2. Gửi lên Firebase Realtime Database
         DatabaseReference ref = FirebaseDatabase.getInstance()
                 .getReference("notifications")
-                .child(String.valueOf(user.get().getUserID()));
+                .child(String.valueOf(user.get().getId()));
 
         Map<String, Object> data = new HashMap<>();
         data.put("notificationID", noti.getNotificationID());

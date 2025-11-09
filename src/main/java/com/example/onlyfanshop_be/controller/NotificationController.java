@@ -56,7 +56,7 @@ public class NotificationController {
     }
     @GetMapping("/user/{userID}/unread-count")
     public ResponseEntity<Long> getUnreadCount(@PathVariable Integer userID) {
-        return ResponseEntity.ok(notificationRepository.countByUser_UserIDAndIsReadFalse(userID));
+        return ResponseEntity.ok(notificationRepository.countByUserIdAndIsReadFalse(userID != null ? userID.longValue() : null));
     }
 
 }

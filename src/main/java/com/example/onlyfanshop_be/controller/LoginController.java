@@ -68,12 +68,14 @@ public class LoginController {
 
         Map<String, Boolean> result = new HashMap<>();
 
+        // Check if username (fullName) exists
         if (username != null && !username.isEmpty()) {
-            result.put("usernameExists", userRepository.existsByUsername(username));
+            result.put("usernameAvailable", !userRepository.existsByFullName(username));
         }
 
+        // Check if email exists
         if (email != null && !email.isEmpty()) {
-            result.put("emailExists", userRepository.existsByEmail(email));
+            result.put("emailAvailable", !userRepository.existsByEmail(email));
         }
 
         return ResponseEntity.ok(result);
