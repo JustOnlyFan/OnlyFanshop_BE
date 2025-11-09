@@ -1,6 +1,8 @@
 package com.example.onlyfanshop_be.enums;
 
 public enum PaymentMethod {
-    COD,
-    VNPAY
+    cod,
+    bank_transfer,
+    e_wallet,
+    online_gateway
 }

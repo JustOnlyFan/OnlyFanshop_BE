@@ -2,19 +2,22 @@ package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.entity.Role;
 import com.example.onlyfanshop_be.entity.Token;
 import com.example.onlyfanshop_be.entity.User;
-import com.example.onlyfanshop_be.enums.AuthProvider;
-import com.example.onlyfanshop_be.enums.Role;
 import com.example.onlyfanshop_be.enums.TokenType;
+import com.example.onlyfanshop_be.enums.UserStatus;
+import com.example.onlyfanshop_be.repository.RoleRepository;
 import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GoogleAuthService {
@@ -23,6 +26,8 @@ public class GoogleAuthService {
     private UserRepository userRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private RoleRepository roleRepository;
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
@@ -34,24 +39,30 @@ public class GoogleAuthService {
         System.out.println("GoogleAuthService: Existing user found: " + existingUser.isPresent());
 
         if (existingUser.isPresent()) {
-            // User đã tồn tại, cập nhật thông tin nếu cần
+            // User đã tồn tại
             User user = existingUser.get();
-            if (user.getAuthProvider() != AuthProvider.GOOGLE) {
-                // Nếu user đã tồn tại với provider khác, trả về lỗi thân thiện
-                System.out.println("GoogleAuthService: Email conflict - existing provider: " + user.getAuthProvider());
-                ApiResponse<UserDTO> response = new ApiResponse<>();
-                response.setStatusCode(400);
-                response.setMessage("Email đã tồn tại với phương thức đăng nhập khác. Vui lòng sử dụng phương thức đăng nhập ban đầu.");
-                return response;
-            }
+            
+            // Update last login time
+            user.setLastLoginAt(LocalDateTime.now());
+            userRepository.save(user);
+            
             // Revoke các token cũ
-            tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID())
-                    .forEach(t -> { t.setExpired(true); t.setRevoked(true); });
+            List<Token> validTokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(user.getId());
+            validTokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
+            tokenRepository.saveAll(validTokens);
+            
+            // Load role entity
+            Role roleEntity = null;
+            if (user.getRoleId() != null) {
+                roleEntity = roleRepository.findById(user.getRoleId()).orElse(null);
+            }
+            
             // Tạo Access/Refresh token mới
-            String access = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
-            String refresh = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getUserID(), user.getRole());
+            String access = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullName());
+            String refresh = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getId(), roleEntity);
+            
             tokenRepository.save(Token.builder()
-                    .user(user)
+                    .userId(user.getId())
                     .token(access)
                     .expired(false)
                     .revoked(false)
@@ -59,7 +70,7 @@ public class GoogleAuthService {
                     .expiresAt(Instant.now().plusSeconds(60L*30L))
                     .build());
             tokenRepository.save(Token.builder()
-                    .user(user)
+                    .userId(user.getId())
                     .token(refresh)
                     .expired(false)
                     .revoked(false)
@@ -67,40 +78,59 @@ public class GoogleAuthService {
                     .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
                     .build());
 
+            // Build UserDTO
+            UserDTO userDTO = UserDTO.builder()
+                    .userID(user.getId())
+                    .username(user.getFullName())
+                    .fullName(user.getFullName())
+                    .email(user.getEmail())
+                    .phoneNumber(user.getPhone())
+                    .phone(user.getPhone())
+                    .status(user.getStatus())
+                    .token(access)
+                    .refreshToken(refresh)
+                    .build();
+            
+            if (roleEntity != null) {
+                userDTO.setRole(roleEntity);
+                userDTO.setRoleName(roleEntity.getName());
+            }
+
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
             response.setMessage("Đăng nhập Google thành công");
-            UserDTO userDTO = new UserDTO();
-            userDTO.setUserID(user.getUserID());
-            userDTO.setUsername(user.getUsername());
-            userDTO.setEmail(user.getEmail());
-            userDTO.setPhoneNumber(user.getPhoneNumber());
-            userDTO.setAddress(user.getAddress());
-            userDTO.setRole(user.getRole());
-            userDTO.setAuthProvider(user.getAuthProvider());
-            userDTO.setToken(access);
-            userDTO.setRefreshToken(refresh);
             response.setData(userDTO);
             return response;
         } else {
             // Tạo user mới
             System.out.println("GoogleAuthService: Creating new user");
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setUsername(username);
-            newUser.setRole(Role.CUSTOMER);
-            newUser.setAuthProvider(AuthProvider.GOOGLE);
-            // Không cần password cho Google login
+            
+            // Get customer role (default role_id = 1)
+            Role customerRole = roleRepository.findByName("customer")
+                    .orElse(roleRepository.findById((byte) 1)
+                            .orElseThrow(() -> new RuntimeException("Customer role not found")));
+
+            User newUser = User.builder()
+                    .email(email)
+                    .fullName(username != null ? username : email)
+                    .roleId(customerRole.getId())
+                    .status(UserStatus.active)
+                    .createdAt(LocalDateTime.now())
+                    .lastLoginAt(LocalDateTime.now())
+                    // No password for Google login
+                    .passwordHash("") // Empty password for Google OAuth users
+                    .build();
 
             System.out.println("GoogleAuthService: Saving new user to database");
             User savedUser = userRepository.save(newUser);
-            System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getUserID());
+            System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getId());
 
             // Tạo Access/Refresh token cho user mới
-            String access = jwtTokenProvider.generateAccessToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole(), savedUser.getUsername());
-            String refresh = jwtTokenProvider.generateRefreshToken(savedUser.getEmail(), savedUser.getUserID(), savedUser.getRole());
+            String access = jwtTokenProvider.generateAccessToken(savedUser.getEmail(), savedUser.getId(), customerRole, savedUser.getFullName());
+            String refresh = jwtTokenProvider.generateRefreshToken(savedUser.getEmail(), savedUser.getId(), customerRole);
+            
             tokenRepository.save(Token.builder()
-                    .user(savedUser)
+                    .userId(savedUser.getId())
                     .token(access)
                     .expired(false)
                     .revoked(false)
@@ -108,7 +138,7 @@ public class GoogleAuthService {
                     .expiresAt(Instant.now().plusSeconds(60L*30L))
                     .build());
             tokenRepository.save(Token.builder()
-                    .user(savedUser)
+                    .userId(savedUser.getId())
                     .token(refresh)
                     .expired(false)
                     .revoked(false)
@@ -116,19 +146,25 @@ public class GoogleAuthService {
                     .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
                     .build());
 
+            // Build UserDTO
+            UserDTO userDTO = UserDTO.builder()
+                    .userID(savedUser.getId())
+                    .username(savedUser.getFullName())
+                    .fullName(savedUser.getFullName())
+                    .email(savedUser.getEmail())
+                    .phoneNumber(savedUser.getPhone())
+                    .phone(savedUser.getPhone())
+                    .status(savedUser.getStatus())
+                    .token(access)
+                    .refreshToken(refresh)
+                    .build();
+            
+            userDTO.setRole(customerRole);
+            userDTO.setRoleName(customerRole.getName());
+
             ApiResponse<UserDTO> response = new ApiResponse<>();
             response.setStatusCode(200);
             response.setMessage("Đăng ký và đăng nhập Google thành công");
-            UserDTO userDTO = new UserDTO();
-            userDTO.setUserID(newUser.getUserID());
-            userDTO.setUsername(newUser.getUsername());
-            userDTO.setEmail(newUser.getEmail());
-            userDTO.setPhoneNumber(newUser.getPhoneNumber());
-            userDTO.setAddress(newUser.getAddress());
-            userDTO.setRole(newUser.getRole());
-            userDTO.setAuthProvider(newUser.getAuthProvider());
-            userDTO.setToken(access);
-            userDTO.setRefreshToken(refresh);
             response.setData(userDTO);
             return response;
         }

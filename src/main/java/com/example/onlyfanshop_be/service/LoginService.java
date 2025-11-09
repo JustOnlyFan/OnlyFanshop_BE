@@ -4,14 +4,17 @@ import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.entity.Role;
 import com.example.onlyfanshop_be.entity.Token;
 import com.example.onlyfanshop_be.entity.User;
-import com.example.onlyfanshop_be.enums.AuthProvider;
-import com.example.onlyfanshop_be.enums.Role;
+import com.example.onlyfanshop_be.entity.UserAddress;
 import com.example.onlyfanshop_be.enums.TokenType;
+import com.example.onlyfanshop_be.enums.UserStatus;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
+import com.example.onlyfanshop_be.repository.RoleRepository;
 import com.example.onlyfanshop_be.repository.TokenRepository;
+import com.example.onlyfanshop_be.repository.UserAddressRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import lombok.Getter;
@@ -33,6 +36,10 @@ import java.nio.charset.StandardCharsets;
 public class LoginService implements ILoginService{
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
+    private UserAddressRepository userAddressRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JavaMailSender mailSender;
 
@@ -47,27 +54,46 @@ public class LoginService implements ILoginService{
     private JwtTokenProvider jwtTokenProvider;
     @Override
     public ApiResponse<UserDTO> login(LoginRequest loginRequest) {
-        Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
+        // Validate request
+        if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
+            throw new AppException(ErrorCode.USER_NOTEXISTED);
+        }
+        if (loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
+            throw new AppException(ErrorCode.WRONGPASS);
+        }
+        
+        // Try to find user by username (which is stored in fullName field)
+        Optional<User> userOpt = userRepository.findByFullName(loginRequest.getUsername().trim());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
 
             if (passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
 
+                // Update last login time
+                user.setLastLoginAt(LocalDateTime.now());
+                userRepository.save(user);
+
                 // 🔹 Revoke các token cũ của user (nếu có)
-                List<Token> validUserTokens = tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID());
+                List<Token> validUserTokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(user.getId());
                 validUserTokens.forEach(t -> {
                     t.setExpired(true);
                     t.setRevoked(true);
                 });
                 tokenRepository.saveAll(validUserTokens);
 
+                // Load role entity
+                Role roleEntity = null;
+                if (user.getRoleId() != null) {
+                    roleEntity = roleRepository.findById(user.getRoleId()).orElse(null);
+                }
+
                 // 🔹 Sinh Access/Refresh token mới
-                String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
-                String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getUserID(), user.getRole());
+                String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullName());
+                String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getId(), roleEntity);
 
                 // 🔹 Lưu token vào DB
                 Token tokenEntity = Token.builder()
-                        .user(user)
+                        .userId(user.getId())
                         .token(accessToken)
                         .expired(false)
                         .revoked(false)
@@ -77,7 +103,7 @@ public class LoginService implements ILoginService{
                 tokenRepository.save(tokenEntity);
 
                 Token refreshEntity = Token.builder()
-                        .user(user)
+                        .userId(user.getId())
                         .token(refreshToken)
                         .expired(false)
                         .revoked(false)
@@ -86,18 +112,28 @@ public class LoginService implements ILoginService{
                         .build();
                 tokenRepository.save(refreshEntity);
 
-                // 🔹 Trả về UserDTO kèm token
-                 return ApiResponse.<UserDTO>builder().data(UserDTO.builder()
-                        .userID(user.getUserID())
-                        .username(user.getUsername())
+                // Build UserDTO - Do not set Role object to avoid Hibernate proxy serialization issues
+                String roleName = "customer"; // Default role
+                if (roleEntity != null) {
+                    roleName = roleEntity.getName();
+                }
+                
+                UserDTO userDTO = UserDTO.builder()
+                        .userID(user.getId())
+                        .username(user.getFullName())
+                        .fullName(user.getFullName())
                         .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .address(user.getAddress())
-                        .role(user.getRole())
-                        .authProvider(user.getAuthProvider())
+                        .phoneNumber(user.getPhone())
+                        .phone(user.getPhone())
+                        .status(user.getStatus())
+                        .role(null) // Explicitly set to null to avoid Hibernate proxy issues
+                        .roleName(roleName)
                         .token(accessToken)
                         .refreshToken(refreshToken)
-                        .build()).message("Đăng nhập thành công").statusCode(200).build();
+                        .build();
+
+                // 🔹 Trả về UserDTO kèm token
+                return ApiResponse.<UserDTO>builder().data(userDTO).message("Đăng nhập thành công").statusCode(200).build();
             } else throw new AppException(ErrorCode.WRONGPASS);
 
         } else throw new AppException(ErrorCode.USER_NOTEXISTED);
@@ -121,16 +157,24 @@ public class LoginService implements ILoginService{
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        User user = dbToken.getUser();
+        // Get user from token
+        User user = userRepository.findById(dbToken.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
 
         // Revoke all existing access tokens
-        List<Token> accessTokens = tokenRepository.findAllByUser_UserIDAndTypeAndExpiredFalseAndRevokedFalse(user.getUserID(), TokenType.ACCESS);
+        List<Token> accessTokens = tokenRepository.findAllByUserIdAndTypeAndExpiredFalseAndRevokedFalse(user.getId(), TokenType.ACCESS);
         accessTokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
         tokenRepository.saveAll(accessTokens);
 
-        String newAccess = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getUserID(), user.getRole(), user.getUsername());
+        // Load role entity
+        Role roleEntity = null;
+        if (user.getRoleId() != null) {
+            roleEntity = roleRepository.findById(user.getRoleId()).orElse(null);
+        }
+
+        String newAccess = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullName());
         Token accessEntity = Token.builder()
-                .user(user)
+                .userId(user.getId())
                 .token(newAccess)
                 .expired(false)
                 .revoked(false)
@@ -139,20 +183,30 @@ public class LoginService implements ILoginService{
                 .build();
         tokenRepository.save(accessEntity);
 
+        // Build UserDTO - Do not set Role object to avoid Hibernate proxy serialization issues
+        String roleName = "customer"; // Default role
+        if (roleEntity != null) {
+            roleName = roleEntity.getName();
+        }
+        
+        UserDTO userDTO = UserDTO.builder()
+                .userID(user.getId())
+                .username(user.getFullName())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhone())
+                .phone(user.getPhone())
+                .status(user.getStatus())
+                .role(null) // Explicitly set to null to avoid Hibernate proxy issues
+                .roleName(roleName)
+                .token(newAccess)
+                .refreshToken(refreshToken)
+                .build();
+
         return ApiResponse.<UserDTO>builder()
                 .statusCode(200)
                 .message("Refresh thành công")
-                .data(UserDTO.builder()
-                        .userID(user.getUserID())
-                        .username(user.getUsername())
-                        .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .address(user.getAddress())
-                        .role(user.getRole())
-                        .authProvider(user.getAuthProvider())
-                        .token(newAccess)
-                        .refreshToken(refreshToken)
-                        .build())
+                .data(userDTO)
                 .build();
     }
 
@@ -175,35 +229,68 @@ public class LoginService implements ILoginService{
     private final Map<String, OTPDetails> otpStorage = new HashMap<>();
     @Override
     public ApiResponse<UserDTO> register(RegisterRequest registerRequest) {
-        // Kiểm tra username đã tồn tại chưa
-        if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED);
-        }
+        // Kiểm tra email đã tồn tại chưa
         if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
             throw new AppException(ErrorCode.EMAIL_USED);
         }
+        
+        // Kiểm tra username (fullName) đã tồn tại chưa
+        if (registerRequest.getUsername() != null && !registerRequest.getUsername().isEmpty()) {
+            if (userRepository.existsByFullName(registerRequest.getUsername())) {
+                throw new AppException(ErrorCode.USERNAME_USED);
+            }
+        }
 
-        User user = new User();
-        user.setUsername(registerRequest.getUsername());
-        user.setEmail(registerRequest.getEmail());
-        user.setPhoneNumber(registerRequest.getPhoneNumber());
-        user.setAddress(registerRequest.getAddress());
-        user.setRole(Role.CUSTOMER);
-        user.setAuthProvider(AuthProvider.LOCAL);
+        // Get customer role (default role_id = 1)
+        Role customerRole = roleRepository.findByName("customer")
+                .orElse(roleRepository.findById((byte) 1)
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED)));
 
-        String hashedPassword = passwordEncoder.encode(registerRequest.getPassword());
-        user.setPasswordHash(hashedPassword);
+        // Create user
+        User user = User.builder()
+                .fullName(registerRequest.getUsername() != null ? registerRequest.getUsername() : registerRequest.getEmail())
+                .email(registerRequest.getEmail())
+                .phone(registerRequest.getPhoneNumber())
+                .roleId(customerRole.getId())
+                .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
+                .status(UserStatus.active)
+                .createdAt(LocalDateTime.now())
+                .build();
 
-        userRepository.save(user);
-        return ApiResponse.<UserDTO>builder().statusCode(200).message("Đăng ký thành công, hãy đăng nhập").data(UserDTO.builder()
-                .userID(user.getUserID())
-                .username(user.getUsername())
+        user = userRepository.save(user);
+
+        // Create default address if provided
+        if (registerRequest.getAddress() != null && !registerRequest.getAddress().isBlank()) {
+            UserAddress address = UserAddress.builder()
+                    .userId(user.getId())
+                    .fullName(user.getFullName())
+                    .phone(user.getPhone() != null ? user.getPhone() : "")
+                    .addressLine1(registerRequest.getAddress())
+                    .isDefault(true)
+                    .country("Vietnam")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            userAddressRepository.save(address);
+        }
+
+        // Build UserDTO - Do not set Role object to avoid Hibernate proxy serialization issues
+        UserDTO userDTO = UserDTO.builder()
+                .userID(user.getId())
+                .username(user.getFullName())
+                .fullName(user.getFullName())
                 .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber())
-                .address(user.getAddress())
-                .role(user.getRole())
-                .authProvider(user.getAuthProvider())
-                .build()).build();
+                .phoneNumber(user.getPhone())
+                .phone(user.getPhone())
+                .status(user.getStatus())
+                .role(null) // Explicitly set to null to avoid Hibernate proxy issues
+                .roleName(customerRole != null ? customerRole.getName() : "customer")
+                .build();
+
+        return ApiResponse.<UserDTO>builder()
+                .statusCode(200)
+                .message("Đăng ký thành công, hãy đăng nhập")
+                .data(userDTO)
+                .build();
     }
 
     @Override
@@ -289,7 +376,7 @@ public class LoginService implements ILoginService{
         userRepository.save(user);
 
         // Revoke all tokens of this user
-        List<Token> tokens = tokenRepository.findAllByUser_UserIDAndExpiredFalseAndRevokedFalse(user.getUserID());
+        List<Token> tokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(user.getId());
         tokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
         tokenRepository.saveAll(tokens);
         return ApiResponse.<Void>builder().statusCode(200).message("Đổi mật khẩu thành công, hãy đăng nhập").build();

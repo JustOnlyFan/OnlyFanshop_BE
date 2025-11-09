@@ -7,9 +7,20 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
-    List<OrderItem> findByOrder_OrderID(Integer orderID);
+public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
+    List<OrderItem> findByOrderId(Long orderId);
     
-    @Query("SELECT oi FROM OrderItem oi WHERE oi.order.orderID = :orderID ORDER BY oi.orderItemID ASC")
-    List<OrderItem> findOrderItemsByOrderID(@Param("orderID") Integer orderID);
+    @Query("SELECT oi FROM OrderItem oi WHERE oi.orderId = :orderId ORDER BY oi.id ASC")
+    List<OrderItem> findOrderItemsByOrderId(@Param("orderId") Long orderId);
+    
+    // Legacy methods for backward compatibility
+    @Deprecated
+    default List<OrderItem> findByOrder_OrderID(Integer orderID) {
+        return findByOrderId(orderID != null ? orderID.longValue() : null);
+    }
+    
+    @Deprecated
+    default List<OrderItem> findOrderItemsByOrderID(Integer orderID) {
+        return findOrderItemsByOrderId(orderID != null ? orderID.longValue() : null);
+    }
 }

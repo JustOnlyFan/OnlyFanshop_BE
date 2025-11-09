@@ -28,7 +28,7 @@ public class OrderController {
             @RequestParam(required = false) String status) {
 
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getAllOrders(userId, status, role);
     }
@@ -53,7 +53,7 @@ public class OrderController {
             @RequestParam int orderId
     ) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.cancelOrder(orderId, userId, role);
     }
@@ -61,7 +61,7 @@ public class OrderController {
     @GetMapping("/getOrdersPending")
     public ApiResponse<List<OrderDTO>> getOrdersPending(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersPending(userId, role);
     }
@@ -69,7 +69,7 @@ public class OrderController {
     @GetMapping("/getOrdersPicking")
     public ApiResponse<List<OrderDTO>> getOrdersPicking(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersPicking(userId, role);
     }
@@ -77,7 +77,7 @@ public class OrderController {
     @GetMapping("/getOrdersShipping")
     public ApiResponse<List<OrderDTO>> getOrdersShipping(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersShipping(userId, role);
     }
@@ -85,7 +85,7 @@ public class OrderController {
     @GetMapping("/getOrdersCompleted")
     public ApiResponse<List<OrderDTO>> getOrdersCompleted(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersCompleted(userId, role);
     }
@@ -93,7 +93,7 @@ public class OrderController {
     @GetMapping("/getOrdersCancelled")
     public ApiResponse<List<OrderDTO>> getOrdersCancelled(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         String role = jwtTokenProvider.getRoleFromJWT(token);
         return orderService.getOrdersCancelled(userId, role);
     }
@@ -116,7 +116,7 @@ public class OrderController {
     @GetMapping("/badgeCount")
     public ApiResponse<Map<String, Long>> getOrderBadgeCount(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);
-        Integer userId = jwtTokenProvider.getUserIdFromJWT(token);
+        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
         Map<String, Long> badgeCount = orderService.countOrderBadgesByUser(userId);
 
         return ApiResponse.<Map<String, Long>>builder()

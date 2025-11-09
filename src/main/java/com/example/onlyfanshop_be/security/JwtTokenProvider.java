@@ -1,6 +1,6 @@
 package com.example.onlyfanshop_be.security;
 
-import com.example.onlyfanshop_be.enums.Role;
+import com.example.onlyfanshop_be.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -24,28 +24,30 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
     }
 
-    public String generateAccessToken(String email, int userId, Role role, String username) {
+    public String generateAccessToken(String email, Long userId, Role role, String username) {
         Instant now = Instant.now();
+        String roleName = role != null ? role.getName() : "customer";
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(Date.from(now))
                 .addClaims(Map.of(
                         "userId", userId,
-                        "role", role,
-                        "username", username
+                        "role", roleName,
+                        "username", username != null ? username : ""
                 ))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String generateRefreshToken(String email, int userId, Role role) {
+    public String generateRefreshToken(String email, Long userId, Role role) {
         Instant now = Instant.now();
+        String roleName = role != null ? role.getName() : "customer";
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(Date.from(now))
                 .addClaims(Map.of(
                         "userId", userId,
-                        "role", role
+                        "role", roleName
                 ))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
@@ -71,8 +73,20 @@ public class JwtTokenProvider {
         return getAllClaimsFromToken(token).getSubject();
     }
 
-    public Integer getUserIdFromJWT(String token) {
-        return getAllClaimsFromToken(token).get("userId", Integer.class);
+    public Long getUserIdFromJWT(String token) {
+        Object userId = getAllClaimsFromToken(token).get("userId");
+        if (userId instanceof Integer) {
+            return ((Integer) userId).longValue();
+        } else if (userId instanceof Long) {
+            return (Long) userId;
+        }
+        return Long.parseLong(userId.toString());
+    }
+    
+    // Legacy method for backward compatibility
+    @Deprecated
+    public Integer getUserIdFromJWTAsInteger(String token) {
+        return getUserIdFromJWT(token).intValue();
     }
 
     public String getRoleFromJWT(String token) {

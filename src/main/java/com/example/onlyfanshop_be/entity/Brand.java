@@ -12,7 +12,7 @@ import lombok.Setter;
 import java.util.List;
 
 @Entity
-@Table(name = "Brands")
+@Table(name = "brands")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,20 +21,43 @@ import java.util.List;
 public class Brand {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "INT UNSIGNED")
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private Integer brandID;
+    private Integer id;
 
-    @Column(nullable = false, length = 100)
-    private String brandName;
+    @Column(name = "name", nullable = false, unique = true, length = 100)
+    private String name;
 
-    private String country;
+    @Column(name = "slug", nullable = false, unique = true, length = 150)
+    private String slug;
 
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    private String imageURL;
+    @Column(name = "logo_url", length = 255)
+    private String logoUrl;
 
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
-    private boolean isActive = true;
+    // Legacy fields for backward compatibility
+    @Transient
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public Integer getBrandID() {
+        return id;
+    }
+
+    @Transient
+    public String getBrandName() {
+        return name;
+    }
+
+    @Transient
+    public String getImageURL() {
+        return logoUrl;
+    }
+
+    @Transient
+    public boolean isActive() {
+        return true; // Always active in new schema
+    }
 
     @OneToMany(mappedBy = "brand")
     @JsonIgnore

@@ -27,13 +27,24 @@ public class ProductController {
             @RequestParam(required = false) Integer brandId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "ProductID") String sortBy,
+            @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
-
-        ApiResponse<HomepageResponse> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        try {
+            System.out.println("Homepage request - sortBy: " + sortBy + ", order: " + order);
+            ApiResponse<HomepageResponse> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(response);
+        } catch (Exception e) {
+            System.err.println("Error in getHomepage: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<HomepageResponse>builder()
+                            .statusCode(400)
+                            .message("Lỗi khi lấy trang chủ: " + e.getMessage())
+                            .build());
+        }
     }
 
     @GetMapping("/public/detail/{productId}")
@@ -57,14 +68,85 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public Product createProduct(@RequestBody ProductDetailRequest product) {
-        return iProductService.createProduct(product);
+    public ResponseEntity<?> createProduct(@RequestBody ProductDetailRequest product) {
+        try {
+            // Debug: Check current authentication
+            org.springframework.security.core.Authentication auth = 
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                System.out.println("ProductController.createProduct: Authenticated user: " + auth.getName());
+                System.out.println("ProductController.createProduct: Authorities: " + auth.getAuthorities());
+            } else {
+                System.out.println("ProductController.createProduct: No authentication found!");
+            }
+            
+            System.out.println("Creating product with data: " + product);
+            System.out.println("Product name: " + product.getProductName());
+            System.out.println("Brand ID: " + product.getBrandID());
+            System.out.println("Category ID: " + product.getCategoryID());
+            
+            // Validate required fields
+            if (product.getProductName() == null || product.getProductName().trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.builder()
+                                .statusCode(400)
+                                .message("Tên sản phẩm không được để trống")
+                                .build());
+            }
+            
+            if (product.getBrandID() == null || product.getBrandID() == 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.builder()
+                                .statusCode(400)
+                                .message("Vui lòng chọn thương hiệu")
+                                .build());
+            }
+            
+            Product createdProduct = iProductService.createProduct(product);
+            System.out.println("Product created successfully with ID: " + createdProduct.getId());
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
+        } catch (RuntimeException e) {
+            System.err.println("Error creating product: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            System.err.println("Unexpected error creating product: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.builder()
+                            .statusCode(500)
+                            .message("Lỗi không xác định: " + e.getMessage())
+                            .build());
+        }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public ProductDetailDTO updateProduct(@PathVariable Integer id, @RequestBody ProductDetailRequest product) {
-        return iProductService.updateProduct(id, product);
+    public ResponseEntity<?> updateProduct(@PathVariable Integer id, @RequestBody ProductDetailRequest product) {
+        try {
+            ProductDetailDTO updatedProduct = iProductService.updateProduct(id, product);
+            return ResponseEntity.ok(updatedProduct);
+        } catch (RuntimeException e) {
+            System.err.println("Error updating product: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            System.err.println("Unexpected error updating product: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.builder()
+                            .statusCode(500)
+                            .message("Lỗi không xác định: " + e.getMessage())
+                            .build());
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -87,13 +169,24 @@ public class ProductController {
             @RequestParam(required = false) Integer brandId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "ProductID") String sortBy,
+            @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
-
-        ApiResponse<HomepageResponse> response = iProductService.productList(keyword, categoryId, brandId, page, size, sortBy, order);
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        try {
+            System.out.println("ProductList request - sortBy: " + sortBy + ", order: " + order);
+            ApiResponse<HomepageResponse> response = iProductService.productList(keyword, categoryId, brandId, page, size, sortBy, order);
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(response);
+        } catch (Exception e) {
+            System.err.println("Error in productList: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<HomepageResponse>builder()
+                            .statusCode(400)
+                            .message("Lỗi khi lấy danh sách sản phẩm: " + e.getMessage())
+                            .build());
+        }
     }
     @PutMapping("/active/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")

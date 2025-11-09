@@ -22,8 +22,11 @@ public class Notification {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne
-    @JoinColumn(name = "userID")
+    @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    private Long userId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 }

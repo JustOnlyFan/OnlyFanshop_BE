@@ -19,53 +19,95 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Intege
      * Lấy tin nhắn theo conversation với phân trang
      */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
-           "(cm.sender.userID = :userId1 AND cm.receiver.userID = :userId2) OR " +
-           "(cm.sender.userID = :userId2 AND cm.receiver.userID = :userId1) " +
+           "(cm.sender.id = :userId1 AND cm.receiver.id = :userId2) OR " +
+           "(cm.sender.id = :userId2 AND cm.receiver.id = :userId1) " +
            "ORDER BY cm.sentAt DESC")
-    Page<ChatMessage> findMessagesBetweenUsers(@Param("userId1") Integer userId1, 
-                                             @Param("userId2") Integer userId2, 
+    Page<ChatMessage> findMessagesBetweenUsers(@Param("userId1") Long userId1, 
+                                             @Param("userId2") Long userId2, 
                                              Pageable pageable);
 
     /**
      * Lấy tin nhắn chưa đọc của user
      */
-    @Query("SELECT cm FROM ChatMessage cm WHERE cm.receiver.userID = :userId ORDER BY cm.sentAt DESC")
-    List<ChatMessage> findUnreadMessagesByUserId(@Param("userId") Integer userId);
+    @Query("SELECT cm FROM ChatMessage cm WHERE cm.receiver.id = :userId ORDER BY cm.sentAt DESC")
+    List<ChatMessage> findUnreadMessagesByUserId(@Param("userId") Long userId);
 
     /**
      * Đếm số tin nhắn chưa đọc
      */
-    @Query("SELECT COUNT(cm) FROM ChatMessage cm WHERE cm.receiver.userID = :userId")
-    Long countUnreadMessagesByUserId(@Param("userId") Integer userId);
+    @Query("SELECT COUNT(cm) FROM ChatMessage cm WHERE cm.receiver.id = :userId")
+    Long countUnreadMessagesByUserId(@Param("userId") Long userId);
 
     /**
      * Lấy tin nhắn mới nhất giữa hai user
      */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
-           "(cm.sender.userID = :userId1 AND cm.receiver.userID = :userId2) OR " +
-           "(cm.sender.userID = :userId2 AND cm.receiver.userID = :userId1) " +
+           "(cm.sender.id = :userId1 AND cm.receiver.id = :userId2) OR " +
+           "(cm.sender.id = :userId2 AND cm.receiver.id = :userId1) " +
            "ORDER BY cm.sentAt DESC")
-    Optional<ChatMessage> findLatestMessageBetweenUsers(@Param("userId1") Integer userId1, 
-                                                       @Param("userId2") Integer userId2);
+    Optional<ChatMessage> findLatestMessageBetweenUsers(@Param("userId1") Long userId1, 
+                                                       @Param("userId2") Long userId2);
 
     /**
      * Lấy tin nhắn trong khoảng thời gian (cho real-time sync)
      */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
-           "((cm.sender.userID = :userId1 AND cm.receiver.userID = :userId2) OR " +
-           "(cm.sender.userID = :userId2 AND cm.receiver.userID = :userId1)) " +
+           "((cm.sender.id = :userId1 AND cm.receiver.id = :userId2) OR " +
+           "(cm.sender.id = :userId2 AND cm.receiver.id = :userId1)) " +
            "AND cm.sentAt > :since ORDER BY cm.sentAt ASC")
-    List<ChatMessage> findMessagesSince(@Param("userId1") Integer userId1, 
-                                       @Param("userId2") Integer userId2, 
+    List<ChatMessage> findMessagesSince(@Param("userId1") Long userId1, 
+                                       @Param("userId2") Long userId2, 
                                        @Param("since") LocalDateTime since);
 
     /**
      * Lấy tất cả tin nhắn của user (cho admin)
      */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
-           "cm.sender.userID = :userId OR cm.receiver.userID = :userId " +
+           "cm.sender.id = :userId OR cm.receiver.id = :userId " +
            "ORDER BY cm.sentAt DESC")
-    Page<ChatMessage> findAllMessagesByUserId(@Param("userId") Integer userId, Pageable pageable);
+    Page<ChatMessage> findAllMessagesByUserId(@Param("userId") Long userId, Pageable pageable);
+    
+    // Legacy methods for backward compatibility
+    @Deprecated
+    default Page<ChatMessage> findMessagesBetweenUsers(Integer userId1, Integer userId2, Pageable pageable) {
+        return findMessagesBetweenUsers(
+            userId1 != null ? userId1.longValue() : null,
+            userId2 != null ? userId2.longValue() : null,
+            pageable
+        );
+    }
+    
+    @Deprecated
+    default List<ChatMessage> findUnreadMessagesByUserId(Integer userId) {
+        return findUnreadMessagesByUserId(userId != null ? userId.longValue() : null);
+    }
+    
+    @Deprecated
+    default Long countUnreadMessagesByUserId(Integer userId) {
+        return countUnreadMessagesByUserId(userId != null ? userId.longValue() : null);
+    }
+    
+    @Deprecated
+    default Optional<ChatMessage> findLatestMessageBetweenUsers(Integer userId1, Integer userId2) {
+        return findLatestMessageBetweenUsers(
+            userId1 != null ? userId1.longValue() : null,
+            userId2 != null ? userId2.longValue() : null
+        );
+    }
+    
+    @Deprecated
+    default List<ChatMessage> findMessagesSince(Integer userId1, Integer userId2, LocalDateTime since) {
+        return findMessagesSince(
+            userId1 != null ? userId1.longValue() : null,
+            userId2 != null ? userId2.longValue() : null,
+            since
+        );
+    }
+    
+    @Deprecated
+    default Page<ChatMessage> findAllMessagesByUserId(Integer userId, Pageable pageable) {
+        return findAllMessagesByUserId(userId != null ? userId.longValue() : null, pageable);
+    }
 }
 
 

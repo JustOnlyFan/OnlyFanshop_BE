@@ -9,25 +9,41 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order, Integer> {
-    @Query("SELECT o FROM Order o WHERE o.orderStatus = :status")
-    List<Order> findOrdersByOrderStatus(@Param("status") OrderStatus status, Sort sort);
+public interface OrderRepository extends JpaRepository<Order, Long> {
+    @Query("SELECT o FROM Order o WHERE o.status = :status")
+    List<Order> findOrdersByStatus(@Param("status") OrderStatus status, Sort sort);
     
-    @Query("SELECT o FROM Order o WHERE o.user.userID = :userId AND o.orderStatus = :status")
-    List<Order> findOrdersByUser_UserIDAndOrderStatus(@Param("userId") int userId, @Param("status") OrderStatus status, Sort sort);
+    @Query("SELECT o FROM Order o WHERE o.userId = :userId AND o.status = :status")
+    List<Order> findOrdersByUserIdAndStatus(@Param("userId") Long userId, @Param("status") OrderStatus status, Sort sort);
     
-    List<Order> findOrdersByUser_UserID(int userId, Sort sort);
+    List<Order> findByUserId(Long userId, Sort sort);
     
-    // Keep old methods for compatibility (converting String to OrderStatus)
-    // Note: JPQL doesn't support CAST with enum, so we use STR() function
-    @Query("SELECT o FROM Order o WHERE STR(o.orderStatus) = :status")
-    List<Order> findOrdersByOrderStatusString(@Param("status") String status, Sort sort);
+    Optional<Order> findByOrderCode(String orderCode);
     
-    @Query("SELECT o FROM Order o WHERE o.user.userID = :userId AND STR(o.orderStatus) = :status")
-    List<Order> findOrdersByUser_UserIDAndOrderStatusString(@Param("userId") int userId, @Param("status") String status, Sort sort);
-    long countByUser_UserIDAndOrderStatus(int accountId, OrderStatus status);
-
+    // Legacy methods for backward compatibility
+    @Deprecated
+    default List<Order> findOrdersByOrderStatus(OrderStatus status, Sort sort) {
+        return findOrdersByStatus(status, sort);
+    }
+    
+    @Deprecated
+    default List<Order> findOrdersByUser_UserIDAndOrderStatus(int userId, OrderStatus status, Sort sort) {
+        return findOrdersByUserIdAndStatus((long) userId, status, sort);
+    }
+    
+    @Deprecated
+    default List<Order> findOrdersByUser_UserID(int userId, Sort sort) {
+        return findByUserId((long) userId, sort);
+    }
+    
+    @Deprecated
+    default long countByUser_UserIDAndOrderStatus(int accountId, OrderStatus status) {
+        return countByUserIdAndStatus((long) accountId, status);
+    }
+    
+    long countByUserIdAndStatus(Long userId, OrderStatus status);
 }
 
