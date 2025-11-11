@@ -65,14 +65,6 @@ public class UserController {
         return ApiResponse.<Void>builder().statusCode(200).message("Đăng xuất thành công!").build();
     }
 
-    @PutMapping("/fcm-token")
-    @Operation(summary = "Update FCM token", description = "Update FCM token for push notifications")
-    public ApiResponse<Void> updateFCMToken(@RequestBody UpdateFCMTokenRequest request, HttpServletRequest httpRequest) {
-        String token = jwtTokenProvider.extractToken(httpRequest);
-        int userId = jwtTokenProvider.getUserIdFromJWT(token).intValue();
-        userService.updateFCMToken(userId, request.getFcmToken());
-        return ApiResponse.<Void>builder().statusCode(200).message("FCM token updated successfully!").build();
-    }
 
     @PutMapping("/changeAddress")
     public ApiResponse<Void> changeAddress(@RequestParam String address, HttpServletRequest httpRequest) {

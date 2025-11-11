@@ -201,7 +201,7 @@ public class OrderService implements IOrderService {
                 .orderDate(order.getOrderDate())
                 .totalPrice(order.getTotalPrice())
                 .address(shippingAddress)
-                .customerName(user.getFullName())
+                .customerName(user.getUsername())
                 .email(user.getEmail())
                 .phone(recipientPhone)
                 .cartDTO(cartDTO)

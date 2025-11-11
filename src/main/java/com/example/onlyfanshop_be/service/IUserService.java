@@ -12,7 +12,6 @@ public interface IUserService {
     ApiResponse<UserDTO> updateUser(UserDTO userDTO);
     void changePassword(int userID, String oldPassword, String newPassword);
     void changeAddress(int userID, String address);
-    void updateFCMToken(int userID, String fcmToken);
     public void logout(String token);
     public ApiResponse<Page<UserDTO>> getAllUsers(
             String keyword,

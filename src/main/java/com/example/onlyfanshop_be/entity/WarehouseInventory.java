@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+// quản lí số lượng theo từng kho
 public class WarehouseInventory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

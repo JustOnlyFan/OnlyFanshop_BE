@@ -62,6 +62,86 @@ public class Product {
     @Column(name = "blade_diameter_cm", columnDefinition = "DECIMAL(5,2)")
     private BigDecimal bladeDiameterCm;
 
+    // Thông số kỹ thuật chính
+    @Column(name = "voltage", length = 50)
+    private String voltage; // Điện áp sử dụng: "220V / 50Hz"
+
+    @Column(name = "wind_speed_levels", length = 100)
+    private String windSpeedLevels; // Tốc độ gió: "3 mức (thấp/trung bình/cao)" hoặc "Điều chỉnh vô cấp"
+
+    @Column(name = "airflow")
+    private Integer airflow; // Lưu lượng gió: m³/phút
+
+    @Column(name = "blade_material", length = 100)
+    private String bladeMaterial; // Chất liệu cánh quạt: "Nhựa ABS" / "Kim loại"
+
+    @Column(name = "body_material", length = 100)
+    private String bodyMaterial; // Chất liệu thân quạt: "Nhựa cao cấp" / "Thép sơn tĩnh điện"
+
+    @Column(name = "blade_count")
+    private Integer bladeCount; // Số lượng cánh: 3 / 5
+
+    @Column(name = "noise_level")
+    private Integer noiseLevel; // Mức độ ồn: dB
+
+    @Column(name = "motor_speed")
+    private Integer motorSpeed; // Tốc độ quay motor: vòng/phút
+
+    @Column(name = "weight", columnDefinition = "DECIMAL(5,2)")
+    private BigDecimal weight; // Trọng lượng: kg
+
+    @Column(name = "adjustable_height", length = 50)
+    private String adjustableHeight; // Chiều cao điều chỉnh: "1.1 – 1.4 m"
+
+    // Tính năng & tiện ích
+    @Column(name = "remote_control", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean remoteControl = false; // Điều khiển từ xa
+
+    @Column(name = "timer", length = 50)
+    private String timer; // Hẹn giờ tắt: "1 – 4 giờ" hoặc null
+
+    @Column(name = "natural_wind_mode", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean naturalWindMode = false; // Chế độ gió tự nhiên
+
+    @Column(name = "sleep_mode", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean sleepMode = false; // Chế độ ngủ
+
+    @Column(name = "oscillation", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean oscillation = false; // Đảo chiều gió
+
+    @Column(name = "height_adjustable", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean heightAdjustable = false; // Điều chỉnh độ cao
+
+    @Column(name = "auto_shutoff", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean autoShutoff = false; // Ngắt điện tự động khi quá tải
+
+    @Column(name = "temperature_sensor", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean temperatureSensor = false; // Cảm biến nhiệt
+
+    @Column(name = "energy_saving", columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean energySaving = false; // Tiết kiệm điện
+
+    // Thông tin khác
+    @Column(name = "safety_standards", length = 200)
+    private String safetyStandards; // Tiêu chuẩn an toàn: "TCVN / IEC / RoHS"
+
+    @Column(name = "manufacturing_year")
+    private Integer manufacturingYear; // Năm sản xuất: 2025
+
+    @Column(name = "accessories", columnDefinition = "TEXT")
+    private String accessories; // Phụ kiện đi kèm: "Điều khiển / Pin / HDSD"
+
+    @Column(name = "energy_rating", length = 50)
+    private String energyRating; // Mức tiết kiệm điện năng: "5 sao"
+
     @Column(name = "color_default", length = 50)
     private String colorDefault; // Legacy field, keep for backward compatibility
 
@@ -78,6 +158,10 @@ public class Product {
 
     @Column(name = "base_price", nullable = false, columnDefinition = "DECIMAL(15,2)")
     private BigDecimal basePrice;
+
+    @Column(name = "quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
+    @Builder.Default
+    private Integer quantity = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('active','inactive','out_of_stock') DEFAULT 'active'")
@@ -137,10 +221,6 @@ public class Product {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<ProductVariant> variants;
-
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private List<ProductImage> images;
 
     @OneToMany(mappedBy = "product")
@@ -150,14 +230,6 @@ public class Product {
     @OneToMany(mappedBy = "product")
     @JsonIgnore
     private List<OrderItem> orderItems;
-
-    @OneToMany(mappedBy = "product")
-    @JsonIgnore
-    private List<ProductReview> reviews;
-
-    @OneToMany(mappedBy = "product")
-    @JsonIgnore
-    private List<ProductQuestion> questions;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

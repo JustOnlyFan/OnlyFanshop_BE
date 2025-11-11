@@ -2,14 +2,11 @@ package com.example.onlyfanshop_be.enums;
 
 public enum StockMovementType {
     IMPORT("import"),
-    export,
-    adjustment;
+    EXPORT("export"),
+    ADJUSTMENT("adjustment"),
+    TRANSFER("transfer");  // Chuyển kho
 
     private final String dbValue;
-
-    StockMovementType() {
-        this.dbValue = this.name();
-    }
 
     StockMovementType(String dbValue) {
         this.dbValue = dbValue;

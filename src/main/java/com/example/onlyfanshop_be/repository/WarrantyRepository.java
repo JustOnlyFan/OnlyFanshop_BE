@@ -12,3 +12,8 @@ public interface WarrantyRepository extends JpaRepository<Warranty, Integer> {
     Optional<Warranty> findByName(String name);
 }
 
+
+
+
+
+

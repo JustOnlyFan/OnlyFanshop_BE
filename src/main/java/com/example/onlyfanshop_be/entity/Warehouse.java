@@ -1,6 +1,8 @@
 package com.example.onlyfanshop_be.entity;
 
+import com.example.onlyfanshop_be.enums.WarehouseType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +31,28 @@ public class Warehouse {
 
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;
+
+    @Column(name = "type", nullable = false, columnDefinition = "ENUM('main','regional','branch')")
+    @Convert(converter = com.example.onlyfanshop_be.converter.WarehouseTypeConverter.class)
+    private WarehouseType type;
+
+    @Column(name = "parent_warehouse_id", columnDefinition = "INT UNSIGNED")
+    private Integer parentWarehouseId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_warehouse_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
+    private Warehouse parentWarehouse;
+
+    @Column(name = "store_location_id", columnDefinition = "INT")
+    private Integer storeLocationId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_location_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
+    private StoreLocation storeLocation;
 
     @Column(name = "address_line1", length = 255)
     private String addressLine1;
@@ -66,6 +90,10 @@ public class Warehouse {
     @OneToMany(mappedBy = "warehouse")
     @JsonIgnore
     private List<StockMovement> stockMovements;
+
+    @OneToMany(mappedBy = "parentWarehouse")
+    @JsonIgnore
+    private List<Warehouse> childWarehouses;
 }
 
 

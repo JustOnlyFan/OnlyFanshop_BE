@@ -61,7 +61,7 @@ public class StockMovement {
     @JsonIgnore
     private Order order;
 
-    @Column(name = "type", nullable = false, columnDefinition = "ENUM('import','export','adjustment')")
+    @Column(name = "type", nullable = false, columnDefinition = "ENUM('import','export','adjustment','transfer')")
     private String type;
     
     // Convenience method to get/set as enum
@@ -74,10 +74,28 @@ public class StockMovement {
         this.type = movementType != null ? movementType.getDbValue() : null;
     }
 
+    @Column(name = "from_warehouse_id", columnDefinition = "INT UNSIGNED")
+    private Integer fromWarehouseId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "from_warehouse_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
+    private Warehouse fromWarehouse;
+
+    @Column(name = "to_warehouse_id", columnDefinition = "INT UNSIGNED")
+    private Integer toWarehouseId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "to_warehouse_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
+    private Warehouse toWarehouse;
+
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "note", length = 255)
+    @Column(name = "note", length = 500)
     private String note;
 
     @Column(name = "created_by", columnDefinition = "BIGINT UNSIGNED")
