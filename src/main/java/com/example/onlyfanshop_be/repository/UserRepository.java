@@ -15,27 +15,17 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
-    Optional<User> findByFullName(String fullName);
+    Optional<User> findByUsername(String username);
     boolean existsByEmail(String email);
-    boolean existsByFullName(String fullName);
+    boolean existsByUsername(String username);
     List<User> findByRoleId(Byte roleId);
     List<User> findByRole(Role role);
-
-    @Query("SELECT DISTINCT u FROM User u WHERE u.id IN " +
-           "(SELECT DISTINCT cm.sender.id FROM ChatMessage cm WHERE cm.receiver.id = :adminId) " +
-           "OR u.id IN " +
-           "(SELECT DISTINCT cm.receiver.id FROM ChatMessage cm WHERE cm.sender.id = :adminId)")
-    List<User> findUsersWhoChattedWithAdmin(@Param("adminId") Long adminId);
     
     @Query("SELECT u FROM User u " +
-            "WHERE (:keyword IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "WHERE (:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR u.phone LIKE CONCAT('%', :keyword, '%')) " +
             "AND (:role IS NULL OR u.roleId = :roleId)")
     Page<User> searchUsers(@Param("keyword") String keyword, @Param("roleId") Byte roleId, Pageable pageable);
-    
-    // Legacy method for backward compatibility
-    @Query("SELECT u FROM User u WHERE u.roleId = :roleId")
-    Page<User> searchUsersByRole(@Param("roleId") Byte roleId, Pageable pageable);
 }
 

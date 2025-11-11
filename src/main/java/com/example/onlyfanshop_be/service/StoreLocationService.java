@@ -4,18 +4,30 @@ import com.example.onlyfanshop_be.entity.StoreLocation;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.StoreLocationRepository;
+import com.example.onlyfanshop_be.repository.WarehouseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 @Service
 public class StoreLocationService implements IStoreLocation {
     @Autowired
     private StoreLocationRepository storeLocationRepository;
+	@Autowired
+	private WarehouseRepository warehouseRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreLocation> getAllLocations() {
-        return storeLocationRepository.findAll();
+        try {
+            return storeLocationRepository.findAll();
+        } catch (Exception e) {
+            // Log error and return empty list if database schema is not updated
+            System.err.println("Error loading store locations: " + e.getMessage());
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
     }
 
     @Override
@@ -26,6 +38,13 @@ public class StoreLocationService implements IStoreLocation {
 
     @Override
     public StoreLocation createLocation(StoreLocation storeLocation) {
+        // Fallback server-side guard to avoid null not-null violations
+        if (storeLocation.getName() == null || storeLocation.getName().isBlank()
+                || storeLocation.getLatitude() == null
+                || storeLocation.getLongitude() == null
+                || storeLocation.getAddress() == null || storeLocation.getAddress().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
         return storeLocationRepository.save(storeLocation);
     }
 
@@ -38,16 +57,43 @@ public class StoreLocationService implements IStoreLocation {
         existing.setLatitude(newLocation.getLatitude());
         existing.setLongitude(newLocation.getLongitude());
         existing.setAddress(newLocation.getAddress());
+        existing.setWard(newLocation.getWard());
+        existing.setCity(newLocation.getCity());
         existing.setPhone(newLocation.getPhone());
         existing.setOpeningHours(newLocation.getOpeningHours());
+        if (newLocation.getIsActive() != null) {
+            existing.setIsActive(newLocation.getIsActive());
+        }
+        if (existing.getName() == null || existing.getName().isBlank()
+                || existing.getLatitude() == null
+                || existing.getLongitude() == null
+                || existing.getAddress() == null || existing.getAddress().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
         return storeLocationRepository.save(existing);
     }
 
     @Override
     public void deleteLocation(int id) {
-        if (!storeLocationRepository.existsById(id)) {
-            throw new AppException(ErrorCode.LOCATION_NOT_FOUND);
-        }
-        storeLocationRepository.deleteById(id);
+		StoreLocation existing = storeLocationRepository.findById(id)
+				.orElseThrow(() -> new AppException(ErrorCode.LOCATION_NOT_FOUND));
+
+		// If there are warehouses linked to this store, avoid hard delete to prevent FK/cascade issues.
+		// Soft-disable the store and its warehouses instead.
+		var warehouses = warehouseRepository.findByStoreLocationId(id);
+		if (!warehouses.isEmpty()) {
+			existing.setIsActive(false);
+			storeLocationRepository.save(existing);
+			warehouses.forEach(w -> {
+				if (Boolean.TRUE.equals(w.getIsActive())) {
+					w.setIsActive(false);
+					warehouseRepository.save(w);
+				}
+			});
+			return;
+		}
+
+		// No linked warehouses -> safe to delete
+		storeLocationRepository.deleteById(id);
     }
 }

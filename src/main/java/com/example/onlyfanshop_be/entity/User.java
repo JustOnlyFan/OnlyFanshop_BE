@@ -33,8 +33,8 @@ public class User {
     @JsonIgnore
     private Role role;
 
-    @Column(name = "full_name", nullable = false, length = 100)
-    private String fullName;
+    @Column(name = "username", nullable = false, length = 100)
+    private String username;
 
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
@@ -59,21 +59,6 @@ public class User {
 
     @Column(name = "last_login_at", columnDefinition = "TIMESTAMP NULL")
     private LocalDateTime lastLoginAt;
-
-    // Legacy field for backward compatibility (username)
-    @Transient
-    public String getUsername() {
-        return fullName; // Use fullName as username for backward compatibility
-    }
-    
-    @Transient
-    public void setUsername(String username) {
-        this.fullName = username;
-    }
-
-    // Legacy field for backward compatibility (fcmToken)
-    @Column(name = "fcm_token", length = 500)
-    private String fcmToken;
     
     // Legacy methods for backward compatibility
     @Transient
@@ -110,9 +95,6 @@ public class User {
     
     @Transient
     public void setAddress(String address) {
-        // This is a legacy method - address should be managed through UserAddress entity
-        // For backward compatibility, we do nothing here
-        // The actual address update should be done through UserAddressService
     }
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -127,23 +109,7 @@ public class User {
     @JsonIgnore
     private List<Order> orders;
 
-    @OneToMany(mappedBy = "user")
-    @JsonIgnore
-    private List<Notification> notifications;
-
-    @OneToMany(mappedBy = "sender")
-    @JsonIgnore
-    private List<ChatMessage> chatMessages;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<Token> tokens;
-
-    @OneToMany(mappedBy = "user")
-    @JsonIgnore
-    private List<ProductReview> productReviews;
-
-    @OneToMany(mappedBy = "user")
-    @JsonIgnore
-    private List<Wishlist> wishlists;
 }

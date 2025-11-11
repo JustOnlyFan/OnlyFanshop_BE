@@ -16,7 +16,6 @@ import com.example.onlyfanshop_be.repository.NotificationRepository;
 import com.example.onlyfanshop_be.repository.OrderItemRepository;
 import com.example.onlyfanshop_be.repository.OrderRepository;
 import com.example.onlyfanshop_be.repository.PaymentRepository;
-import com.example.onlyfanshop_be.repository.SalesChannelRepository;
 import com.example.onlyfanshop_be.repository.UserAddressRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
@@ -68,8 +67,6 @@ public class PaymentController {
     private UserRepository userRepository;
     @Autowired
     private UserAddressRepository userAddressRepository;
-    @Autowired
-    private SalesChannelRepository salesChannelRepository;
     
     // Helper method to generate order code
     private String generateOrderCode(Long userId) {
@@ -91,7 +88,7 @@ public class PaymentController {
             // In production, you might want to parse the address string more carefully
             UserAddress newAddress = UserAddress.builder()
                     .userId(user.getId())
-                    .fullName(user.getFullName())
+                    .fullName(user.getUsername())
                     .phone(recipientPhone != null ? recipientPhone : (user.getPhone() != null ? user.getPhone() : ""))
                     .addressLine1(address)
                     .country("Vietnam")
@@ -104,7 +101,7 @@ public class PaymentController {
         // If no address provided, create a default one
         UserAddress newAddress = UserAddress.builder()
                 .userId(user.getId())
-                .fullName(user.getFullName())
+                .fullName(user.getUsername())
                 .phone(user.getPhone() != null ? user.getPhone() : "")
                 .addressLine1("")
                 .country("Vietnam")
@@ -186,12 +183,7 @@ public class PaymentController {
             // ✅ 4. Tạo hoặc lấy UserAddress
             UserAddress userAddress = getOrCreateUserAddress(user, address, recipientPhoneNumber);
             
-            // ✅ 5. Lấy sales channel (default: website)
-            SalesChannel salesChannel = salesChannelRepository.findByCode("website")
-                    .orElse(salesChannelRepository.findById(1)
-                            .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND)));
-
-            // ✅ 6. Lấy cart items
+            // ✅ 5. Lấy cart items
             List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
             if (cartItems.isEmpty()) {
                 throw new AppException(ErrorCode.CART_NOTFOUND);
@@ -208,7 +200,6 @@ public class PaymentController {
             Order order = Order.builder()
                     .userId(user.getId())
                     .addressId(userAddress.getId())
-                    .channelId(salesChannel.getId())
                     .orderCode(generateOrderCode(user.getId()))
                     .status(OrderStatus.pending)
                     .paymentMethod(PaymentMethod.cod)
@@ -315,11 +306,6 @@ public class PaymentController {
             // ✅ Tạo hoặc lấy UserAddress
             UserAddress userAddress = getOrCreateUserAddress(user, address, recipientPhoneNumber);
             
-            // ✅ Lấy sales channel (default: website)
-            SalesChannel salesChannel = salesChannelRepository.findByCode("website")
-                    .orElse(salesChannelRepository.findById(1)
-                            .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND)));
-
             // ✅ Tính toán subtotal và total
             BigDecimal shippingFee = BigDecimal.ZERO;
             BigDecimal discountTotal = BigDecimal.ZERO;
@@ -331,7 +317,6 @@ public class PaymentController {
             Order order = Order.builder()
                     .userId(user.getId())
                     .addressId(userAddress.getId())
-                    .channelId(salesChannel.getId())
                     .orderCode(generateOrderCode(user.getId()))
                     .status(OrderStatus.confirmed)
                     .paymentMethod(PaymentMethod.online_gateway)

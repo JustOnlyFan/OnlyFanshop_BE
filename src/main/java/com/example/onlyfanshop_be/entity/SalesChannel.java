@@ -1,6 +1,5 @@
 package com.example.onlyfanshop_be.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "sales_channels")
@@ -36,10 +34,7 @@ public class SalesChannel {
 
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
-
-    @OneToMany(mappedBy = "salesChannel")
-    @JsonIgnore
-    private List<Order> orders;
 }
+
 
 

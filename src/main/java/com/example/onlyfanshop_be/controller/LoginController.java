@@ -55,9 +55,9 @@ public class LoginController {
     @PostMapping("/verify-otp")
     public ApiResponse<Void> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         if (loginService.validateOTP(email, otp)) {
-            return ApiResponse.<Void>builder().message("Xác thực thành công").build();
+            return ApiResponse.<Void>builder().statusCode(200).message("Xác thực thành công").build();
         }
-        return ApiResponse.<Void>builder().statusCode(200).message("OTP không hợp lệ").build();
+        return ApiResponse.<Void>builder().statusCode(400).message("OTP không hợp lệ hoặc đã hết hạn").build();
     }
 
 
@@ -68,9 +68,9 @@ public class LoginController {
 
         Map<String, Boolean> result = new HashMap<>();
 
-        // Check if username (fullName) exists
+        // Check if username exists
         if (username != null && !username.isEmpty()) {
-            result.put("usernameAvailable", !userRepository.existsByFullName(username));
+            result.put("usernameAvailable", !userRepository.existsByUsername(username));
         }
 
         // Check if email exists

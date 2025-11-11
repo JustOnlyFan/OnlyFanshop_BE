@@ -15,7 +15,15 @@ public enum ErrorCode {
     LOCATION_NOT_FOUND(1010,"Không thể tìm thấy địa điểm"),
     NOTIFICATION_NOT_FOUND(1011,"Không tìm thấy thông báo"),
     BUY_METHOD_INVALID(1012,"Không thể xác định cách mua sản phẩm"),
-    UNAUTHORIZED(1013, "Không được phép");
+    UNAUTHORIZED(1013, "Không được phép"),
+	INVALID_INPUT(1014, "Dữ liệu không hợp lệ"),
+    WAREHOUSE_NOT_FOUND(1015, "Không tìm thấy kho hàng"),
+    WAREHOUSE_CODE_EXISTS(1016, "Mã kho hàng đã tồn tại"),
+    WAREHOUSE_INVENTORY_NOT_FOUND(1017, "Không tìm thấy tồn kho"),
+    INSUFFICIENT_STOCK(1018, "Không đủ hàng trong kho"),
+    INVALID_WAREHOUSE_TRANSFER(1019, "Không thể chuyển kho"),
+	INVALID_WAREHOUSE_TYPE(1020, "Loại kho hàng không hợp lệ"),
+	UNCATEGORIZED_EXCEPTION(1099, "...");
 
 
     private int code;

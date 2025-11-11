@@ -20,16 +20,25 @@ import java.time.temporal.ChronoUnit;
 public class JwtTokenProvider {
     @Value("${JWT_SECRET}")
     private String JWT_SECRET;
+    
+    @Value("${jwt.access.ttlMinutes:30}")
+    public long accessTtlMinutes;
+    
+    @Value("${jwt.refresh.ttlDays:7}")
+    public long refreshTtlDays;
+    
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
     }
 
     public String generateAccessToken(String email, Long userId, Role role, String username) {
         Instant now = Instant.now();
+        Instant expiration = now.plus(accessTtlMinutes, ChronoUnit.MINUTES);
         String roleName = role != null ? role.getName() : "customer";
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiration))
                 .addClaims(Map.of(
                         "userId", userId,
                         "role", roleName,
@@ -41,10 +50,12 @@ public class JwtTokenProvider {
 
     public String generateRefreshToken(String email, Long userId, Role role) {
         Instant now = Instant.now();
+        Instant expiration = now.plus(refreshTtlDays, ChronoUnit.DAYS);
         String roleName = role != null ? role.getName() : "customer";
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiration))
                 .addClaims(Map.of(
                         "userId", userId,
                         "role", roleName

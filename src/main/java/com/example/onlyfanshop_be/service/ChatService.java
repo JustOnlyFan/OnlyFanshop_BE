@@ -22,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 public class ChatService {
 
     private final DatabaseReference databaseReference;
-    private final FCMService fcmService;
     private final UserRepository userRepository;
 
     public String createChatRoom(CreateChatRoomRequest request, String adminId) {
@@ -30,7 +29,7 @@ public class ChatService {
         User customer = userRepository.findById(Long.parseLong(request.getCustomerId()))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         
-        String roomId = "chatRoom_" + customer.getFullName() + "_" + request.getCustomerId();
+        String roomId = "chatRoom_" + customer.getUsername() + "_" + request.getCustomerId();
 
         // Tạo conversation trong Firebase
         Map<String, Object> roomData = new HashMap<>();
@@ -62,7 +61,7 @@ public class ChatService {
         
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("senderId", senderId);
-        messageData.put("senderName", sender.getFullName());
+        messageData.put("senderName", sender.getUsername());
         messageData.put("message", request.getMessage());
         messageData.put("timestamp", System.currentTimeMillis());
         messageData.put("isRead", false);
@@ -351,7 +350,7 @@ public class ChatService {
         User customer = userRepository.findById(Long.parseLong(customerId))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         
-        String roomId = "chatRoom_" + customer.getFullName() + "_" + customerId;
+        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId;
 
         log.info("Getting or creating chat room for customer: " + customerId + ", roomId: " + roomId);
 
@@ -420,26 +419,18 @@ public class ChatService {
                             
                             // Không gửi notification cho người gửi
                             if (!participantId.equals(senderId)) {
-                                // ✅ Handle "admin" participant ID - skip FCM notification for admin
+                                // ✅ Handle "admin" participant ID - skip notification for admin
                                 if ("admin".equals(participantId)) {
-                                    log.info("Skipping FCM notification for admin participant");
+                                    log.info("Skipping notification for admin participant");
                                     continue;
                                 }
                                 
                                 // ✅ Only parse numeric participant IDs
+                                // Note: FCM notifications removed for simplicity (family e-commerce)
                                 try {
                                     Long userId = Long.parseLong(participantId);
-                                    userRepository.findById(userId)
-                                            .ifPresent(user -> {
-                                                if (user.getFcmToken() != null) {
-                                                    fcmService.sendChatNotification(
-                                                            user.getFcmToken(),
-                                                            senderName,
-                                                            message,
-                                                            roomId
-                                                    );
-                                                }
-                                            });
+                                    // Chat notifications disabled - not needed for family e-commerce
+                                    log.debug("Chat message sent to user: " + userId);
                                 } catch (NumberFormatException e) {
                                     log.warn("Skipping non-numeric participant ID: " + participantId);
                                 }

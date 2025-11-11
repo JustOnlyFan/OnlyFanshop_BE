@@ -23,6 +23,8 @@ import com.example.onlyfanshop_be.dto.ProductDTO;
 import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.entity.Category;
 import com.example.onlyfanshop_be.entity.Brand;
+import com.example.onlyfanshop_be.enums.WarehouseType;
+import com.example.onlyfanshop_be.repository.WarehouseRepository;
 import org.springframework.stereotype.Service;
 
 
@@ -44,6 +46,14 @@ public class ProductService implements  IProductService {
     private com.example.onlyfanshop_be.repository.WarrantyRepository warrantyRepository;
     @Autowired
     private com.example.onlyfanshop_be.repository.ProductImageRepository productImageRepository;
+    @Autowired
+    private WarehouseService warehouseService;
+    @Autowired
+    private WarehouseRepository warehouseRepository;
+    @Autowired
+    private WarehouseInventoryService warehouseInventoryService;
+    @Autowired
+    private StockMovementService stockMovementService;
 
     @Override
     public ApiResponse<HomepageResponse> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
@@ -233,10 +243,37 @@ public class ProductService implements  IProductService {
                 .brandId(brand != null ? brand.getId() : null)
                 .powerWatt(request.getPowerWatt())
                 .bladeDiameterCm(request.getBladeDiameterCm())
-                // fanType removed - no longer used
+                // Technical specifications
+                .voltage(request.getVoltage())
+                .windSpeedLevels(request.getWindSpeedLevels())
+                .airflow(request.getAirflow())
+                .bladeMaterial(request.getBladeMaterial())
+                .bodyMaterial(request.getBodyMaterial())
+                .bladeCount(request.getBladeCount())
+                .noiseLevel(request.getNoiseLevel())
+                .motorSpeed(request.getMotorSpeed())
+                .weight(request.getWeight())
+                .adjustableHeight(request.getAdjustableHeight())
+                // Features
+                .remoteControl(request.getRemoteControl() != null ? request.getRemoteControl() : false)
+                .timer(request.getTimer())
+                .naturalWindMode(request.getNaturalWindMode() != null ? request.getNaturalWindMode() : false)
+                .sleepMode(request.getSleepMode() != null ? request.getSleepMode() : false)
+                .oscillation(request.getOscillation() != null ? request.getOscillation() : false)
+                .heightAdjustable(request.getHeightAdjustable() != null ? request.getHeightAdjustable() : false)
+                .autoShutoff(request.getAutoShutoff() != null ? request.getAutoShutoff() : false)
+                .temperatureSensor(request.getTemperatureSensor() != null ? request.getTemperatureSensor() : false)
+                .energySaving(request.getEnergySaving() != null ? request.getEnergySaving() : false)
+                // Other information
+                .safetyStandards(request.getSafetyStandards())
+                .manufacturingYear(request.getManufacturingYear())
+                .accessories(request.getAccessories())
+                .energyRating(request.getEnergyRating())
+                // Legacy fields
                 .colorDefault(request.getColorDefault()) // Legacy field
                 .warrantyId(warranty != null ? warranty.getId() : null)
                 .warrantyMonths(request.getWarrantyMonths()) // Legacy field
+                .quantity(request.getQuantity() != null ? request.getQuantity() : 0) // Số lượng sản phẩm
                 .status(com.example.onlyfanshop_be.enums.ProductStatus.active)
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
@@ -270,6 +307,58 @@ public class ProductService implements  IProductService {
                 System.err.println("ProductService: Error saving ProductImage: " + e.getMessage());
                 e.printStackTrace();
                 throw new RuntimeException("Không thể lưu ảnh sản phẩm: " + e.getMessage(), e);
+            }
+        }
+
+        // 🔟➕ Add product to main warehouse if quantity > 0
+        if (request.getQuantity() != null && request.getQuantity() > 0) {
+            try {
+                Integer targetWarehouseId = null;
+                
+                // If warehouseId is specified, use it (must be a main warehouse)
+                if (request.getWarehouseId() != null) {
+                    var specifiedWarehouse = warehouseRepository.findById(request.getWarehouseId())
+                            .orElse(null);
+                    if (specifiedWarehouse != null && specifiedWarehouse.getType() == WarehouseType.MAIN) {
+                        targetWarehouseId = request.getWarehouseId();
+                    } else {
+                        // Invalid warehouseId, fallback to first main warehouse
+                        System.err.println("ProductService: Specified warehouseId is not a main warehouse, using first main warehouse");
+                    }
+                }
+                
+                // If no valid warehouseId specified, use first main warehouse
+                if (targetWarehouseId == null) {
+                    var mainWarehouses = warehouseService.getMainWarehouses();
+                    if (!mainWarehouses.isEmpty()) {
+                        targetWarehouseId = mainWarehouses.get(0).getId();
+                    }
+                }
+                
+                // Add product to warehouse inventory
+                if (targetWarehouseId != null) {
+                    warehouseInventoryService.addQuantity(
+                            targetWarehouseId,
+                            savedProduct.getId(),
+                            null, // No variant for base product
+                            request.getQuantity()
+                    );
+                    
+                    // Record stock movement (import)
+                    // Note: createdBy should be passed from controller, for now we use null
+                    stockMovementService.recordImport(
+                            targetWarehouseId,
+                            savedProduct.getId(),
+                            null,
+                            request.getQuantity(),
+                            "Tự động thêm sản phẩm mới vào kho tổng",
+                            null // Will be set by controller if available
+                    );
+                }
+            } catch (Exception e) {
+                // Log error but don't fail product creation
+                System.err.println("ProductService: Error adding product to warehouse: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 
@@ -311,6 +400,81 @@ public class ProductService implements  IProductService {
             product.setBladeDiameterCm(updatedProduct.getBladeDiameterCm());
         }
         
+        // Cập nhật technical specifications
+        if (updatedProduct.getVoltage() != null) {
+            product.setVoltage(updatedProduct.getVoltage());
+        }
+        if (updatedProduct.getWindSpeedLevels() != null) {
+            product.setWindSpeedLevels(updatedProduct.getWindSpeedLevels());
+        }
+        if (updatedProduct.getAirflow() != null) {
+            product.setAirflow(updatedProduct.getAirflow());
+        }
+        if (updatedProduct.getBladeMaterial() != null) {
+            product.setBladeMaterial(updatedProduct.getBladeMaterial());
+        }
+        if (updatedProduct.getBodyMaterial() != null) {
+            product.setBodyMaterial(updatedProduct.getBodyMaterial());
+        }
+        if (updatedProduct.getBladeCount() != null) {
+            product.setBladeCount(updatedProduct.getBladeCount());
+        }
+        if (updatedProduct.getNoiseLevel() != null) {
+            product.setNoiseLevel(updatedProduct.getNoiseLevel());
+        }
+        if (updatedProduct.getMotorSpeed() != null) {
+            product.setMotorSpeed(updatedProduct.getMotorSpeed());
+        }
+        if (updatedProduct.getWeight() != null) {
+            product.setWeight(updatedProduct.getWeight());
+        }
+        if (updatedProduct.getAdjustableHeight() != null) {
+            product.setAdjustableHeight(updatedProduct.getAdjustableHeight());
+        }
+        
+        // Cập nhật features
+        if (updatedProduct.getRemoteControl() != null) {
+            product.setRemoteControl(updatedProduct.getRemoteControl());
+        }
+        if (updatedProduct.getTimer() != null) {
+            product.setTimer(updatedProduct.getTimer());
+        }
+        if (updatedProduct.getNaturalWindMode() != null) {
+            product.setNaturalWindMode(updatedProduct.getNaturalWindMode());
+        }
+        if (updatedProduct.getSleepMode() != null) {
+            product.setSleepMode(updatedProduct.getSleepMode());
+        }
+        if (updatedProduct.getOscillation() != null) {
+            product.setOscillation(updatedProduct.getOscillation());
+        }
+        if (updatedProduct.getHeightAdjustable() != null) {
+            product.setHeightAdjustable(updatedProduct.getHeightAdjustable());
+        }
+        if (updatedProduct.getAutoShutoff() != null) {
+            product.setAutoShutoff(updatedProduct.getAutoShutoff());
+        }
+        if (updatedProduct.getTemperatureSensor() != null) {
+            product.setTemperatureSensor(updatedProduct.getTemperatureSensor());
+        }
+        if (updatedProduct.getEnergySaving() != null) {
+            product.setEnergySaving(updatedProduct.getEnergySaving());
+        }
+        
+        // Cập nhật other information
+        if (updatedProduct.getSafetyStandards() != null) {
+            product.setSafetyStandards(updatedProduct.getSafetyStandards());
+        }
+        if (updatedProduct.getManufacturingYear() != null) {
+            product.setManufacturingYear(updatedProduct.getManufacturingYear());
+        }
+        if (updatedProduct.getAccessories() != null) {
+            product.setAccessories(updatedProduct.getAccessories());
+        }
+        if (updatedProduct.getEnergyRating() != null) {
+            product.setEnergyRating(updatedProduct.getEnergyRating());
+        }
+        
         // fanType removed - no longer used
         
         if (updatedProduct.getColorDefault() != null) {
@@ -319,6 +483,11 @@ public class ProductService implements  IProductService {
         
         if (updatedProduct.getWarrantyMonths() != null) {
             product.setWarrantyMonths(updatedProduct.getWarrantyMonths());
+        }
+        
+        // Cập nhật quantity
+        if (updatedProduct.getQuantity() != null) {
+            product.setQuantity(updatedProduct.getQuantity());
         }
         
         // Cập nhật Image URL - Handle through ProductImage entity
@@ -824,8 +993,36 @@ public class ProductService implements  IProductService {
                 .imageURL(getProductImageURL(product, images))
                 .powerWatt(product.getPowerWatt())
                 .bladeDiameterCm(product.getBladeDiameterCm())
+                // Technical specifications
+                .voltage(product.getVoltage())
+                .windSpeedLevels(product.getWindSpeedLevels())
+                .airflow(product.getAirflow())
+                .bladeMaterial(product.getBladeMaterial())
+                .bodyMaterial(product.getBodyMaterial())
+                .bladeCount(product.getBladeCount())
+                .noiseLevel(product.getNoiseLevel())
+                .motorSpeed(product.getMotorSpeed())
+                .weight(product.getWeight())
+                .adjustableHeight(product.getAdjustableHeight())
+                // Features
+                .remoteControl(product.getRemoteControl())
+                .timer(product.getTimer())
+                .naturalWindMode(product.getNaturalWindMode())
+                .sleepMode(product.getSleepMode())
+                .oscillation(product.getOscillation())
+                .heightAdjustable(product.getHeightAdjustable())
+                .autoShutoff(product.getAutoShutoff())
+                .temperatureSensor(product.getTemperatureSensor())
+                .energySaving(product.getEnergySaving())
+                // Other information
+                .safetyStandards(product.getSafetyStandards())
+                .manufacturingYear(product.getManufacturingYear())
+                .accessories(product.getAccessories())
+                .energyRating(product.getEnergyRating())
+                // Legacy fields
                 .colorDefault(product.getColorDefault()) // Legacy field
                 .warrantyMonths(product.getWarrantyMonths()) // Legacy field
+                .quantity(product.getQuantity()) // Số lượng sản phẩm
                 .colors(colors) // New relationship
                 .warranty(warranty) // New relationship
                 .brand(product.getBrand() != null

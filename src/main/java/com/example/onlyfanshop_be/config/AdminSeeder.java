@@ -73,7 +73,7 @@ public class AdminSeeder implements CommandLineRunner {
                 
                 if (isAdmin) {
                     System.out.println("AdminSeeder: ADMIN user already exists for email. Ensuring details are up-to-date.");
-                    u.setFullName(ADMIN_USERNAME);
+                    u.setUsername(ADMIN_USERNAME);
                     u.setPhone(ADMIN_PHONE);
                     if (u.getPasswordHash() == null || u.getPasswordHash().isBlank()) {
                         u.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
@@ -89,7 +89,7 @@ public class AdminSeeder implements CommandLineRunner {
                     }
                     // No other ADMIN exists, upgrade configured email user to ADMIN
                     u.setRoleId(adminRole.getId());
-                    u.setFullName(ADMIN_USERNAME);
+                    u.setUsername(ADMIN_USERNAME);
                     u.setPhone(ADMIN_PHONE);
                     u.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
                     u.setUpdatedAt(LocalDateTime.now());
@@ -107,7 +107,7 @@ public class AdminSeeder implements CommandLineRunner {
 
             // Create the ADMIN account as none exists
             User admin = User.builder()
-                    .fullName(ADMIN_USERNAME)
+                    .username(ADMIN_USERNAME)
                     .email(ADMIN_EMAIL)
                     .phone(ADMIN_PHONE)
                     .roleId(adminRole.getId())

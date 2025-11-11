@@ -42,16 +42,6 @@ public class Order {
     @JsonIgnore
     private UserAddress address;
 
-    @Column(name = "channel_id", columnDefinition = "INT UNSIGNED DEFAULT 1")
-    @Builder.Default
-    private Integer channelId = 1;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "channel_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    @JsonIgnore
-    private SalesChannel salesChannel;
-
     @Column(name = "order_code", nullable = false, unique = true, length = 50)
     private String orderCode;
 
@@ -114,14 +104,6 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Payment> payments;
-
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<Shipment> shipments;
-
-    @OneToMany(mappedBy = "order")
-    @JsonIgnore
-    private List<StockMovement> stockMovements;
 
     // Legacy fields for backward compatibility
     @Transient
