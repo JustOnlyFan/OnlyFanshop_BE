@@ -25,7 +25,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "WHERE (:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR u.phone LIKE CONCAT('%', :keyword, '%')) " +
-            "AND (:role IS NULL OR u.roleId = :roleId)")
+            "AND (:roleId IS NULL OR u.roleId = :roleId)")
     Page<User> searchUsers(@Param("keyword") String keyword, @Param("roleId") Byte roleId, Pageable pageable);
+    
+    List<User> findByStoreLocationId(Integer storeLocationId);
+    
+    Page<User> findByRoleId(Byte roleId, Pageable pageable);
+    
+    @Query("SELECT u FROM User u WHERE u.roleId = :roleId AND (:storeLocationId IS NULL OR u.storeLocationId = :storeLocationId)")
+    Page<User> findByRoleIdAndStoreLocationId(@Param("roleId") Byte roleId, @Param("storeLocationId") Integer storeLocationId, Pageable pageable);
+
+    @Query("SELECT u FROM User u LEFT JOIN u.role r " +
+            "WHERE (:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "   OR u.phone LIKE CONCAT('%', :keyword, '%')) " +
+            "AND (:storeLocationId IS NULL OR u.storeLocationId = :storeLocationId) " +
+            "AND (r IS NULL OR LOWER(r.name) NOT IN :excludedRoles)")
+    Page<User> findAccountsExcludingRoles(@Param("keyword") String keyword,
+                                          @Param("storeLocationId") Integer storeLocationId,
+                                          @Param("excludedRoles") List<String> excludedRoles,
+                                          Pageable pageable);
 }
 

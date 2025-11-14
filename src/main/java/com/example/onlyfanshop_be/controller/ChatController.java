@@ -2,6 +2,7 @@ package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.ChatRoomDTO;
 import com.example.onlyfanshop_be.dto.MessageDTO;
+import com.example.onlyfanshop_be.dto.request.CreateChatRoomFromProductRequest;
 import com.example.onlyfanshop_be.dto.request.CreateChatRoomRequest;
 import com.example.onlyfanshop_be.dto.request.SendMessageRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
@@ -78,19 +79,22 @@ public class ChatController {
     }
 
     @GetMapping("/rooms")
-    @Operation(summary = "Get chat rooms", description = "Get list of chat rooms for admin or customer")
+    @Operation(summary = "Get chat rooms", description = "Get list of chat rooms for admin, staff or customer")
     public ResponseEntity<ApiResponse<List<ChatRoomDTO>>> getChatRooms(HttpServletRequest httpRequest) {
         try {
             String token = jwtTokenProvider.extractToken(httpRequest);
             String userRole = jwtTokenProvider.getRoleFromJWT(token);
+            String userId = jwtTokenProvider.getUserIdFromJWT(token).toString();
             
             List<ChatRoomDTO> chatRooms;
             
             if ("ADMIN".equals(userRole)) {
                 chatRooms = chatService.getChatRoomsForAdmin();
+            } else if ("STAFF".equals(userRole)) {
+                chatRooms = chatService.getChatRoomsForStaff(userId);
             } else {
                 // Customer chỉ có thể xem room của mình
-                chatRooms = List.of(); // TODO: Implement get single room for customer
+                chatRooms = chatService.getChatRoomsForCustomer(userId);
             }
             
             return ResponseEntity.ok(ApiResponse.<List<ChatRoomDTO>>builder()
@@ -191,6 +195,32 @@ public class ChatController {
             return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
                     .statusCode(400)
                     .message("Failed to get/create customer room: " + e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/rooms/from-product")
+    @Operation(summary = "Create chat room from product", description = "Create a chat room for customer to chat with staff about a product")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<ApiResponse<String>> createChatRoomFromProduct(
+            @RequestBody CreateChatRoomFromProductRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            String token = jwtTokenProvider.extractToken(httpRequest);
+            String customerId = jwtTokenProvider.getUserIdFromJWT(token).toString();
+            
+            String roomId = chatService.createChatRoomFromProduct(customerId, request);
+            
+            return ResponseEntity.ok(ApiResponse.<String>builder()
+                    .statusCode(201)
+                    .message("Chat room created successfully")
+                    .data(roomId)
+                    .build());
+        } catch (Exception e) {
+            log.error("Error creating chat room from product: " + e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
+                    .statusCode(400)
+                    .message("Failed to create chat room: " + e.getMessage())
                     .build());
         }
     }

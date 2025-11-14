@@ -1,4 +1,5 @@
 package com.example.onlyfanshop_be.entity;
+import com.example.onlyfanshop_be.enums.StoreStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -45,16 +46,32 @@ public class StoreLocation {
     @Column(length = 20)
     private String phone;
 
+    @Column(length = 150)
+    private String email;
+
     @Column(length = 100)
     private String openingHours;
 
-	@Column(name = "is_active", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 1")
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", nullable = false, length = 20)
 	@Builder.Default
-	private Boolean isActive = true;
+	private StoreStatus status = StoreStatus.ACTIVE;
 
     @OneToOne(mappedBy = "storeLocation", fetch = FetchType.LAZY)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JsonIgnore
     private Warehouse warehouse;
+
+	@Transient
+	public Boolean getIsActive() {
+		return status != null && status.isOperational();
+	}
+
+	public void setIsActive(Boolean active) {
+		if (active == null) {
+			return;
+		}
+		this.status = active ? StoreStatus.ACTIVE : StoreStatus.PAUSED;
+	}
 }
 

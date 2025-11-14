@@ -59,6 +59,14 @@ public class User {
 
     @Column(name = "last_login_at", columnDefinition = "TIMESTAMP NULL")
     private LocalDateTime lastLoginAt;
+
+    @Column(name = "store_location_id", columnDefinition = "INT")
+    private Integer storeLocationId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_location_id", insertable = false, updatable = false)
+    @JsonIgnore
+    private StoreLocation storeLocation;
     
     // Legacy methods for backward compatibility
     @Transient

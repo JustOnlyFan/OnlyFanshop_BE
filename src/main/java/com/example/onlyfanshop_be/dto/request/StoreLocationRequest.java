@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.dto.request;
 
+import com.example.onlyfanshop_be.enums.StoreStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -36,6 +37,9 @@ public class StoreLocationRequest {
 	@Size(max = 20, message = "phone must be <= 20 characters")
 	private String phone;
 
+	@Size(max = 150, message = "email must be <= 150 characters")
+	private String email;
+
 	@Size(max = 100, message = "openingHours must be <= 100 characters")
 	private String openingHours;
 
@@ -55,6 +59,13 @@ public class StoreLocationRequest {
 
 	// If provided, create a BRANCH warehouse for this store under a REGIONAL warehouse
 	private Integer parentRegionalWarehouseId;
+
+	// Optional: Password for staff account that will be created automatically
+	// If not provided, a default password will be used
+	@Size(min = 6, max = 100, message = "Staff password must be between 6 and 100 characters")
+	private String staffPassword;
+
+	private StoreStatus status;
 }
 
 

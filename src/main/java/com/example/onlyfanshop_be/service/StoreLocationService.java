@@ -1,10 +1,14 @@
 package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.entity.StoreLocation;
+import com.example.onlyfanshop_be.entity.User;
+import com.example.onlyfanshop_be.enums.StoreStatus;
+import com.example.onlyfanshop_be.enums.UserStatus;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.StoreLocationRepository;
 import com.example.onlyfanshop_be.repository.WarehouseRepository;
+import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +20,8 @@ public class StoreLocationService implements IStoreLocation {
     private StoreLocationRepository storeLocationRepository;
 	@Autowired
 	private WarehouseRepository warehouseRepository;
+	@Autowired
+	private UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,17 +66,20 @@ public class StoreLocationService implements IStoreLocation {
         existing.setWard(newLocation.getWard());
         existing.setCity(newLocation.getCity());
         existing.setPhone(newLocation.getPhone());
+        existing.setEmail(newLocation.getEmail());
         existing.setOpeningHours(newLocation.getOpeningHours());
-        if (newLocation.getIsActive() != null) {
-            existing.setIsActive(newLocation.getIsActive());
-        }
+		if (newLocation.getStatus() != null) {
+			existing.setStatus(newLocation.getStatus());
+		}
         if (existing.getName() == null || existing.getName().isBlank()
                 || existing.getLatitude() == null
                 || existing.getLongitude() == null
                 || existing.getAddress() == null || existing.getAddress().isBlank()) {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
-        return storeLocationRepository.save(existing);
+		StoreLocation saved = storeLocationRepository.save(existing);
+		synchronizeStaffStatus(saved.getLocationID(), saved.getStatus());
+		return saved;
     }
 
     @Override
@@ -82,7 +91,7 @@ public class StoreLocationService implements IStoreLocation {
 		// Soft-disable the store and its warehouses instead.
 		var warehouses = warehouseRepository.findByStoreLocationId(id);
 		if (!warehouses.isEmpty()) {
-			existing.setIsActive(false);
+			existing.setStatus(StoreStatus.CLOSED);
 			storeLocationRepository.save(existing);
 			warehouses.forEach(w -> {
 				if (Boolean.TRUE.equals(w.getIsActive())) {
@@ -90,10 +99,35 @@ public class StoreLocationService implements IStoreLocation {
 					warehouseRepository.save(w);
 				}
 			});
+			synchronizeStaffStatus(existing.getLocationID(), StoreStatus.CLOSED);
 			return;
 		}
+
+		// No linked warehouses -> still ensure staff accounts are locked before removal
+		synchronizeStaffStatus(existing.getLocationID(), StoreStatus.CLOSED);
 
 		// No linked warehouses -> safe to delete
 		storeLocationRepository.deleteById(id);
     }
+
+	@Override
+	public void synchronizeStaffStatus(int storeId, StoreStatus status) {
+		List<User> staffList = userRepository.findByStoreLocationId(storeId);
+		if (staffList.isEmpty()) {
+			return;
+		}
+
+		UserStatus targetStatus = switch (status) {
+			case ACTIVE -> UserStatus.active;
+			case PAUSED -> UserStatus.inactive;
+			case CLOSED -> UserStatus.banned;
+		};
+
+		for (User user : staffList) {
+			if (user.getStatus() != targetStatus) {
+				user.setStatus(targetStatus);
+			}
+		}
+		userRepository.saveAll(staffList);
+	}
 }

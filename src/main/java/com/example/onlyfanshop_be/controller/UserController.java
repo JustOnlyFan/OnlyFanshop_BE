@@ -85,6 +85,26 @@ public class UserController {
         return userService.getAllUsers(keyword, role, page, size, sortField, sortDirection);
     }
 
+    @GetMapping("/staff-management/accounts")
+    @Operation(summary = "Danh sách tài khoản cho quản lý nhân viên",
+            description = "Trả về tất cả tài khoản ngoại trừ Customer và Admin để hiển thị trong trang quản lý nhân viên")
+    public ApiResponse<Page<UserDTO>> getAccountsForStaffManagement(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer storeLocationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "username") String sortField,
+            @RequestParam(defaultValue = "ASC") String sortDirection) {
+
+        return userService.getAccountsForStaffManagement(
+                keyword,
+                storeLocationId,
+                page,
+                size,
+                sortField,
+                sortDirection);
+    }
+
 
     
     @GetMapping("/token-status")

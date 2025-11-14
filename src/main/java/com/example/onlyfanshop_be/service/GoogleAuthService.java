@@ -110,9 +110,12 @@ public class GoogleAuthService {
                     .orElse(roleRepository.findById((byte) 1)
                             .orElseThrow(() -> new RuntimeException("Customer role not found")));
 
+            // Normalize username: remove spaces
+            String normalizedUsername = (username != null ? username : email).trim().replaceAll("\\s+", "");
+            
             User newUser = User.builder()
                     .email(email)
-                    .username(username != null ? username : email)
+                    .username(normalizedUsername)
                     .roleId(customerRole.getId())
                     .status(UserStatus.active)
                     .createdAt(LocalDateTime.now())

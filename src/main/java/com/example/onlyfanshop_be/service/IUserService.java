@@ -4,8 +4,6 @@ import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import org.springframework.data.domain.Page;
 
-import java.util.List;
-
 public interface IUserService {
     ApiResponse<UserDTO> getUserByID(int userID);
     ApiResponse<UserDTO> getUserByEmail(String email);
@@ -16,6 +14,13 @@ public interface IUserService {
     public ApiResponse<Page<UserDTO>> getAllUsers(
             String keyword,
             String role,
+            int page,
+            int size,
+            String sortField,
+            String sortDirection);
+    ApiResponse<Page<UserDTO>> getAccountsForStaffManagement(
+            String keyword,
+            Integer storeLocationId,
             int page,
             int size,
             String sortField,
