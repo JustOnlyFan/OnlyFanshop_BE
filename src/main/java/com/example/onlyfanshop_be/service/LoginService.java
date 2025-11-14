@@ -258,9 +258,14 @@ public class LoginService implements ILoginService{
 
             System.out.println("Customer role found: " + customerRole.getName() + " (ID: " + customerRole.getId() + ")");
 
+            // Normalize username: remove spaces
+            String username = registerRequest.getUsername() != null 
+                    ? registerRequest.getUsername().trim().replaceAll("\\s+", "")
+                    : registerRequest.getEmail().trim().replaceAll("\\s+", "");
+            
             // Create user
             User user = User.builder()
-                    .username(registerRequest.getUsername() != null ? registerRequest.getUsername() : registerRequest.getEmail())
+                    .username(username)
                     .email(registerRequest.getEmail())
                     .phone(registerRequest.getPhoneNumber())
                     .roleId(customerRole.getId())

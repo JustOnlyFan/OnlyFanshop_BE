@@ -67,7 +67,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
                                         "/api/chat/clear-all-chat-data-public",
                                         "/users/token-status",
                                         "/store-locations",
-                                        "/store-locations/**"
+                                        "/store-locations/**",
+                                        "/ws/**",
+                                        "/ws"
                                 ).permitAll()
                             .anyRequest().authenticated()
                     )

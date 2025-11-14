@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.service;
 
+import com.example.onlyfanshop_be.dto.StoreLocationSummaryDTO;
 import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.Role;
@@ -11,6 +12,7 @@ import com.example.onlyfanshop_be.repository.RoleRepository;
 import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.repository.UserAddressRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
+import com.example.onlyfanshop_be.repository.StoreLocationRepository;
 import com.example.onlyfanshop_be.entity.Token;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +38,8 @@ public class UserService implements IUserService {
     private RoleRepository roleRepository;
     @Autowired
     private UserAddressRepository userAddressRepository;
+    @Autowired
+    private StoreLocationRepository storeLocationRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
@@ -50,6 +55,7 @@ public class UserService implements IUserService {
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
+                    .storeLocationId(user.getStoreLocationId())
                     .build();
             
             // Load role if needed
@@ -59,6 +65,8 @@ public class UserService implements IUserService {
                     dto.setRoleName(role.getName());
                 });
             }
+            
+            dto.setStoreLocation(buildStoreLocationSummary(user));
             
             return ApiResponse.<UserDTO>builder().message("Thành công").statusCode(200).data(dto).build();
         }else throw new AppException(ErrorCode.USER_NOTEXISTED);
@@ -77,6 +85,7 @@ public class UserService implements IUserService {
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
+                    .storeLocationId(user.getStoreLocationId())
                     .build();
             
             // Load role if needed
@@ -86,6 +95,8 @@ public class UserService implements IUserService {
                     dto.setRoleName(role.getName());
                 });
             }
+            
+            dto.setStoreLocation(buildStoreLocationSummary(user));
             
             return ApiResponse.<UserDTO>builder().message("Thành công").statusCode(200).data(dto).build();
         }else throw new AppException(ErrorCode.USER_NOTEXISTED);
@@ -104,11 +115,11 @@ public class UserService implements IUserService {
                 user.setPhone(userDTO.getPhone());
             }
             
-            // Update username
+            // Update username (normalize: remove spaces)
             if (userDTO.getUsername() != null) {
-                user.setUsername(userDTO.getUsername());
+                user.setUsername(userDTO.getUsername().trim().replaceAll("\\s+", ""));
             } else if (userDTO.getFullName() != null) {
-                user.setUsername(userDTO.getFullName());
+                user.setUsername(userDTO.getFullName().trim().replaceAll("\\s+", ""));
             }
             
             userRepository.save(user);
@@ -121,6 +132,7 @@ public class UserService implements IUserService {
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
+                    .storeLocationId(user.getStoreLocationId())
                     .build();
             
             // Load role
@@ -130,6 +142,8 @@ public class UserService implements IUserService {
                     responseDto.setRoleName(role.getName());
                 });
             }
+            
+            responseDto.setStoreLocation(buildStoreLocationSummary(user));
             
             return ApiResponse.<UserDTO>builder().message("Cập nhật thành công").statusCode(200).data(responseDto).build();
         }
@@ -279,6 +293,7 @@ public class UserService implements IUserService {
             dto.setPhoneNumber(user.getPhone());
             dto.setPhone(user.getPhone());
             dto.setStatus(user.getStatus());
+            dto.setStoreLocationId(user.getStoreLocationId());
             
             // Load role
             if (user.getRoleId() != null) {
@@ -288,6 +303,8 @@ public class UserService implements IUserService {
                 });
             }
             
+            dto.setStoreLocation(buildStoreLocationSummary(user));
+            
             return dto;
         });
 
@@ -296,6 +313,97 @@ public class UserService implements IUserService {
                 .statusCode(200)
                 .message("Lấy danh sách người dùng thành công")
                 .build();
+    }
+
+    @Override
+    public ApiResponse<Page<UserDTO>> getAccountsForStaffManagement(
+            String keyword,
+            Integer storeLocationId,
+            int page,
+            int size,
+            String sortField,
+            String sortDirection) {
+
+        String mappedSortField = mapSortField(sortField);
+
+        Sort sort = sortDirection.equalsIgnoreCase("DESC")
+                ? Sort.by(mappedSortField).descending()
+                : Sort.by(mappedSortField).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        String normalizedKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+        List<String> excludedRoles = Arrays.asList("customer", "admin");
+
+        Page<User> userPage = userRepository.findAccountsExcludingRoles(
+                normalizedKeyword,
+                storeLocationId,
+                excludedRoles,
+                pageable);
+
+        Page<UserDTO> dtoPage = userPage.map(user -> {
+            UserDTO dto = new UserDTO();
+            dto.setUserID(user.getId());
+            dto.setUsername(user.getUsername());
+            dto.setFullName(user.getUsername());
+            dto.setEmail(user.getEmail());
+            dto.setPhoneNumber(user.getPhone());
+            dto.setPhone(user.getPhone());
+            dto.setStatus(user.getStatus());
+            dto.setStoreLocationId(user.getStoreLocationId());
+
+            if (user.getRoleId() != null) {
+                roleRepository.findById(user.getRoleId()).ifPresent(roleEntity -> {
+                    dto.setRole(roleEntity);
+                    dto.setRoleName(roleEntity.getName());
+                });
+            }
+            
+            dto.setStoreLocation(buildStoreLocationSummary(user));
+
+            return dto;
+        });
+
+        return ApiResponse.<Page<UserDTO>>builder()
+                .data(dtoPage)
+                .statusCode(200)
+                .message("Lấy danh sách tài khoản cho quản lý nhân viên thành công")
+                .build();
+    }
+
+    private StoreLocationSummaryDTO buildStoreLocationSummary(User user) {
+        if (user.getStoreLocationId() == null) {
+            return null;
+        }
+
+        try {
+            if (user.getStoreLocation() != null) {
+                return StoreLocationSummaryDTO.builder()
+                        .locationID(user.getStoreLocation().getLocationID())
+                        .name(user.getStoreLocation().getName())
+                        .address(user.getStoreLocation().getAddress())
+                        .ward(user.getStoreLocation().getWard())
+                        .city(user.getStoreLocation().getCity())
+                        .phone(user.getStoreLocation().getPhone())
+                        .status(user.getStoreLocation().getStatus())
+                        .build();
+            }
+
+            return storeLocationRepository.findById(user.getStoreLocationId())
+                    .map(location -> StoreLocationSummaryDTO.builder()
+                            .locationID(location.getLocationID())
+                            .name(location.getName())
+                            .address(location.getAddress())
+                            .ward(location.getWard())
+                            .city(location.getCity())
+                            .phone(location.getPhone())
+                            .status(location.getStatus())
+                            .build())
+                    .orElse(null);
+        } catch (Exception e) {
+            // In case of any lazy loading issues, fall back gracefully
+            return null;
+        }
     }
 
 }

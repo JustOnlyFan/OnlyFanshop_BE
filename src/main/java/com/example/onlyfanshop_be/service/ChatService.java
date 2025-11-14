@@ -2,9 +2,14 @@ package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.ChatRoomDTO;
 import com.example.onlyfanshop_be.dto.MessageDTO;
+import com.example.onlyfanshop_be.dto.request.CreateChatRoomFromProductRequest;
 import com.example.onlyfanshop_be.dto.request.CreateChatRoomRequest;
 import com.example.onlyfanshop_be.dto.request.SendMessageRequest;
+import com.example.onlyfanshop_be.entity.Product;
+import com.example.onlyfanshop_be.entity.Role;
 import com.example.onlyfanshop_be.entity.User;
+import com.example.onlyfanshop_be.repository.ProductRepository;
+import com.example.onlyfanshop_be.repository.RoleRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.google.firebase.database.*;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +29,8 @@ public class ChatService {
 
     private final DatabaseReference databaseReference;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final ProductRepository productRepository;
 
     public String createChatRoom(CreateChatRoomRequest request, String adminId) {
         // Lấy thông tin customer để tạo room ID
@@ -75,7 +83,7 @@ public class ChatService {
             messageData.put("replyToMessageId", request.getReplyToMessageId());
         }
         
-        // Lưu tin nhắn vào Firebase
+        // Lưu tin nhắn vào Firebase (for persistence)
         databaseReference.child("Messages").child(request.getRoomId()).child(messageId)
                 .setValueAsync(messageData);
         
@@ -86,8 +94,19 @@ public class ChatService {
         
         databaseReference.child("Conversations").child(request.getRoomId()).updateChildrenAsync(updateData);
         
-        // Gửi FCM notification
+        // Note: Real-time delivery is handled by WebSocket, Firebase is for persistence
+        // Gửi FCM notification (optional, for offline users)
         sendNotificationToOtherParticipants(request.getRoomId(), senderId, sender.getUsername(), request.getMessage());
+    }
+    
+    /**
+     * Send message via WebSocket (called from WebSocketChatController)
+     * This method only saves to Firebase, WebSocket handles real-time delivery
+     */
+    public void sendMessageViaWebSocket(SendMessageRequest request, String senderId) {
+        // Just save to Firebase for persistence
+        // WebSocket will handle real-time delivery
+        sendMessage(request, senderId);
     }
 
         public List<ChatRoomDTO> getChatRoomsForAdmin() {
@@ -350,9 +369,15 @@ public class ChatService {
         User customer = userRepository.findById(Long.parseLong(customerId))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         
-        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId;
+        // Get a staff member (preferably one with a store assigned)
+        User staff = getAvailableStaff();
+        if (staff == null) {
+            throw new RuntimeException("No staff available");
+        }
+        
+        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId + "_staff_" + staff.getId();
 
-        log.info("Getting or creating chat room for customer: " + customerId + ", roomId: " + roomId);
+        log.info("Getting or creating chat room for customer: " + customerId + " with staff: " + staff.getId() + ", roomId: " + roomId);
 
         CompletableFuture<Boolean> future = new CompletableFuture<>();
 
@@ -363,9 +388,13 @@ public class ChatService {
                     log.info("Room does not exist, creating new room: " + roomId);
                     Map<String, Object> roomData = new HashMap<>();
                     Map<String, Boolean> participants = new HashMap<>();
-                    participants.put("admin", true);
-                    participants.put(customerId, true); // ✅ Lưu customer ID (số) thay vì Firebase UID
+                    participants.put(staff.getId().toString(), true); // Staff ID
+                    participants.put(customerId, true); // Customer ID
                     roomData.put("participants", participants);
+                    roomData.put("staffId", staff.getId().toString());
+                    roomData.put("staffName", staff.getUsername());
+                    roomData.put("customerId", customerId);
+                    roomData.put("customerName", customer.getUsername());
                     roomData.put("createdAt", System.currentTimeMillis());
                     roomData.put("lastMessage", "Chat started");
                     roomData.put("lastMessageTime", System.currentTimeMillis());
@@ -406,6 +435,78 @@ public class ChatService {
             log.warn("Timeout/error creating chat room: " + e.getMessage());
             return roomId;
         }
+    }
+
+    public String createChatRoomFromProduct(String customerId, CreateChatRoomFromProductRequest request) {
+        User customer = userRepository.findById(Long.parseLong(customerId))
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        
+        Product product = productRepository.findById(request.getProductId().intValue())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        
+        // Get a staff member (preferably one with a store assigned)
+        User staff = getAvailableStaff();
+        if (staff == null) {
+            throw new RuntimeException("No staff available");
+        }
+        
+        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId + "_staff_" + staff.getId() + "_product_" + product.getId();
+
+        log.info("Creating chat room from product for customer: " + customerId + " with staff: " + staff.getId() + ", product: " + product.getId());
+
+        Map<String, Object> roomData = new HashMap<>();
+        Map<String, Boolean> participants = new HashMap<>();
+        participants.put(staff.getId().toString(), true);
+        participants.put(customerId, true);
+        roomData.put("participants", participants);
+        roomData.put("staffId", staff.getId().toString());
+        roomData.put("staffName", staff.getUsername());
+        roomData.put("customerId", customerId);
+        roomData.put("customerName", customer.getUsername());
+        roomData.put("productId", product.getId().toString());
+        roomData.put("productName", product.getName());
+        roomData.put("productImage", product.getImageURL());
+        roomData.put("createdAt", System.currentTimeMillis());
+        roomData.put("lastMessage", request.getInitialMessage() != null ? request.getInitialMessage() : "Chat started about product");
+        roomData.put("lastMessageTime", System.currentTimeMillis());
+
+        databaseReference.child("Conversations").child(roomId).setValueAsync(roomData);
+
+        // Send initial message if provided
+        if (request.getInitialMessage() != null && !request.getInitialMessage().trim().isEmpty()) {
+            sendMessage(SendMessageRequest.builder()
+                    .roomId(roomId)
+                    .message(request.getInitialMessage())
+                    .build(), customerId);
+        }
+
+        return roomId;
+    }
+
+    private User getAvailableStaff() {
+        Role staffRole = roleRepository.findByName("staff").orElse(null);
+        if (staffRole == null) {
+            return null;
+        }
+        
+        List<User> staffList = userRepository.findByRoleId(staffRole.getId());
+        if (staffList.isEmpty()) {
+            return null;
+        }
+        
+        // Prefer staff with store assigned, otherwise return first available
+        List<User> staffWithStore = staffList.stream()
+                .filter(s -> s.getStoreLocationId() != null)
+                .collect(Collectors.toList());
+        
+        if (!staffWithStore.isEmpty()) {
+            // Return random staff with store
+            Collections.shuffle(staffWithStore);
+            return staffWithStore.get(0);
+        }
+        
+        // Return first available staff
+        return staffList.get(0);
     }
 
     private void sendNotificationToOtherParticipants(String roomId, String senderId, String senderName, String message) {
@@ -470,5 +571,169 @@ public class ChatService {
                         log.error("Error marking messages as read: " + error.getMessage());
                     }
                 });
+    }
+
+    public List<ChatRoomDTO> getChatRoomsForStaff(String staffId) {
+        try {
+            log.info("Getting chat rooms for staff: " + staffId);
+            CompletableFuture<List<ChatRoomDTO>> future = new CompletableFuture<>();
+            
+            databaseReference.child("Conversations").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+                    List<ChatRoomDTO> rooms = new ArrayList<>();
+                    
+                    if (snapshot.exists()) {
+                        for (DataSnapshot roomSnapshot : snapshot.getChildren()) {
+                            try {
+                                String roomId = roomSnapshot.getKey();
+                                DataSnapshot participantsSnapshot = roomSnapshot.child("participants");
+                                
+                                // Check if this staff is a participant
+                                boolean isParticipant = false;
+                                if (participantsSnapshot.exists()) {
+                                    for (DataSnapshot participant : participantsSnapshot.getChildren()) {
+                                        if (participant.getKey().equals(staffId)) {
+                                            isParticipant = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (isParticipant) {
+                                    Map<String, Boolean> participants = new HashMap<>();
+                                    for (DataSnapshot participant : participantsSnapshot.getChildren()) {
+                                        participants.put(participant.getKey(), true);
+                                    }
+                                    
+                                    String customerName = roomSnapshot.child("customerName").getValue(String.class);
+                                    if (customerName == null) {
+                                        customerName = extractCustomerNameFromRoomId(roomId);
+                                    }
+                                    
+                                    String lastMessage = roomSnapshot.child("lastMessage").getValue(String.class);
+                                    Long lastMessageTime = roomSnapshot.child("lastMessageTime").getValue(Long.class);
+                                    
+                                    ChatRoomDTO roomDTO = ChatRoomDTO.builder()
+                                            .roomId(roomId)
+                                            .participants(participants)
+                                            .lastMessage(lastMessage != null ? lastMessage : "No messages yet")
+                                            .lastMessageTime(lastMessageTime != null ? 
+                                                LocalDateTime.ofEpochSecond(lastMessageTime / 1000, 0, ZoneOffset.UTC) : 
+                                                LocalDateTime.now())
+                                            .customerName(customerName != null ? customerName : "Customer")
+                                            .customerAvatar(null)
+                                            .isOnline(false)
+                                            .unreadCount(0)
+                                            .build();
+                                    
+                                    rooms.add(roomDTO);
+                                }
+                            } catch (Exception e) {
+                                log.error("Error processing room: " + e.getMessage());
+                            }
+                        }
+                        
+                        rooms.sort((a, b) -> b.getLastMessageTime().compareTo(a.getLastMessageTime()));
+                    }
+                    
+                    future.complete(rooms);
+                }
+                
+                @Override
+                public void onCancelled(DatabaseError error) {
+                    log.error("Error getting chat rooms: " + error.getMessage());
+                    future.completeExceptionally(new RuntimeException("Failed to get chat rooms"));
+                }
+            });
+            
+            return future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            
+        } catch (Exception e) {
+            log.error("Error getting chat rooms for staff: " + e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    public List<ChatRoomDTO> getChatRoomsForCustomer(String customerId) {
+        try {
+            log.info("Getting chat rooms for customer: " + customerId);
+            CompletableFuture<List<ChatRoomDTO>> future = new CompletableFuture<>();
+            
+            databaseReference.child("Conversations").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+                    List<ChatRoomDTO> rooms = new ArrayList<>();
+                    
+                    if (snapshot.exists()) {
+                        for (DataSnapshot roomSnapshot : snapshot.getChildren()) {
+                            try {
+                                String roomId = roomSnapshot.getKey();
+                                DataSnapshot participantsSnapshot = roomSnapshot.child("participants");
+                                
+                                // Check if this customer is a participant
+                                boolean isParticipant = false;
+                                if (participantsSnapshot.exists()) {
+                                    for (DataSnapshot participant : participantsSnapshot.getChildren()) {
+                                        if (participant.getKey().equals(customerId)) {
+                                            isParticipant = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (isParticipant) {
+                                    Map<String, Boolean> participants = new HashMap<>();
+                                    for (DataSnapshot participant : participantsSnapshot.getChildren()) {
+                                        participants.put(participant.getKey(), true);
+                                    }
+                                    
+                                    String staffName = roomSnapshot.child("staffName").getValue(String.class);
+                                    if (staffName == null) {
+                                        staffName = "Staff";
+                                    }
+                                    
+                                    String lastMessage = roomSnapshot.child("lastMessage").getValue(String.class);
+                                    Long lastMessageTime = roomSnapshot.child("lastMessageTime").getValue(Long.class);
+                                    
+                                    ChatRoomDTO roomDTO = ChatRoomDTO.builder()
+                                            .roomId(roomId)
+                                            .participants(participants)
+                                            .lastMessage(lastMessage != null ? lastMessage : "No messages yet")
+                                            .lastMessageTime(lastMessageTime != null ? 
+                                                LocalDateTime.ofEpochSecond(lastMessageTime / 1000, 0, ZoneOffset.UTC) : 
+                                                LocalDateTime.now())
+                                            .customerName(staffName) // For customer view, show staff name
+                                            .customerAvatar(null)
+                                            .isOnline(false)
+                                            .unreadCount(0)
+                                            .build();
+                                    
+                                    rooms.add(roomDTO);
+                                }
+                            } catch (Exception e) {
+                                log.error("Error processing room: " + e.getMessage());
+                            }
+                        }
+                        
+                        rooms.sort((a, b) -> b.getLastMessageTime().compareTo(a.getLastMessageTime()));
+                    }
+                    
+                    future.complete(rooms);
+                }
+                
+                @Override
+                public void onCancelled(DatabaseError error) {
+                    log.error("Error getting chat rooms: " + error.getMessage());
+                    future.completeExceptionally(new RuntimeException("Failed to get chat rooms"));
+                }
+            });
+            
+            return future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            
+        } catch (Exception e) {
+            log.error("Error getting chat rooms for customer: " + e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 }

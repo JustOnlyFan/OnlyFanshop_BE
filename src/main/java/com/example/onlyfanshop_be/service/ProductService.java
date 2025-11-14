@@ -51,8 +51,6 @@ public class ProductService implements  IProductService {
     @Autowired
     private WarehouseRepository warehouseRepository;
     @Autowired
-    private WarehouseInventoryService warehouseInventoryService;
-    @Autowired
     private StockMovementService stockMovementService;
 
     @Override
@@ -335,17 +333,8 @@ public class ProductService implements  IProductService {
                     }
                 }
                 
-                // Add product to warehouse inventory
+                // Add product to warehouse inventory (record import handles both inventory and movement)
                 if (targetWarehouseId != null) {
-                    warehouseInventoryService.addQuantity(
-                            targetWarehouseId,
-                            savedProduct.getId(),
-                            null, // No variant for base product
-                            request.getQuantity()
-                    );
-                    
-                    // Record stock movement (import)
-                    // Note: createdBy should be passed from controller, for now we use null
                     stockMovementService.recordImport(
                             targetWarehouseId,
                             savedProduct.getId(),

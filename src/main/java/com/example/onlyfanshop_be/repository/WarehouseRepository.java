@@ -33,3 +33,8 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Integer> {
 
 
 
+
+
+
+
+

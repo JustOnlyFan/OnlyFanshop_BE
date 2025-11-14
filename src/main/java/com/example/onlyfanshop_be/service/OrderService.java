@@ -4,7 +4,6 @@ import com.example.onlyfanshop_be.dto.CartDTO;
 import com.example.onlyfanshop_be.dto.OrderDTO;
 import com.example.onlyfanshop_be.dto.OrderDetailsDTO;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.entity.Cart;
 import com.example.onlyfanshop_be.entity.CartItem;
 import com.example.onlyfanshop_be.entity.Order;
 import com.example.onlyfanshop_be.entity.User;
@@ -12,22 +11,18 @@ import com.example.onlyfanshop_be.entity.UserAddress;
 import com.example.onlyfanshop_be.enums.OrderStatus;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
-import com.example.onlyfanshop_be.repository.CartRepository;
 import com.example.onlyfanshop_be.repository.OrderItemRepository;
 import com.example.onlyfanshop_be.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 @Service
 public class OrderService implements IOrderService {
     @Autowired
     private OrderRepository orderRepository;
-    @Autowired
-    private CartRepository cartRepository;
     @Autowired
     private OrderItemRepository orderItemRepository;
 

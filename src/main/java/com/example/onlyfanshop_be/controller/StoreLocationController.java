@@ -3,11 +3,15 @@ package com.example.onlyfanshop_be.controller;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.request.StoreLocationRequest;
 import com.example.onlyfanshop_be.dto.request.CreateWarehouseRequest;
+import com.example.onlyfanshop_be.dto.request.CreateStaffRequest;
+import com.example.onlyfanshop_be.enums.StoreStatus;
 import com.example.onlyfanshop_be.enums.WarehouseType;
 import com.example.onlyfanshop_be.entity.StoreLocation;
 import com.example.onlyfanshop_be.service.IStoreLocation;
 import com.example.onlyfanshop_be.service.WarehouseService;
+import com.example.onlyfanshop_be.service.StaffService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -16,10 +20,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/store-locations")
 @RequiredArgsConstructor
+@Slf4j
 public class StoreLocationController {
 
     private final IStoreLocation iStoreLocation;
     private final WarehouseService warehouseService;
+    private final StaffService staffService;
 
     // 🟢 Lấy tất cả địa điểm
     @GetMapping
@@ -43,6 +49,7 @@ public class StoreLocationController {
 
     // 🟢 Thêm mới
     @PostMapping
+    @org.springframework.transaction.annotation.Transactional
     public ApiResponse<StoreLocation> create(@Valid @RequestBody StoreLocationRequest request) {
         // Enforce regional warehouse parent is provided (always create branch warehouse)
         if (request.getParentRegionalWarehouseId() == null) {
@@ -65,8 +72,9 @@ public class StoreLocationController {
                 .ward(request.getWard())
                 .city(request.getCity())
                 .phone(resolvedPhone)
+                .email(request.getEmail())
                 .openingHours(request.getOpeningHours())
-                .isActive(true)
+                .status(request.getStatus() != null ? request.getStatus() : StoreStatus.ACTIVE)
                 .build();
         StoreLocation saved = iStoreLocation.createLocation(location);
 
@@ -84,6 +92,41 @@ public class StoreLocationController {
             wh.setPhone(resolvedPhone);
             // createdBy is not audited here, pass null
             warehouseService.createWarehouse(wh, null);
+        }
+
+        // Automatically create staff account for this store
+        try {
+            log.info("Creating staff account for store ID: {}, name: {}", saved.getLocationID(), saved.getName());
+            CreateStaffRequest staffRequest = new CreateStaffRequest();
+            staffRequest.setStoreLocationId(saved.getLocationID());
+            // Use provided password or default password
+            String staffPassword = request.getStaffPassword();
+            if (staffPassword == null || staffPassword.trim().isEmpty()) {
+                staffPassword = "Staff@123"; // Default password
+                log.info("Using default password for staff account");
+            } else {
+                log.info("Using provided password for staff account");
+            }
+            staffRequest.setPassword(staffPassword);
+            // Username, email, phone will be auto-generated from store info in StaffService
+            var staffDTO = staffService.createStaff(staffRequest);
+            log.info("Successfully created staff account with ID: {} for store ID: {}", 
+                    staffDTO.getUserID(), saved.getLocationID());
+            // Synchronize staff status with store operational status
+            iStoreLocation.synchronizeStaffStatus(saved.getLocationID(), saved.getStatus());
+        } catch (com.example.onlyfanshop_be.exception.AppException e) {
+            // Log AppException with error code
+            log.error("Failed to create staff account for store ID: {} - ErrorCode: {}, Message: {}", 
+                    saved.getLocationID(), e.getErrorCode(), e.getMessage(), e);
+            // Re-throw to fail the request so admin knows something went wrong
+            throw e;
+        } catch (Exception e) {
+            // Log unexpected exceptions
+            log.error("Unexpected error creating staff account for store ID: {} - Error: {}", 
+                    saved.getLocationID(), e.getMessage(), e);
+            // Re-throw to fail the request
+            throw new com.example.onlyfanshop_be.exception.AppException(
+                    com.example.onlyfanshop_be.exception.ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
 
         return ApiResponse.<StoreLocation>builder()
@@ -104,7 +147,9 @@ public class StoreLocationController {
                 .longitude(request.getLongitude())
                 .address(request.getAddress())
                 .phone(request.getPhone())
+                .email(request.getEmail())
                 .openingHours(request.getOpeningHours())
+                .status(request.getStatus())
                 .build();
         return ApiResponse.<StoreLocation>builder()
                 .statusCode(200)
@@ -121,6 +166,47 @@ public class StoreLocationController {
                 .statusCode(200)
                 .message("Xóa địa điểm thành công")
                 .build();
+    }
+
+    // 🟢 Tạo staff account cho store (nếu chưa có) - dùng để tạo lại cho các store đã tạo trước đó
+    @PostMapping("/{id}/create-staff")
+    public ApiResponse<com.example.onlyfanshop_be.dto.StaffDTO> createStaffForStore(
+            @PathVariable Integer id,
+            @RequestBody(required = false) java.util.Map<String, String> request) {
+        try {
+            // Verify store exists
+            iStoreLocation.getLocationById(id);
+            
+            // Check if store already has staff
+            var existingStaff = staffService.getStaffByStoreLocation(id);
+            if (!existingStaff.isEmpty()) {
+                return ApiResponse.<com.example.onlyfanshop_be.dto.StaffDTO>builder()
+                        .statusCode(400)
+                        .message("Store already has staff account")
+                        .data(existingStaff.get(0))
+                        .build();
+            }
+            
+            CreateStaffRequest staffRequest = new CreateStaffRequest();
+            staffRequest.setStoreLocationId(id);
+            String password = (request != null && request.containsKey("password")) 
+                    ? request.get("password") 
+                    : "Staff@123";
+            staffRequest.setPassword(password);
+            
+            var staffDTO = staffService.createStaff(staffRequest);
+            log.info("Successfully created staff account with ID: {} for store ID: {}", 
+                    staffDTO.getUserID(), id);
+            
+            return ApiResponse.<com.example.onlyfanshop_be.dto.StaffDTO>builder()
+                    .statusCode(201)
+                    .message("Tạo tài khoản nhân viên thành công")
+                    .data(staffDTO)
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create staff for store ID: {} - Error: {}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 }
 
