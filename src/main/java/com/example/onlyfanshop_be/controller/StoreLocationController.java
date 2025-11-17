@@ -2,13 +2,10 @@ package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.request.StoreLocationRequest;
-import com.example.onlyfanshop_be.dto.request.CreateWarehouseRequest;
 import com.example.onlyfanshop_be.dto.request.CreateStaffRequest;
 import com.example.onlyfanshop_be.enums.StoreStatus;
-import com.example.onlyfanshop_be.enums.WarehouseType;
 import com.example.onlyfanshop_be.entity.StoreLocation;
 import com.example.onlyfanshop_be.service.IStoreLocation;
-import com.example.onlyfanshop_be.service.WarehouseService;
 import com.example.onlyfanshop_be.service.StaffService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +21,6 @@ import java.util.List;
 public class StoreLocationController {
 
     private final IStoreLocation iStoreLocation;
-    private final WarehouseService warehouseService;
     private final StaffService staffService;
 
     // 🟢 Lấy tất cả địa điểm
@@ -51,10 +47,6 @@ public class StoreLocationController {
     @PostMapping
     @org.springframework.transaction.annotation.Transactional
     public ApiResponse<StoreLocation> create(@Valid @RequestBody StoreLocationRequest request) {
-        // Enforce regional warehouse parent is provided (always create branch warehouse)
-        if (request.getParentRegionalWarehouseId() == null) {
-            throw new com.example.onlyfanshop_be.exception.AppException(com.example.onlyfanshop_be.exception.ErrorCode.INVALID_INPUT);
-        }
         // Map request to entity, support both phone and phoneNumber, and take first image if provided
         String resolvedPhone = request.getPhone() != null ? request.getPhone() : request.getPhoneNumber();
         String resolvedImage = request.getImageUrl();
@@ -77,22 +69,6 @@ public class StoreLocationController {
                 .status(request.getStatus() != null ? request.getStatus() : StoreStatus.ACTIVE)
                 .build();
         StoreLocation saved = iStoreLocation.createLocation(location);
-
-        // Optionally create a BRANCH warehouse linked to this store under a REGIONAL warehouse parent
-        if (request.getParentRegionalWarehouseId() != null) {
-            CreateWarehouseRequest wh = new CreateWarehouseRequest();
-            wh.setName("Kho " + request.getName());
-            wh.setCode("BR-" + saved.getLocationID());
-            wh.setType(WarehouseType.BRANCH);
-            wh.setParentWarehouseId(request.getParentRegionalWarehouseId());
-            wh.setStoreLocationId(saved.getLocationID());
-            wh.setAddressLine1(request.getAddress());
-            wh.setWard(request.getWard());
-            wh.setCity(request.getCity());
-            wh.setPhone(resolvedPhone);
-            // createdBy is not audited here, pass null
-            warehouseService.createWarehouse(wh, null);
-        }
 
         // Automatically create staff account for this store
         try {
@@ -207,6 +183,22 @@ public class StoreLocationController {
             log.error("Failed to create staff for store ID: {} - Error: {}", id, e.getMessage(), e);
             throw e;
         }
+    }
+
+    // 🟢 Lấy danh sách cửa hàng có sản phẩm trong kho
+    @GetMapping("/product/{productId}")
+    public ApiResponse<List<StoreLocation>> getStoresWithProduct(
+            @PathVariable Long productId,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district) {
+        log.info("Getting stores with product ID: {}, city: {}, district: {}", productId, city, district);
+        List<StoreLocation> stores = iStoreLocation.getStoresWithProduct(productId, city, district);
+        log.info("Returning {} stores for product {}", stores.size(), productId);
+        return ApiResponse.<List<StoreLocation>>builder()
+                .statusCode(200)
+                .message("Danh sách cửa hàng có sản phẩm")
+                .data(stores)
+                .build();
     }
 }
 

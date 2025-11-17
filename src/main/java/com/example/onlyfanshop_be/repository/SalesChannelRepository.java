@@ -22,3 +22,4 @@ public interface SalesChannelRepository extends JpaRepository<SalesChannel, Inte
 
 
 
+

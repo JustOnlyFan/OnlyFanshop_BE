@@ -29,14 +29,3 @@ public class Setting {
     private LocalDateTime updatedAt;
 }
 
-
-
-
-
-
-
-
-
-
-
-

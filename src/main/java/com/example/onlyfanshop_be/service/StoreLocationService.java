@@ -7,21 +7,21 @@ import com.example.onlyfanshop_be.enums.UserStatus;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.StoreLocationRepository;
-import com.example.onlyfanshop_be.repository.WarehouseRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 @Service
 public class StoreLocationService implements IStoreLocation {
     @Autowired
     private StoreLocationRepository storeLocationRepository;
 	@Autowired
-	private WarehouseRepository warehouseRepository;
-	@Autowired
 	private UserRepository userRepository;
+	@Autowired
+	private StoreInventoryService storeInventoryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -87,26 +87,10 @@ public class StoreLocationService implements IStoreLocation {
 		StoreLocation existing = storeLocationRepository.findById(id)
 				.orElseThrow(() -> new AppException(ErrorCode.LOCATION_NOT_FOUND));
 
-		// If there are warehouses linked to this store, avoid hard delete to prevent FK/cascade issues.
-		// Soft-disable the store and its warehouses instead.
-		var warehouses = warehouseRepository.findByStoreLocationId(id);
-		if (!warehouses.isEmpty()) {
-			existing.setStatus(StoreStatus.CLOSED);
-			storeLocationRepository.save(existing);
-			warehouses.forEach(w -> {
-				if (Boolean.TRUE.equals(w.getIsActive())) {
-					w.setIsActive(false);
-					warehouseRepository.save(w);
-				}
-			});
-			synchronizeStaffStatus(existing.getLocationID(), StoreStatus.CLOSED);
-			return;
-		}
-
-		// No linked warehouses -> still ensure staff accounts are locked before removal
+		// Ensure staff accounts are locked before removal
 		synchronizeStaffStatus(existing.getLocationID(), StoreStatus.CLOSED);
 
-		// No linked warehouses -> safe to delete
+		// Safe to delete
 		storeLocationRepository.deleteById(id);
     }
 
@@ -129,5 +113,21 @@ public class StoreLocationService implements IStoreLocation {
 			}
 		}
 		userRepository.saveAll(staffList);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StoreLocation> getStoresWithProduct(Long productId, String city, String district) {
+		// Sử dụng StoreInventoryService để lấy danh sách stores có bán sản phẩm (isAvailable = true)
+		List<StoreLocation> stores = storeInventoryService.getStoresWithProduct(productId);
+		
+		// Filter by city if provided, and only active stores
+		List<StoreLocation> filteredStores = stores.stream()
+				.filter(store -> store.getStatus() == StoreStatus.ACTIVE)
+				.filter(store -> city == null || city.trim().isEmpty() || 
+					(store.getCity() != null && store.getCity().equalsIgnoreCase(city.trim())))
+				.collect(Collectors.toList());
+		
+		return filteredStores;
 	}
 }

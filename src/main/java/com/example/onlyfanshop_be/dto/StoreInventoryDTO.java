@@ -11,23 +11,17 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WarehouseInventoryDTO {
+public class StoreInventoryDTO {
     private Long id;
-    private Integer warehouseId;
-    private String warehouseName;
-    private String warehouseCode;
+    private Integer storeId;
+    private String storeName;
+    private String storeAddress;
     private Long productId;
     private String productName;
-    private Long productVariantId;
-    private String productVariantName;
-    private Integer quantityInStock;
+    private String productImageUrl;
+    private Boolean isAvailable;
+    private Integer quantity;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-
-
-
-
-
-
-
 

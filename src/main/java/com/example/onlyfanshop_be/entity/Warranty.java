@@ -42,14 +42,3 @@ public class Warranty {
     @JsonIgnore
     private List<Product> products;
 }
-
-
-
-
-
-
-
-
-
-
-

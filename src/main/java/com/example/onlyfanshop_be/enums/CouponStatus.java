@@ -5,15 +5,3 @@ public enum CouponStatus {
     inactive,
     expired
 }
-
-
-
-
-
-
-
-
-
-
-
-
