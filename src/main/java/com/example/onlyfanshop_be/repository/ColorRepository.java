@@ -12,3 +12,4 @@ public interface ColorRepository extends JpaRepository<Color, Integer> {
     Optional<Color> findByName(String name);
 }
 
+

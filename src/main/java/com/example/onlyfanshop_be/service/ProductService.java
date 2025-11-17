@@ -23,10 +23,8 @@ import com.example.onlyfanshop_be.dto.ProductDTO;
 import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.entity.Category;
 import com.example.onlyfanshop_be.entity.Brand;
-import com.example.onlyfanshop_be.enums.WarehouseType;
-import com.example.onlyfanshop_be.repository.WarehouseRepository;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,11 +45,7 @@ public class ProductService implements  IProductService {
     @Autowired
     private com.example.onlyfanshop_be.repository.ProductImageRepository productImageRepository;
     @Autowired
-    private WarehouseService warehouseService;
-    @Autowired
-    private WarehouseRepository warehouseRepository;
-    @Autowired
-    private StockMovementService stockMovementService;
+    private StoreInventoryService storeInventoryService;
 
     @Override
     public ApiResponse<HomepageResponse> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
@@ -308,47 +302,14 @@ public class ProductService implements  IProductService {
             }
         }
 
-        // 🔟➕ Add product to main warehouse if quantity > 0
-        if (request.getQuantity() != null && request.getQuantity() > 0) {
-            try {
-                Integer targetWarehouseId = null;
-                
-                // If warehouseId is specified, use it (must be a main warehouse)
-                if (request.getWarehouseId() != null) {
-                    var specifiedWarehouse = warehouseRepository.findById(request.getWarehouseId())
-                            .orElse(null);
-                    if (specifiedWarehouse != null && specifiedWarehouse.getType() == WarehouseType.MAIN) {
-                        targetWarehouseId = request.getWarehouseId();
-                    } else {
-                        // Invalid warehouseId, fallback to first main warehouse
-                        System.err.println("ProductService: Specified warehouseId is not a main warehouse, using first main warehouse");
-                    }
-                }
-                
-                // If no valid warehouseId specified, use first main warehouse
-                if (targetWarehouseId == null) {
-                    var mainWarehouses = warehouseService.getMainWarehouses();
-                    if (!mainWarehouses.isEmpty()) {
-                        targetWarehouseId = mainWarehouses.get(0).getId();
-                    }
-                }
-                
-                // Add product to warehouse inventory (record import handles both inventory and movement)
-                if (targetWarehouseId != null) {
-                    stockMovementService.recordImport(
-                            targetWarehouseId,
-                            savedProduct.getId(),
-                            null,
-                            request.getQuantity(),
-                            "Tự động thêm sản phẩm mới vào kho tổng",
-                            null // Will be set by controller if available
-                    );
-                }
-            } catch (Exception e) {
-                // Log error but don't fail product creation
-                System.err.println("ProductService: Error adding product to warehouse: " + e.getMessage());
-                e.printStackTrace();
-            }
+        // 🔟➕ Tự động add product vào tất cả stores (isAvailable = true)
+        try {
+            storeInventoryService.addProductToAllStores(savedProduct.getId());
+            System.out.println("ProductService: Added product " + savedProduct.getId() + " to all stores");
+        } catch (Exception e) {
+            // Log error but don't fail product creation
+            System.err.println("ProductService: Error adding product to stores: " + e.getMessage());
+            e.printStackTrace();
         }
 
         return savedProduct;

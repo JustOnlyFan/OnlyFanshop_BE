@@ -61,6 +61,4 @@ public class ProductDetailRequest {
     // Quantity field
     private Integer quantity; // Số lượng sản phẩm
     
-    // Warehouse field (optional - if specified, add product to this warehouse instead of first main warehouse)
-    private Integer warehouseId; // ID của kho tổng để thêm sản phẩm
 }

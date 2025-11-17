@@ -1,7 +1,5 @@
 package com.example.onlyfanshop_be.entity;
 import com.example.onlyfanshop_be.enums.StoreStatus;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,8 +13,14 @@ import lombok.*;
 public class StoreLocation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @JsonProperty(value = "id", access = JsonProperty.Access.READ_ONLY)
     private Integer locationID;
+    
+    @Transient
+    @JsonProperty("phoneNumber")
+    public String getPhoneNumber() {
+        return phone;
+    }
 
     @Column(nullable = false, length = 255)
     private String name;
@@ -56,11 +60,6 @@ public class StoreLocation {
 	@Column(name = "status", nullable = false, length = 20)
 	@Builder.Default
 	private StoreStatus status = StoreStatus.ACTIVE;
-
-    @OneToOne(mappedBy = "storeLocation", fetch = FetchType.LAZY)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    @JsonIgnore
-    private Warehouse warehouse;
 
 	@Transient
 	public Boolean getIsActive() {

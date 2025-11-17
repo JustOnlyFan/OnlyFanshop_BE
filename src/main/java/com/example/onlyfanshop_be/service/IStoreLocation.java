@@ -11,4 +11,5 @@ public interface IStoreLocation {
     StoreLocation createLocation(StoreLocation location);
     void deleteLocation(int id);
     void synchronizeStaffStatus(int storeId, com.example.onlyfanshop_be.enums.StoreStatus status);
+    List<StoreLocation> getStoresWithProduct(Long productId, String city, String district);
 }

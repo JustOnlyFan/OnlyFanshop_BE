@@ -57,9 +57,6 @@ public class StoreLocationRequest {
 	// Frontend may send multiple images; we take the first as imageUrl
 	private java.util.List<String> images;
 
-	// If provided, create a BRANCH warehouse for this store under a REGIONAL warehouse
-	private Integer parentRegionalWarehouseId;
-
 	// Optional: Password for staff account that will be created automatically
 	// If not provided, a default password will be used
 	@Size(min = 6, max = 100, message = "Staff password must be between 6 and 100 characters")

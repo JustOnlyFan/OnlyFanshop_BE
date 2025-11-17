@@ -67,12 +67,3 @@ public class Page {
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
 }
-
-
-
-
-
-
-
-
-
