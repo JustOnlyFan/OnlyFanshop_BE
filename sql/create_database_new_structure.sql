@@ -39,3 +39,4 @@ CREATE TABLE IF NOT EXISTS store_inventory (
 -- 4. quantity: số lượng tồn kho tại store (optional, có thể để null nếu không theo dõi số lượng)
 
 
+

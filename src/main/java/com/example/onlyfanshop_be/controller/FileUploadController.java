@@ -1,7 +1,7 @@
 package com.example.onlyfanshop_be.controller;
 
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
-import com.example.onlyfanshop_be.service.FirebaseStorageService;
+import com.example.onlyfanshop_be.service.CloudinaryStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,10 +18,10 @@ import java.io.IOException;
 public class FileUploadController {
 
     @Autowired
-    private FirebaseStorageService firebaseStorageService;
+    private CloudinaryStorageService cloudinaryStorageService;
 
     @PostMapping(value = "/image", consumes = "multipart/form-data")
-    @Operation(summary = "Upload image to Firebase")
+    @Operation(summary = "Upload image to Cloudinary")
     public ApiResponse<String> uploadImage(
             @Parameter(
                     description = "File image upload",
@@ -32,7 +32,7 @@ public class FileUploadController {
             @RequestParam("file") MultipartFile file
     ) {
         try {
-            String imageUrl = firebaseStorageService.uploadFile(file);
+            String imageUrl = cloudinaryStorageService.uploadFile(file);
             return ApiResponse.<String>builder()
                     .statusCode(200)
                     .message("Upload thành công")
@@ -47,10 +47,10 @@ public class FileUploadController {
         }
     }
     @DeleteMapping("/image")
-    @Operation(summary = "Xóa ảnh trong Firebase Storage theo URL")
+    @Operation(summary = "Xóa ảnh trong Cloudinary Storage theo URL")
     public ApiResponse<String> deleteImage(@RequestParam("url") String imageUrl) {
         try {
-            firebaseStorageService.deleteFileByUrl(imageUrl);
+            cloudinaryStorageService.deleteFileByUrl(imageUrl);
             return ApiResponse.<String>builder()
                     .statusCode(200)
                     .message("Xóa ảnh thành công")
@@ -80,14 +80,14 @@ public class FileUploadController {
             // 🧩 1. Xóa ảnh cũ (nếu có)
             if (oldUrl != null && !oldUrl.isEmpty()) {
                 try {
-                    firebaseStorageService.deleteFileByUrl(oldUrl);
+                    cloudinaryStorageService.deleteFileByUrl(oldUrl);
                 } catch (Exception e) {
                     System.err.println("⚠️ Không thể xóa ảnh cũ: " + e.getMessage());
                 }
             }
 
             // 🧩 2. Upload ảnh mới
-            String newImageUrl = firebaseStorageService.uploadFile(newFile);
+            String newImageUrl = cloudinaryStorageService.uploadFile(newFile);
 
             // ✅ 3. Trả về kết quả
             return ApiResponse.<String>builder()
@@ -106,10 +106,10 @@ public class FileUploadController {
     }
 
     @PostMapping(value = "/store-image", consumes = "multipart/form-data")
-    @Operation(summary = "Upload store image to Firebase stores folder")
+    @Operation(summary = "Upload store image to Cloudinary stores folder")
     public ApiResponse<String> uploadStoreImage(@RequestParam("file") MultipartFile file) {
         try {
-            String imageUrl = firebaseStorageService.uploadFileToFolder(file, "stores");
+            String imageUrl = cloudinaryStorageService.uploadFileToFolder(file, "stores");
             return ApiResponse.<String>builder()
                     .statusCode(200)
                     .message("Upload thành công")
@@ -124,7 +124,7 @@ public class FileUploadController {
     }
 
     @PostMapping(value = "/brand-image", consumes = "multipart/form-data")
-    @Operation(summary = "Upload brand image to Firebase brands folder")
+    @Operation(summary = "Upload brand image to Cloudinary brands folder")
     public ApiResponse<String> uploadBrandImage(
             @Parameter(
                     description = "File image upload for brand",
@@ -136,7 +136,7 @@ public class FileUploadController {
     ) {
         try {
             System.out.println("🔵 Upload brand image - File name: " + file.getOriginalFilename());
-            String imageUrl = firebaseStorageService.uploadFileToFolder(file, "brands");
+            String imageUrl = cloudinaryStorageService.uploadFileToFolder(file, "brands");
             System.out.println("✅ Brand image uploaded successfully to brands folder: " + imageUrl);
             return ApiResponse.<String>builder()
                     .statusCode(200)
