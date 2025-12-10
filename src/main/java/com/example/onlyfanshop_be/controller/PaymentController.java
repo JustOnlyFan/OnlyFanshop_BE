@@ -88,7 +88,7 @@ public class PaymentController {
             // In production, you might want to parse the address string more carefully
             UserAddress newAddress = UserAddress.builder()
                     .userId(user.getId())
-                    .fullName(user.getUsername())
+                    .fullName(user.getFullname())
                     .phone(recipientPhone != null ? recipientPhone : (user.getPhone() != null ? user.getPhone() : ""))
                     .addressLine1(address)
                     .country("Vietnam")
@@ -101,7 +101,7 @@ public class PaymentController {
         // If no address provided, create a default one
         UserAddress newAddress = UserAddress.builder()
                 .userId(user.getId())
-                .fullName(user.getUsername())
+                .fullName(user.getFullname())
                 .phone(user.getPhone() != null ? user.getPhone() : "")
                 .addressLine1("")
                 .country("Vietnam")

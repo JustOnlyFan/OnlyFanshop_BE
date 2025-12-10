@@ -36,7 +36,7 @@ public class NotificationService {
             NotificationDTO dto = new NotificationDTO();
             dto.setNotificationID(notification.getNotificationID());
             if (notification.getUser() != null) {
-                dto.setUsername(notification.getUser().getUsername());
+                dto.setFullName(notification.getUser().getFullname());
                 dto.setUserID(notification.getUser().getId().intValue());
             }
             dto.setCreatedAt(notification.getCreatedAt());
@@ -66,7 +66,7 @@ public class NotificationService {
         try {
             NotificationDTO dto = new NotificationDTO();
             dto.setNotificationID(noti.getNotificationID());
-            dto.setUsername(user.get().getUsername());
+            dto.setFullName(user.get().getFullname());
             dto.setUserID(user.get().getId().intValue());
             dto.setCreatedAt(noti.getCreatedAt());
             dto.setMessage(message);

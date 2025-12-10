@@ -13,9 +13,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class CreateStaffRequest {
-    // Username is optional - will be auto-generated from store name if not provided
-    @Size(max = 100, message = "Username must be at most 100 characters")
-    private String username;
+    // FullName is optional - will be auto-generated from store name if not provided
+    @Size(max = 100, message = "Full name must be at most 100 characters")
+    private String fullName;
 
     // Email is optional - will be auto-generated from store name if not provided
     @Email(message = "Email must be valid")

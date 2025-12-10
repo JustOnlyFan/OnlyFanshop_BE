@@ -55,15 +55,15 @@ public class LoginService implements ILoginService{
     @Override
     public ApiResponse<UserDTO> login(LoginRequest loginRequest) {
         // Validate request
-        if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
+        if (loginRequest.getEmail() == null || loginRequest.getEmail().trim().isEmpty()) {
             throw new AppException(ErrorCode.USER_NOTEXISTED);
         }
         if (loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
             throw new AppException(ErrorCode.WRONGPASS);
         }
         
-        // Try to find user by username
-        Optional<User> userOpt = userRepository.findByUsername(loginRequest.getUsername().trim());
+        // Find user by email
+        Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail().trim().toLowerCase());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
 
@@ -88,7 +88,7 @@ public class LoginService implements ILoginService{
                 }
 
                 // 🔹 Sinh Access/Refresh token mới
-                String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getUsername());
+                String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullname());
                 String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getId(), roleEntity);
 
                 // 🔹 Lưu token vào DB
@@ -120,8 +120,7 @@ public class LoginService implements ILoginService{
                 
                 UserDTO userDTO = UserDTO.builder()
                         .userID(user.getId())
-                        .username(user.getUsername())
-                        .fullName(user.getUsername()) // For backward compatibility
+                        .fullName(user.getFullname())
                         .email(user.getEmail())
                         .phoneNumber(user.getPhone())
                         .phone(user.getPhone())
@@ -172,7 +171,7 @@ public class LoginService implements ILoginService{
             roleEntity = roleRepository.findById(user.getRoleId()).orElse(null);
         }
 
-        String newAccess = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getUsername());
+        String newAccess = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullname());
         Token accessEntity = Token.builder()
                 .userId(user.getId())
                 .token(newAccess)
@@ -191,8 +190,7 @@ public class LoginService implements ILoginService{
         
         UserDTO userDTO = UserDTO.builder()
                 .userID(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getUsername()) // For backward compatibility
+                .fullName(user.getFullname())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhone())
                 .phone(user.getPhone())
@@ -232,23 +230,25 @@ public class LoginService implements ILoginService{
         try {
             System.out.println("=== REGISTER REQUEST ===");
             System.out.println("Email: " + registerRequest.getEmail());
-            System.out.println("Username: " + registerRequest.getUsername());
+            System.out.println("FullName: " + registerRequest.getFullName());
             System.out.println("Phone: " + registerRequest.getPhoneNumber());
-            System.out.println("Address: " + registerRequest.getAddress());
             System.out.println("Has Password: " + (registerRequest.getPassword() != null && !registerRequest.getPassword().isEmpty()));
             
-            // Kiểm tra email đã tồn tại chưa
-            if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
-                System.out.println("ERROR: Email already exists: " + registerRequest.getEmail());
-                throw new AppException(ErrorCode.EMAIL_USED);
+            // Validate email
+            if (registerRequest.getEmail() == null || registerRequest.getEmail().trim().isEmpty()) {
+                throw new AppException(ErrorCode.USER_NOTEXISTED);
             }
             
-            // Kiểm tra username đã tồn tại chưa
-            if (registerRequest.getUsername() != null && !registerRequest.getUsername().isEmpty()) {
-                if (userRepository.existsByUsername(registerRequest.getUsername())) {
-                    System.out.println("ERROR: Username already exists: " + registerRequest.getUsername());
-                    throw new AppException(ErrorCode.USERNAME_USED);
-                }
+            // Validate fullName
+            if (registerRequest.getFullName() == null || registerRequest.getFullName().trim().isEmpty()) {
+                throw new AppException(ErrorCode.USER_NOTEXISTED);
+            }
+            
+            // Kiểm tra email đã tồn tại chưa
+            String normalizedEmail = registerRequest.getEmail().trim().toLowerCase();
+            if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+                System.out.println("ERROR: Email already exists: " + normalizedEmail);
+                throw new AppException(ErrorCode.EMAIL_USED);
             }
 
             // Get customer role (default role_id = 1)
@@ -258,15 +258,13 @@ public class LoginService implements ILoginService{
 
             System.out.println("Customer role found: " + customerRole.getName() + " (ID: " + customerRole.getId() + ")");
 
-            // Normalize username: remove spaces
-            String username = registerRequest.getUsername() != null 
-                    ? registerRequest.getUsername().trim().replaceAll("\\s+", "")
-                    : registerRequest.getEmail().trim().replaceAll("\\s+", "");
+            // Use fullName as username (stored in username column)
+            String fullName = registerRequest.getFullName().trim();
             
             // Create user
             User user = User.builder()
-                    .username(username)
-                    .email(registerRequest.getEmail())
+                    .fullname(fullName)
+                    .email(normalizedEmail)
                     .phone(registerRequest.getPhoneNumber())
                     .roleId(customerRole.getId())
                     .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
@@ -278,26 +276,10 @@ public class LoginService implements ILoginService{
             user = userRepository.save(user);
             System.out.println("User saved successfully with ID: " + user.getId());
 
-            // Create default address if provided
-            if (registerRequest.getAddress() != null && !registerRequest.getAddress().isBlank()) {
-                UserAddress address = UserAddress.builder()
-                        .userId(user.getId())
-                        .fullName(user.getUsername())
-                        .phone(user.getPhone() != null ? user.getPhone() : "")
-                        .addressLine1(registerRequest.getAddress())
-                        .isDefault(true)
-                        .country("Vietnam")
-                        .createdAt(LocalDateTime.now())
-                        .build();
-                userAddressRepository.save(address);
-                System.out.println("User address saved successfully");
-            }
-
-            // Build UserDTO - Do not set Role object to avoid Hibernate proxy serialization issues
+            // Build UserDTO
             UserDTO userDTO = UserDTO.builder()
                     .userID(user.getId())
-                    .username(user.getUsername())
-                    .fullName(user.getUsername()) // For backward compatibility
+                    .fullName(user.getFullname())
                     .email(user.getEmail())
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())

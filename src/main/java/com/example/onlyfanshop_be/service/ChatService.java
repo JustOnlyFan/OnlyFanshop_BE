@@ -49,7 +49,7 @@ public class ChatService {
         User admin = userRepository.findById(Long.parseLong(adminId))
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
         
-        String roomId = "chatRoom_" + customer.getUsername() + "_" + request.getCustomerId();
+        String roomId = "chatRoom_" + customer.getFullname() + "_" + request.getCustomerId();
 
         // Gửi tin nhắn đầu tiên nếu có
         if (request.getInitialMessage() != null && !request.getInitialMessage().trim().isEmpty()) {
@@ -139,7 +139,7 @@ public class ChatService {
                 
                 if (latestMessage.isPresent()) {
                     ChatMessage msg = latestMessage.get();
-                    String roomId = "chatRoom_" + customer.getUsername() + "_" + customer.getId();
+                    String roomId = "chatRoom_" + customer.getFullname() + "_" + customer.getId();
                     
                     Map<String, Boolean> participants = new HashMap<>();
                     participants.put("admin", true);
@@ -150,7 +150,7 @@ public class ChatService {
                             .participants(participants)
                             .lastMessage(msg.getMessage())
                             .lastMessageTime(msg.getSentAt())
-                            .customerName(customer.getUsername())
+                            .customerName(customer.getFullname())
                             .customerAvatar(null)
                             .isOnline(false)
                             .unreadCount(0)
@@ -233,7 +233,7 @@ public class ChatService {
         User customer = userRepository.findById(Long.parseLong(customerId))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         
-        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId;
+        String roomId = "chatRoom_" + customer.getFullname() + "_" + customerId;
         
         log.info("Getting or creating chat room for customer: " + customerId + ", roomId: " + roomId);
         
@@ -251,7 +251,7 @@ public class ChatService {
         Product product = productRepository.findById(request.getProductId().intValue())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         
-        String roomId = "chatRoom_" + customer.getUsername() + "_" + customerId;
+        String roomId = "chatRoom_" + customer.getFullname() + "_" + customerId;
         
         log.info("Creating chat room from product for customer: " + customerId + ", product: " + product.getId());
 
@@ -320,7 +320,7 @@ public class ChatService {
             
             if (latestMessage.isPresent()) {
                 ChatMessage msg = latestMessage.get();
-                String roomId = "chatRoom_" + customer.getUsername() + "_" + customer.getId();
+                String roomId = "chatRoom_" + customer.getFullname() + "_" + customer.getId();
                 
                 Map<String, Boolean> participants = new HashMap<>();
                 participants.put("admin", true);
@@ -376,7 +376,7 @@ public class ChatService {
         return MessageDTO.builder()
                 .messageId(msg.getChatMessageID().toString())
                 .senderId(msg.getSender().getId().toString())
-                .senderName(msg.getSender().getUsername())
+                .senderName(msg.getSender().getFullname())
                 .message(msg.getMessage())
                 .timestamp(msg.getSentAt())
                 .epochMillis(msg.getSentAt().toEpochSecond(java.time.ZoneOffset.UTC) * 1000)

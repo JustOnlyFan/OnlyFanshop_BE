@@ -68,9 +68,9 @@ public class LoginController {
 
         Map<String, Boolean> result = new HashMap<>();
 
-        // Check if username exists
+        // Check if fullname exists
         if (username != null && !username.isEmpty()) {
-            result.put("usernameAvailable", !userRepository.existsByUsername(username));
+            result.put("usernameAvailable", !userRepository.existsByFullname(username));
         }
 
         // Check if email exists
@@ -78,6 +78,28 @@ public class LoginController {
             result.put("emailAvailable", !userRepository.existsByEmail(email));
         }
 
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/check-email-role")
+    @Operation(summary = "Kiểm tra email và role", description = "Kiểm tra email có tồn tại và role của user")
+    public ResponseEntity<Map<String, Object>> checkEmailRole(@RequestParam String email) {
+        Map<String, Object> result = new HashMap<>();
+        
+        var userOpt = userRepository.findByEmail(email.trim().toLowerCase());
+        if (userOpt.isEmpty()) {
+            result.put("exists", false);
+            result.put("role", null);
+        } else {
+            var user = userOpt.get();
+            result.put("exists", true);
+            String roleName = "customer";
+            if (user.getRole() != null) {
+                roleName = user.getRole().getName();
+            }
+            result.put("role", roleName.toLowerCase());
+        }
+        
         return ResponseEntity.ok(result);
     }
 

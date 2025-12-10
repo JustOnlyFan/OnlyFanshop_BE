@@ -15,14 +15,14 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
-    Optional<User> findByUsername(String username);
+    Optional<User> findByFullname(String fullname);
     boolean existsByEmail(String email);
-    boolean existsByUsername(String username);
+    boolean existsByFullname(String fullname);
     List<User> findByRoleId(Byte roleId);
     List<User> findByRole(Role role);
     
     @Query("SELECT u FROM User u " +
-            "WHERE (:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "WHERE (:keyword IS NULL OR LOWER(u.fullname) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR u.phone LIKE CONCAT('%', :keyword, '%')) " +
             "AND (:roleId IS NULL OR u.roleId = :roleId)")
@@ -36,7 +36,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findByRoleIdAndStoreLocationId(@Param("roleId") Byte roleId, @Param("storeLocationId") Integer storeLocationId, Pageable pageable);
 
     @Query("SELECT u FROM User u LEFT JOIN u.role r " +
-            "WHERE (:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "WHERE (:keyword IS NULL OR LOWER(u.fullname) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "   OR u.phone LIKE CONCAT('%', :keyword, '%')) " +
             "AND (:storeLocationId IS NULL OR u.storeLocationId = :storeLocationId) " +
