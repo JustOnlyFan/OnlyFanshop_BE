@@ -53,7 +53,7 @@ public class GoogleAuthController {
             System.out.println("Total users in database: " + users.size());
             for (User user : users) {
                 String roleName = user.getRole() != null ? user.getRole().getName() : "N/A";
-                System.out.println("User: " + user.getEmail() + " - " + user.getUsername() + " - Role: " + roleName);
+                System.out.println("User: " + user.getEmail() + " - " + user.getFullname() + " - Role: " + roleName);
             }
             return "Total users: " + users.size() + " - Check console for details";
         } catch (Exception e) {
@@ -74,7 +74,7 @@ public class GoogleAuthController {
                         .statusCode(200)
                         .message("Email đã tồn tại")
                         .data("Email: " + existingUser.getEmail() +
-                              ", Username: " + existingUser.getUsername() +
+                              ", Fullname: " + existingUser.getFullname() +
                               ", Role: " + roleName)
                         .build();
             } else {

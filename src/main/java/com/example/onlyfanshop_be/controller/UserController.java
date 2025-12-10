@@ -154,7 +154,7 @@ public class UserController {
                 status.put("revoked", dbToken.isRevoked());
                 status.put("expired", dbToken.isExpired());
                 status.put("userId", dbToken.getUser().getUserID());
-                status.put("username", dbToken.getUser().getUsername());
+                status.put("fullname", dbToken.getUser().getFullname());
             } else {
                 status.put("dbError", "Token not found in database. User needs to re-login.");
             }

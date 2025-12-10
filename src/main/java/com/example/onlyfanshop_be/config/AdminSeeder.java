@@ -22,8 +22,8 @@ public class AdminSeeder implements CommandLineRunner {
 
     @Value("${ADMIN_EMAIL:}")
     private String ADMIN_EMAIL;
-    @Value("${ADMIN_USERNAME:}")
-    private String ADMIN_USERNAME;
+    @Value("${ADMIN_FULLNAME:}")
+    private String ADMIN_FULLNAME;
     @Value("${ADMIN_PASSWORD:}")
     private String ADMIN_PASSWORD;
     @Value("${ADMIN_PHONE:}")
@@ -42,7 +42,7 @@ public class AdminSeeder implements CommandLineRunner {
     public void run(String... args) {
         try {
             // Require admin env variables to be set to avoid leaking hardcoded secrets
-            if (isBlank(ADMIN_EMAIL) || isBlank(ADMIN_USERNAME) || isBlank(ADMIN_PASSWORD)) {
+            if (isBlank(ADMIN_EMAIL) || isBlank(ADMIN_FULLNAME) || isBlank(ADMIN_PASSWORD)) {
                 System.out.println("AdminSeeder: Missing ADMIN_* env variables. Skipping seeding.");
                 return;
             }
@@ -73,7 +73,7 @@ public class AdminSeeder implements CommandLineRunner {
                 
                 if (isAdmin) {
                     System.out.println("AdminSeeder: ADMIN user already exists for email. Ensuring details are up-to-date.");
-                    u.setUsername(ADMIN_USERNAME);
+                    u.setFullname(ADMIN_FULLNAME);
                     u.setPhone(ADMIN_PHONE);
                     if (u.getPasswordHash() == null || u.getPasswordHash().isBlank()) {
                         u.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
@@ -89,7 +89,7 @@ public class AdminSeeder implements CommandLineRunner {
                     }
                     // No other ADMIN exists, upgrade configured email user to ADMIN
                     u.setRoleId(adminRole.getId());
-                    u.setUsername(ADMIN_USERNAME);
+                    u.setFullname(ADMIN_FULLNAME);
                     u.setPhone(ADMIN_PHONE);
                     u.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
                     u.setUpdatedAt(LocalDateTime.now());
@@ -107,7 +107,7 @@ public class AdminSeeder implements CommandLineRunner {
 
             // Create the ADMIN account as none exists
             User admin = User.builder()
-                    .username(ADMIN_USERNAME)
+                    .fullname(ADMIN_FULLNAME)
                     .email(ADMIN_EMAIL)
                     .phone(ADMIN_PHONE)
                     .roleId(adminRole.getId())

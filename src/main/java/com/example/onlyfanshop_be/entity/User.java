@@ -33,8 +33,8 @@ public class User {
     @JsonIgnore
     private Role role;
 
-    @Column(name = "username", nullable = false, length = 100)
-    private String username;
+    @Column(name = "fullname", nullable = false, length = 100)
+    private String fullname;
 
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;

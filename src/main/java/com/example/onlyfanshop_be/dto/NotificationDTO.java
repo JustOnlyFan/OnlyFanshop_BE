@@ -17,5 +17,5 @@ public class NotificationDTO {
     private Boolean isRead;
     private LocalDateTime createdAt;
     private Integer userID;
-    private String username;
+    private String fullName;
 }

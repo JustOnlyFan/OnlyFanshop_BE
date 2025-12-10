@@ -52,8 +52,8 @@ public class StaffService {
             throw new AppException(ErrorCode.INVALID_INPUT); // Store already has staff
         }
 
-        // Auto-generate username and email from store if not provided
-        String username = request.getUsername();
+        // Auto-generate fullName and email from store if not provided
+        String fullName = request.getFullName();
         String email = request.getEmail();
         String phone = request.getPhoneNumber();
 
@@ -114,15 +114,15 @@ public class StaffService {
 
         log.info("Using staff role with roleId: {}, roleName: {}", staffRole.getId(), staffRole.getName());
 
-        // Create staff user with temporary username (will be updated after getting the ID)
-        // Use temporary username to avoid conflicts
-        String tempUsername = "staff_temp_" + System.currentTimeMillis();
-        while (userRepository.existsByUsername(tempUsername)) {
-            tempUsername = "staff_temp_" + System.currentTimeMillis();
+        // Create staff user with temporary fullname (will be updated after getting the ID)
+        // Use temporary fullname to avoid conflicts
+        String tempFullname = "staff_temp_" + System.currentTimeMillis();
+        while (userRepository.existsByFullname(tempFullname)) {
+            tempFullname = "staff_temp_" + System.currentTimeMillis();
         }
 
         User staff = User.builder()
-                .username(tempUsername)
+                .fullname(tempFullname)
                 .email(email)
                 .phone(phone)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -134,39 +134,22 @@ public class StaffService {
 
         User savedStaff = userRepository.save(staff);
         
-        // Now generate the final username with staff ID
-        String finalUsername;
-        if (username == null || username.trim().isEmpty()) {
-            // Format: staff_ + normalizedStoreName + _ + staffId
-            finalUsername = "staff_" + normalizedStoreName + "_" + savedStaff.getId();
-            
-            // If username exists (shouldn't happen, but just in case), add attempt counter
-            int attempt = 0;
-            while (userRepository.existsByUsername(finalUsername) && attempt < 10) {
-                finalUsername = "staff_" + normalizedStoreName + "_" + savedStaff.getId() + "_" + attempt;
-                attempt++;
-            }
-            if (attempt >= 10) {
-                // Fallback: use timestamp
-                finalUsername = "staff_" + normalizedStoreName + "_" + savedStaff.getId() + "_" + System.currentTimeMillis();
-            }
+        // Now generate the final fullName with staff ID
+        String finalFullName;
+        if (fullName == null || fullName.trim().isEmpty()) {
+            // Format: Staff + storeName
+            finalFullName = "Staff " + storeLocation.getName();
         } else {
-            // Normalize provided username: remove spaces
-            finalUsername = username.trim().replaceAll("\\s+", "");
+            finalFullName = fullName.trim();
         }
 
-        // Validate final username uniqueness
-        if (userRepository.existsByUsername(finalUsername) && !finalUsername.equals(tempUsername)) {
-            throw new AppException(ErrorCode.USERNAME_USED);
-        }
-
-        // Update username with final value
-        savedStaff.setUsername(finalUsername);
+        // Update fullname with final value
+        savedStaff.setFullname(finalFullName);
         User verifiedStaff = userRepository.save(savedStaff);
         
         // Verify the saved staff has correct role
         log.info("Staff created with ID: {}, username: {}, email: {}, roleId: {}", 
-                verifiedStaff.getId(), verifiedStaff.getUsername(), verifiedStaff.getEmail(), verifiedStaff.getRoleId());
+                verifiedStaff.getId(), verifiedStaff.getFullname(), verifiedStaff.getEmail(), verifiedStaff.getRoleId());
         
         return convertToDTO(verifiedStaff);
     }
@@ -214,13 +197,9 @@ public class StaffService {
         }
 
         // Update fields
-        if (request.getUsername() != null) {
-            // Normalize username: remove spaces
-            String normalizedUsername = request.getUsername().trim().replaceAll("\\s+", "");
-            if (!staff.getUsername().equals(normalizedUsername) && userRepository.existsByUsername(normalizedUsername)) {
-                throw new AppException(ErrorCode.USERNAME_USED);
-            }
-            staff.setUsername(normalizedUsername);
+        if (request.getFullName() != null) {
+            String fullName = request.getFullName().trim();
+            staff.setFullname(fullName);
         }
 
         if (request.getEmail() != null) {
@@ -287,13 +266,9 @@ public class StaffService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
 
         // Staff can only update their own profile (not store assignment or status)
-        if (request.getUsername() != null) {
-            // Normalize username: remove spaces
-            String normalizedUsername = request.getUsername().trim().replaceAll("\\s+", "");
-            if (!staff.getUsername().equals(normalizedUsername) && userRepository.existsByUsername(normalizedUsername)) {
-                throw new AppException(ErrorCode.USERNAME_USED);
-            }
-            staff.setUsername(normalizedUsername);
+        if (request.getFullName() != null) {
+            String fullName = request.getFullName().trim();
+            staff.setFullname(fullName);
         }
 
         if (request.getEmail() != null) {
@@ -356,7 +331,7 @@ public class StaffService {
 
         return StaffDTO.builder()
                 .userID(user.getId())
-                .username(user.getUsername())
+                .fullName(user.getFullname())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhone())
                 .address(user.getAddress())

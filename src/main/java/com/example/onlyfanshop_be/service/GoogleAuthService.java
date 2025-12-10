@@ -58,7 +58,7 @@ public class GoogleAuthService {
             }
             
             // Tạo Access/Refresh token mới
-            String access = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getUsername());
+            String access = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullname());
             String refresh = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getId(), roleEntity);
             
             tokenRepository.save(Token.builder()
@@ -81,8 +81,7 @@ public class GoogleAuthService {
             // Build UserDTO
             UserDTO userDTO = UserDTO.builder()
                     .userID(user.getId())
-                    .username(user.getUsername())
-                    .fullName(user.getUsername()) // For backward compatibility
+                    .fullName(user.getFullname())
                     .email(user.getEmail())
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
@@ -110,12 +109,12 @@ public class GoogleAuthService {
                     .orElse(roleRepository.findById((byte) 1)
                             .orElseThrow(() -> new RuntimeException("Customer role not found")));
 
-            // Normalize username: remove spaces
-            String normalizedUsername = (username != null ? username : email).trim().replaceAll("\\s+", "");
+            // Use username as fullName
+            String fullName = (username != null ? username : email).trim();
             
             User newUser = User.builder()
                     .email(email)
-                    .username(normalizedUsername)
+                    .fullname(fullName)
                     .roleId(customerRole.getId())
                     .status(UserStatus.active)
                     .createdAt(LocalDateTime.now())
@@ -129,7 +128,7 @@ public class GoogleAuthService {
             System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getId());
 
             // Tạo Access/Refresh token cho user mới
-            String access = jwtTokenProvider.generateAccessToken(savedUser.getEmail(), savedUser.getId(), customerRole, savedUser.getUsername());
+            String access = jwtTokenProvider.generateAccessToken(savedUser.getEmail(), savedUser.getId(), customerRole, savedUser.getFullname());
             String refresh = jwtTokenProvider.generateRefreshToken(savedUser.getEmail(), savedUser.getId(), customerRole);
             
             tokenRepository.save(Token.builder()
@@ -152,8 +151,7 @@ public class GoogleAuthService {
             // Build UserDTO
             UserDTO userDTO = UserDTO.builder()
                     .userID(savedUser.getId())
-                    .username(savedUser.getUsername())
-                    .fullName(savedUser.getUsername()) // For backward compatibility
+                    .fullName(savedUser.getFullname())
                     .email(savedUser.getEmail())
                     .phoneNumber(savedUser.getPhone())
                     .phone(savedUser.getPhone())

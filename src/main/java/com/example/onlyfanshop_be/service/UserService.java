@@ -50,8 +50,7 @@ public class UserService implements IUserService {
             UserDTO dto = UserDTO.builder()
                     .userID(user.getId())
                     .email(user.getEmail())
-                    .username(user.getUsername())
-                    .fullName(user.getUsername()) // For backward compatibility
+                    .fullName(user.getFullname()) // For backward compatibility
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
@@ -80,8 +79,7 @@ public class UserService implements IUserService {
             UserDTO dto = UserDTO.builder()
                     .userID(user.getId())
                     .email(user.getEmail())
-                    .username(user.getUsername())
-                    .fullName(user.getUsername()) // For backward compatibility
+                    .fullName(user.getFullname()) // For backward compatibility
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
@@ -114,12 +112,10 @@ public class UserService implements IUserService {
             } else if (userDTO.getPhone() != null) {
                 user.setPhone(userDTO.getPhone());
             }
-            
+
             // Update username (normalize: remove spaces)
-            if (userDTO.getUsername() != null) {
-                user.setUsername(userDTO.getUsername().trim().replaceAll("\\s+", ""));
-            } else if (userDTO.getFullName() != null) {
-                user.setUsername(userDTO.getFullName().trim().replaceAll("\\s+", ""));
+            if (userDTO.getFullName() != null) {
+                user.setFullname(userDTO.getFullName().trim().replaceAll("\\s+", ""));
             }
             
             userRepository.save(user);
@@ -127,8 +123,7 @@ public class UserService implements IUserService {
             UserDTO responseDto = UserDTO.builder()
                     .userID(user.getId())
                     .email(user.getEmail())
-                    .username(user.getUsername())
-                    .fullName(user.getUsername()) // For backward compatibility
+                    .fullName(user.getFullname()) // For backward compatibility
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
@@ -183,7 +178,7 @@ public class UserService implements IUserService {
             // Create new default address
             UserAddress newAddress = UserAddress.builder()
                     .userId(user.getId())
-                    .fullName(user.getUsername())
+                    .fullName(user.getFullname())
                     .phone(user.getPhone() != null ? user.getPhone() : "")
                     .addressLine1(address)
                     .isDefault(true)
@@ -203,8 +198,8 @@ public class UserService implements IUserService {
 
     /**
      * Map frontend field names to entity field names for sorting
-     * @param sortField Field name from frontend (e.g., "username", "userID")
-     * @return Entity field name (e.g., "username", "id")
+     * @param sortField Field name from frontend (e.g., "fullname", "userID")
+     * @return Entity field name (e.g., "fullname", "id")
      */
     private String mapSortField(String sortField) {
         if (sortField == null || sortField.isBlank()) {
@@ -214,14 +209,14 @@ public class UserService implements IUserService {
         String lowerField = sortField.toLowerCase().trim();
         
         // Map common frontend field names to entity field names
-        // Valid entity fields: id, username, email, phone, status, createdAt, updatedAt, lastLoginAt, roleId
+        // Valid entity fields: id, fullname, email, phone, status, createdAt, updatedAt, lastLoginAt, roleId
         switch (lowerField) {
             case "username":
             case "user_name":
             case "fullname":
             case "full_name":
             case "name":
-                return "username";
+                return "fullname";
             case "userid":
             case "user_id":
             case "id":
@@ -287,8 +282,7 @@ public class UserService implements IUserService {
         Page<UserDTO> dtoPage = userPage.map(user -> {
             UserDTO dto = new UserDTO();
             dto.setUserID(user.getId());
-            dto.setUsername(user.getUsername());
-            dto.setFullName(user.getUsername()); // For backward compatibility
+            dto.setFullName(user.getFullname()); // For backward compatibility
             dto.setEmail(user.getEmail());
             dto.setPhoneNumber(user.getPhone());
             dto.setPhone(user.getPhone());
@@ -344,8 +338,7 @@ public class UserService implements IUserService {
         Page<UserDTO> dtoPage = userPage.map(user -> {
             UserDTO dto = new UserDTO();
             dto.setUserID(user.getId());
-            dto.setUsername(user.getUsername());
-            dto.setFullName(user.getUsername());
+            dto.setFullName(user.getFullname());
             dto.setEmail(user.getEmail());
             dto.setPhoneNumber(user.getPhone());
             dto.setPhone(user.getPhone());
