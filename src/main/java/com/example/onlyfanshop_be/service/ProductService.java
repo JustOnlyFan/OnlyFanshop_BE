@@ -48,7 +48,12 @@ public class ProductService implements  IProductService {
     private StoreInventoryService storeInventoryService;
 
     @Override
-    public ApiResponse<HomepageResponse> getHomepage(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
+    public ApiResponse<HomepageResponse> getHomepage(
+            String keyword, Integer categoryId, Integer brandId,
+            Long minPrice, Long maxPrice, Integer bladeCount,
+            Boolean remoteControl, Boolean oscillation, Boolean timer,
+            Integer minPower, Integer maxPower,
+            int page, int size, String sortBy, String order) {
         try {
             System.out.println("ProductService.getHomepage - sortBy: " + sortBy);
             Sort.Direction direction = "DESC".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
@@ -71,6 +76,46 @@ public class ProductService implements  IProductService {
             if (brandId != null && brandId > 0) {
                 spec = spec.and((root, query, cb) ->
                         cb.equal(root.get("brandId"), brandId));
+            }
+
+            // Filter theo giá
+            if (minPrice != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.greaterThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(minPrice)));
+            }
+            if (maxPrice != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.lessThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(maxPrice)));
+            }
+
+            // Filter theo số cánh quạt
+            if (bladeCount != null && bladeCount > 0) {
+                spec = spec.and((root, query, cb) ->
+                        cb.equal(root.get("bladeCount"), bladeCount));
+            }
+
+            // Filter theo tiện ích
+            if (remoteControl != null && remoteControl) {
+                spec = spec.and((root, query, cb) ->
+                        cb.equal(root.get("remoteControl"), true));
+            }
+            if (oscillation != null && oscillation) {
+                spec = spec.and((root, query, cb) ->
+                        cb.equal(root.get("oscillation"), true));
+            }
+            if (timer != null && timer) {
+                spec = spec.and((root, query, cb) ->
+                        cb.isNotNull(root.get("timer")));
+            }
+
+            // Filter theo công suất
+            if (minPower != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.greaterThanOrEqualTo(root.get("powerWatt"), minPower));
+            }
+            if (maxPower != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.lessThanOrEqualTo(root.get("powerWatt"), maxPower));
             }
 
             Page<Product> productPage = productRepository.findAll(spec, pageable);
@@ -114,14 +159,14 @@ public class ProductService implements  IProductService {
                     .toList();
             java.math.BigDecimal maxPriceBD = productRepository.findMaxPrice();
             java.math.BigDecimal minPriceBD = productRepository.findMinPrice();
-            Long maxPrice = maxPriceBD != null ? maxPriceBD.longValue() : null;
-            Long minPrice = minPriceBD != null ? minPriceBD.longValue() : null;
+            Long maxPriceFilter = maxPriceBD != null ? maxPriceBD.longValue() : null;
+            Long minPriceFilter = minPriceBD != null ? minPriceBD.longValue() : null;
             HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
                     .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
                     .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
                     .sortOption(sortBy + "_" + order.toLowerCase())
-                    .maxPrice(maxPrice)
-                    .minPrice(minPrice)
+                    .maxPrice(maxPriceFilter)
+                    .minPrice(minPriceFilter)
                     .build();
 
             List<CategoryDTO> categories = categoryRepository.findAll().stream()
@@ -577,7 +622,12 @@ public class ProductService implements  IProductService {
     }
 
     @Override
-    public ApiResponse<HomepageResponse> productList(String keyword, Integer categoryId, Integer brandId, int page, int size, String sortBy, String order) {
+    public ApiResponse<HomepageResponse> productList(
+            String keyword, Integer categoryId, Integer brandId,
+            Long minPrice, Long maxPrice, Integer bladeCount,
+            Boolean remoteControl, Boolean oscillation, Boolean timer,
+            Integer minPower, Integer maxPower,
+            int page, int size, String sortBy, String order) {
         try {
             System.out.println("ProductService.productList - sortBy: " + sortBy);
             Sort.Direction direction = "DESC".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
@@ -600,6 +650,46 @@ public class ProductService implements  IProductService {
             if (brandId != null && brandId > 0) {
                 spec = spec.and((root, query, cb) ->
                         cb.equal(root.get("brandId"), brandId));
+            }
+
+            // Filter theo giá
+            if (minPrice != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.greaterThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(minPrice)));
+            }
+            if (maxPrice != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.lessThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(maxPrice)));
+            }
+
+            // Filter theo số cánh quạt
+            if (bladeCount != null && bladeCount > 0) {
+                spec = spec.and((root, query, cb) ->
+                        cb.equal(root.get("bladeCount"), bladeCount));
+            }
+
+            // Filter theo tiện ích
+            if (remoteControl != null && remoteControl) {
+                spec = spec.and((root, query, cb) ->
+                        cb.equal(root.get("remoteControl"), true));
+            }
+            if (oscillation != null && oscillation) {
+                spec = spec.and((root, query, cb) ->
+                        cb.equal(root.get("oscillation"), true));
+            }
+            if (timer != null && timer) {
+                spec = spec.and((root, query, cb) ->
+                        cb.isNotNull(root.get("timer")));
+            }
+
+            // Filter theo công suất
+            if (minPower != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.greaterThanOrEqualTo(root.get("powerWatt"), minPower));
+            }
+            if (maxPower != null) {
+                spec = spec.and((root, query, cb) ->
+                        cb.lessThanOrEqualTo(root.get("powerWatt"), maxPower));
             }
 
             Page<Product> productPage = productRepository.findAll(spec, pageable);
@@ -644,15 +734,15 @@ public class ProductService implements  IProductService {
                     .toList();
             java.math.BigDecimal maxPriceBD = productRepository.findMaxPrice();
             java.math.BigDecimal minPriceBD = productRepository.findMinPrice();
-            Long maxPrice = maxPriceBD != null ? maxPriceBD.longValue() : null;
-            Long minPrice = minPriceBD != null ? minPriceBD.longValue() : null;
+            Long maxPriceFilter = maxPriceBD != null ? maxPriceBD.longValue() : null;
+            Long minPriceFilter = minPriceBD != null ? minPriceBD.longValue() : null;
 
             HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
                     .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
                     .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
                     .sortOption(sortBy + "_" + order.toLowerCase())
-                    .maxPrice(maxPrice)
-                    .minPrice(minPrice)
+                    .maxPrice(maxPriceFilter)
+                    .minPrice(minPriceFilter)
                     .build();
 
             List<CategoryDTO> categories = categoryRepository.findAll().stream()
