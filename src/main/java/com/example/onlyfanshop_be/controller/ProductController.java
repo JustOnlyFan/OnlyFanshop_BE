@@ -25,13 +25,24 @@ public class ProductController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer brandId,
+            @RequestParam(required = false) Long minPrice,
+            @RequestParam(required = false) Long maxPrice,
+            @RequestParam(required = false) Integer bladeCount,
+            @RequestParam(required = false) Boolean remoteControl,
+            @RequestParam(required = false) Boolean oscillation,
+            @RequestParam(required = false) Boolean timer,
+            @RequestParam(required = false) Integer minPower,
+            @RequestParam(required = false) Integer maxPower,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
         try {
             System.out.println("Homepage request - sortBy: " + sortBy + ", order: " + order);
-            ApiResponse<HomepageResponse> response = iProductService.getHomepage(keyword, categoryId, brandId, page, size, sortBy, order);
+            ApiResponse<HomepageResponse> response = iProductService.getHomepage(
+                    keyword, categoryId, brandId, minPrice, maxPrice, bladeCount,
+                    remoteControl, oscillation, timer, minPower, maxPower,
+                    page, size, sortBy, order);
             return ResponseEntity
                     .status(HttpStatus.OK)
                     .body(response);
@@ -167,13 +178,24 @@ public class ProductController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer brandId,
+            @RequestParam(required = false) Long minPrice,
+            @RequestParam(required = false) Long maxPrice,
+            @RequestParam(required = false) Integer bladeCount,
+            @RequestParam(required = false) Boolean remoteControl,
+            @RequestParam(required = false) Boolean oscillation,
+            @RequestParam(required = false) Boolean timer,
+            @RequestParam(required = false) Integer minPower,
+            @RequestParam(required = false) Integer maxPower,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String order) {
         try {
             System.out.println("ProductList request - sortBy: " + sortBy + ", order: " + order);
-            ApiResponse<HomepageResponse> response = iProductService.productList(keyword, categoryId, brandId, page, size, sortBy, order);
+            ApiResponse<HomepageResponse> response = iProductService.productList(
+                    keyword, categoryId, brandId, minPrice, maxPrice, bladeCount,
+                    remoteControl, oscillation, timer, minPower, maxPower,
+                    page, size, sortBy, order);
             return ResponseEntity
                     .status(HttpStatus.OK)
                     .body(response);
