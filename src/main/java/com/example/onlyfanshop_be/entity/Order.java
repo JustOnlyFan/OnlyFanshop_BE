@@ -17,7 +17,11 @@ import java.util.List;
         @Index(name = "idx_orders_user_id", columnList = "user_id"),
         @Index(name = "idx_orders_status_created", columnList = "status, created_at")
     })
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

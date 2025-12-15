@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 @Entity
-@Table(name = "StoreLocations")
+@Table(name = "store_locations")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,8 +13,9 @@ import lombok.*;
 public class StoreLocation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "INT UNSIGNED")
     @JsonProperty(value = "id", access = JsonProperty.Access.READ_ONLY)
-    private Integer locationID;
+    private Integer id;
     
     @Transient
     @JsonProperty("phoneNumber")
@@ -71,6 +72,13 @@ public class StoreLocation {
 			return;
 		}
 		this.status = active ? StoreStatus.ACTIVE : StoreStatus.PAUSED;
+	}
+
+	// Legacy getter for backward compatibility
+	@Transient
+	@JsonProperty("locationID")
+	public Integer getLocationID() {
+		return id;
 	}
 }
 

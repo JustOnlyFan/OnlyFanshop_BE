@@ -14,7 +14,11 @@ import java.util.List;
         @Index(name = "idx_carts_user_id", columnList = "user_id"),
         @Index(name = "idx_carts_session_id", columnList = "session_id")
     })
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Cart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

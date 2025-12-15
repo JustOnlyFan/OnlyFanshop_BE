@@ -72,5 +72,67 @@ public class StoreInventoryController {
                 .data(dto)
                 .build());
     }
+
+    /**
+     * Thêm sản phẩm vào store (Admin only)
+     */
+    @PostMapping("/store/{storeId}/products")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<StoreInventoryDTO>>> addProductsToStore(
+            @PathVariable Integer storeId,
+            @RequestBody List<Long> productIds) {
+        List<StoreInventoryDTO> results = storeInventoryService.addProductsToStore(storeId, productIds);
+        return ResponseEntity.ok(ApiResponse.<List<StoreInventoryDTO>>builder()
+                .statusCode(200)
+                .message("Đã thêm " + results.size() + " sản phẩm vào cửa hàng")
+                .data(results)
+                .build());
+    }
+
+    /**
+     * Lấy danh sách sản phẩm chưa có trong store (để thêm mới)
+     */
+    @GetMapping("/store/{storeId}/available-products")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<com.example.onlyfanshop_be.entity.Product>>> getProductsNotInStore(
+            @PathVariable Integer storeId) {
+        List<com.example.onlyfanshop_be.entity.Product> products = storeInventoryService.getProductsNotInStore(storeId);
+        return ResponseEntity.ok(ApiResponse.<List<com.example.onlyfanshop_be.entity.Product>>builder()
+                .statusCode(200)
+                .message("Danh sách sản phẩm có thể thêm vào cửa hàng")
+                .data(products)
+                .build());
+    }
+
+    /**
+     * Lấy tất cả sản phẩm trong hệ thống kèm trạng thái cho phép bán tại store
+     */
+    @GetMapping("/store/{storeId}/all-products")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<StoreInventoryDTO>>> getAllProductsWithStoreStatus(
+            @PathVariable Integer storeId) {
+        List<StoreInventoryDTO> products = storeInventoryService.getAllProductsWithStoreStatus(storeId);
+        return ResponseEntity.ok(ApiResponse.<List<StoreInventoryDTO>>builder()
+                .statusCode(200)
+                .message("Danh sách tất cả sản phẩm với trạng thái cửa hàng")
+                .data(products)
+                .build());
+    }
+
+    /**
+     * Cập nhật danh sách sản phẩm cho phép bán tại store (bulk update)
+     */
+    @PutMapping("/store/{storeId}/products")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateStoreProducts(
+            @PathVariable Integer storeId,
+            @RequestBody List<Long> enabledProductIds) {
+        storeInventoryService.updateStoreProducts(storeId, enabledProductIds);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .statusCode(200)
+                .message("Đã cập nhật danh sách sản phẩm cho cửa hàng")
+                .data(null)
+                .build());
+    }
 }
 

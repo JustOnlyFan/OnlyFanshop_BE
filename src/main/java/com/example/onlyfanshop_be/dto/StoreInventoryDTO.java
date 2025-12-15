@@ -19,6 +19,7 @@ public class StoreInventoryDTO {
     private Long productId;
     private String productName;
     private String productImageUrl;
+    private Double productPrice;
     private Boolean isAvailable;
     private Integer quantity;
     private LocalDateTime createdAt;

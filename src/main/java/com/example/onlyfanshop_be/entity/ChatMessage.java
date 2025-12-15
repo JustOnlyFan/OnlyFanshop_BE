@@ -6,12 +6,17 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ChatMessages")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "chat_messages")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ChatMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer chatMessageID;
+    @Column(name = "id", columnDefinition = "INT UNSIGNED")
+    private Integer id;
 
     @Column(columnDefinition = "TEXT")
     private String message;
@@ -54,6 +59,12 @@ public class ChatMessage {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // Legacy getter for backward compatibility
+    @Transient
+    public Integer getChatMessageID() {
+        return id;
     }
 }
 

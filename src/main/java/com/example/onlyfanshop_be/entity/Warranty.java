@@ -29,6 +29,10 @@ public class Warranty {
     @Column(name = "duration_months", nullable = false)
     private Integer durationMonths; // Thời gian bảo hành (tháng)
 
+    @Column(name = "price", columnDefinition = "DECIMAL(15,2) DEFAULT 0")
+    @Builder.Default
+    private java.math.BigDecimal price = java.math.BigDecimal.ZERO; // Giá gói bảo hành
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
