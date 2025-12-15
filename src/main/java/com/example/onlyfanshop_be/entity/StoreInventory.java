@@ -56,6 +56,9 @@ public class StoreInventory {
     @JsonIgnore
     private Product product;
 
+    @Column(name = "variant_id")
+    private Long variantId;
+
     /**
      * isAvailable: true = store này có bán sản phẩm này, false = không bán
      * Admin có thể bật/tắt việc bán sản phẩm ở mỗi store

@@ -11,7 +11,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "cart_items",
     indexes = {@Index(name = "idx_cart_items_cart_id", columnList = "cart_id")})
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CartItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

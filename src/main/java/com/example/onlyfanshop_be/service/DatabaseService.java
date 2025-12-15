@@ -36,41 +36,35 @@ public class DatabaseService {
             // Danh sách các bảng cần xóa (theo thứ tự để tránh lỗi foreign key)
             // Xóa từ bảng con trước, bảng cha sau
             String[] tables = {
-                // Bảng con trước
-                "audit_logs",
-                "support_ticket_replies",
-                "support_tickets",
-                "blog_post_category",
-                "blog_categories",
-                "blog_posts",
-                "pages",
-                "wishlist_items",
-                "wishlists",
-                "product_questions",
-                "product_reviews",
-                "product_discounts",
-                "coupon_user_usage",
-                "coupons",
-                "shipments",
+                // Inventory management
+                "inventory_transactions",
+                "inventory_request_items",
+                "inventory_requests",
+                "store_inventory",
+                // Payments & Orders
                 "payments",
                 "order_items",
                 "orders",
-                "stock_movements",
-                "warehouse_inventory",
-                "warehouses",
+                // Cart
                 "cart_items",
                 "carts",
+                // Products
+                "product_colors",
                 "product_images",
                 "product_variants",
                 "products",
+                "colors",
                 "categories",
                 "brands",
+                "warranties",
+                // Store & User
+                "store_locations",
                 "user_addresses",
                 "tokens",
+                "notifications",
+                "chat_messages",
                 "users",
-                "roles",
-                "sales_channels",
-                "settings"
+                "roles"
             };
             
             int deletedCount = 0;

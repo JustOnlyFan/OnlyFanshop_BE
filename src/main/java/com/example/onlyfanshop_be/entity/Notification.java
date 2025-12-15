@@ -6,13 +6,18 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Notifications")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "notifications")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "INT UNSIGNED")
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private Integer notificationID;
+    private Integer id;
 
     private String message;
 
@@ -29,4 +34,11 @@ public class Notification {
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
+
+    // Legacy getter for backward compatibility
+    @Transient
+    @JsonProperty("notificationID")
+    public Integer getNotificationID() {
+        return id;
+    }
 }
