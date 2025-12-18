@@ -69,7 +69,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
                                         "/store-locations",
                                         "/store-locations/**",
                                         "/ws/**",
-                                        "/ws"
+                                        "/ws",
+                                        "/api/webhooks/**",
+                                        "/api/shipments/ghn/**",
+                                        "/api/shipments/calculate-fee"
                                 ).permitAll()
                             .anyRequest().authenticated()
                     )

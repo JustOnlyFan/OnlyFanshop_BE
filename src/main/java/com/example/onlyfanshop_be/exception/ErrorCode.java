@@ -26,6 +26,19 @@ public enum ErrorCode {
     INSUFFICIENT_STOCK(1018, "Không đủ hàng trong kho"),
     INVALID_WAREHOUSE_TRANSFER(1019, "Không thể chuyển kho"),
 	INVALID_WAREHOUSE_TYPE(1020, "Loại kho hàng không hợp lệ"),
+    
+    // Category error codes
+    CATEGORY_NOT_FOUND(2001, "Không tìm thấy danh mục"),
+    CATEGORY_TYPE_REQUIRED(2002, "Loại danh mục là bắt buộc"),
+    PARENT_NOT_FOUND(2003, "Danh mục cha không tồn tại"),
+    CATEGORY_TYPE_MISMATCH(2004, "Danh mục con phải cùng loại với danh mục cha"),
+    CATEGORY_HAS_CHILDREN(2005, "Không thể xóa danh mục có danh mục con"),
+    CATEGORY_MAX_DEPTH_EXCEEDED(2006, "Danh mục đã đạt độ sâu tối đa (3 cấp)"),
+    CATEGORY_NAME_EXISTS(2007, "Tên danh mục đã tồn tại"),
+    DUPLICATE_TAG(2008, "Mã tag đã tồn tại"),
+    REQUIRED_CATEGORY_MISSING(2009, "Sản phẩm phải có danh mục FAN_TYPE hoặc ACCESSORY_TYPE"),
+    INVALID_PRICE_RANGE(2010, "Giá tối thiểu phải nhỏ hơn giá tối đa"),
+    
 	UNCATEGORIZED_EXCEPTION(1099, "...");
 
 

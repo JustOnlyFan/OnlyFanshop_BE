@@ -64,7 +64,7 @@ public class InventoryTransaction {
     /**
      * ID cửa hàng nguồn (null nếu sourceType = CENTRAL)
      */
-    @Column(name = "source_store_id")
+    @Column(name = "source_store_id", columnDefinition = "INT UNSIGNED")
     private Integer sourceStoreId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -83,7 +83,7 @@ public class InventoryTransaction {
     /**
      * ID cửa hàng đích (null nếu destinationType = CENTRAL)
      */
-    @Column(name = "destination_store_id")
+    @Column(name = "destination_store_id", columnDefinition = "INT UNSIGNED")
     private Integer destinationStoreId;
 
     @ManyToOne(fetch = FetchType.LAZY)
