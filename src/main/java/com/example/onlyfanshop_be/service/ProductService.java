@@ -45,7 +45,9 @@ public class ProductService implements  IProductService {
     @Autowired
     private com.example.onlyfanshop_be.repository.ProductImageRepository productImageRepository;
     @Autowired
-    private StoreInventoryService storeInventoryService;
+    private com.example.onlyfanshop_be.repository.ProductCategoryRepository productCategoryRepository;
+    @Autowired
+    private com.example.onlyfanshop_be.repository.ProductTagRepository productTagRepository;
 
     @Override
     public ApiResponse<HomepageResponse> getHomepage(
@@ -137,7 +139,7 @@ public class ProductService implements  IProductService {
                         
                         CategoryDTO categoryDTO = null;
                         if (p.getCategory() != null) {
-                            categoryDTO = new CategoryDTO(
+                            categoryDTO = CategoryDTO.simple(
                                     p.getCategory().getCategoryID(),
                                     p.getCategory().getCategoryName()
                             );
@@ -170,7 +172,7 @@ public class ProductService implements  IProductService {
                     .build();
 
             List<CategoryDTO> categories = categoryRepository.findAll().stream()
-                    .map(c -> new CategoryDTO(c.getCategoryID(), c.getCategoryName()))
+                    .map(c -> CategoryDTO.simple(c.getCategoryID(), c.getCategoryName()))
                     .toList();
 
             List<BrandDTO> brands = brandRepository.findAll().stream()
@@ -345,16 +347,6 @@ public class ProductService implements  IProductService {
                 e.printStackTrace();
                 throw new RuntimeException("Không thể lưu ảnh sản phẩm: " + e.getMessage(), e);
             }
-        }
-
-        // 🔟➕ Tự động add product vào tất cả stores (isAvailable = true)
-        try {
-            storeInventoryService.addProductToAllStores(savedProduct.getId());
-            System.out.println("ProductService: Added product " + savedProduct.getId() + " to all stores");
-        } catch (Exception e) {
-            // Log error but don't fail product creation
-            System.err.println("ProductService: Error adding product to stores: " + e.getMessage());
-            e.printStackTrace();
         }
 
         return savedProduct;
@@ -711,7 +703,7 @@ public class ProductService implements  IProductService {
                         
                         CategoryDTO categoryDTO = null;
                         if (p.getCategory() != null) {
-                            categoryDTO = new CategoryDTO(
+                            categoryDTO = CategoryDTO.simple(
                                     p.getCategory().getCategoryID(),
                                     p.getCategory().getCategoryName()
                             );
@@ -746,7 +738,7 @@ public class ProductService implements  IProductService {
                     .build();
 
             List<CategoryDTO> categories = categoryRepository.findAll().stream()
-                    .map(c -> new CategoryDTO(c.getCategoryID(), c.getCategoryName()))
+                    .map(c -> CategoryDTO.simple(c.getCategoryID(), c.getCategoryName()))
                     .toList();
 
             List<BrandDTO> brands = brandRepository.findAll().stream()
@@ -1076,11 +1068,14 @@ public class ProductService implements  IProductService {
                 )
                         : null)
                 .category(product.getCategory() != null
-                        ? new CategoryDTO(
+                        ? CategoryDTO.simple(
                         product.getCategory().getCategoryID(),
                         product.getCategory().getCategoryName()
                 )
                         : null)
+                // Multi-category support
+                .productCategories(loadProductCategories(product.getId()))
+                .productTags(loadProductTags(product.getId()))
                 .build();
     }
     
@@ -1100,5 +1095,39 @@ public class ProductService implements  IProductService {
             specs.append("Bảo hành: ").append(product.getWarrantyMonths()).append(" tháng\n");
         }
         return specs.length() > 0 ? specs.toString().trim() : null;
+    }
+    
+    // Helper method to load product categories
+    private List<com.example.onlyfanshop_be.dto.ProductCategoryDTO> loadProductCategories(Long productId) {
+        if (productId == null) {
+            return java.util.Collections.emptyList();
+        }
+        try {
+            List<com.example.onlyfanshop_be.entity.ProductCategory> productCategories = 
+                    productCategoryRepository.findByProductIdWithCategory(productId);
+            return productCategories.stream()
+                    .map(com.example.onlyfanshop_be.dto.ProductCategoryDTO::fromEntity)
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Warning: Could not load categories for product " + productId + ": " + e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+    
+    // Helper method to load product tags
+    private List<com.example.onlyfanshop_be.dto.ProductTagDTO> loadProductTags(Long productId) {
+        if (productId == null) {
+            return java.util.Collections.emptyList();
+        }
+        try {
+            List<com.example.onlyfanshop_be.entity.ProductTag> productTags = 
+                    productTagRepository.findByProductIdWithTag(productId);
+            return productTags.stream()
+                    .map(com.example.onlyfanshop_be.dto.ProductTagDTO::fromEntity)
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Warning: Could not load tags for product " + productId + ": " + e.getMessage());
+            return java.util.Collections.emptyList();
+        }
     }
 }

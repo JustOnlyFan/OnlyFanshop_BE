@@ -60,7 +60,7 @@ public class User {
     @Column(name = "last_login_at", columnDefinition = "TIMESTAMP NULL")
     private LocalDateTime lastLoginAt;
 
-    @Column(name = "store_location_id", columnDefinition = "INT")
+    @Column(name = "store_location_id", columnDefinition = "INT UNSIGNED")
     private Integer storeLocationId;
 
     @ManyToOne(fetch = FetchType.LAZY)

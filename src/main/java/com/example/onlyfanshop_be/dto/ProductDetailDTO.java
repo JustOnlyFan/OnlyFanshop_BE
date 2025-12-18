@@ -66,6 +66,10 @@ public class ProductDetailDTO {
     
     // Quantity field
     private Integer quantity; // Số lượng sản phẩm
+    
+    // Multi-category support
+    private List<ProductCategoryDTO> productCategories; // List of product categories
+    private List<ProductTagDTO> productTags; // List of product tags
 }
 
 

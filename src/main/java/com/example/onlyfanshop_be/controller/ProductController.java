@@ -1,10 +1,17 @@
 package com.example.onlyfanshop_be.controller;
 
+import com.example.onlyfanshop_be.dto.CategoryDTO;
+import com.example.onlyfanshop_be.dto.TagDTO;
 import com.example.onlyfanshop_be.dto.request.ProductDetailRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
+import com.example.onlyfanshop_be.entity.Category;
+import com.example.onlyfanshop_be.entity.Tag;
+import com.example.onlyfanshop_be.enums.CategoryType;
 import com.example.onlyfanshop_be.service.IProductService;
+import com.example.onlyfanshop_be.service.ProductCategoryService;
+import com.example.onlyfanshop_be.service.ProductTagService;
 import com.example.onlyfanshop_be.entity.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,13 +19,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * Controller for managing products.
+ * Provides endpoints for product CRUD operations, category assignment, and tag assignment.
+ * 
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 3.2
+ */
 @RestController
 @RequestMapping("/product")
 public class ProductController {
     @Autowired
     private IProductService iProductService;
+
+    @Autowired
+    private ProductCategoryService productCategoryService;
+
+    @Autowired
+    private ProductTagService productTagService;
 
     @PostMapping("/public/homepage")
     public ResponseEntity<ApiResponse<HomepageResponse>> getHomepage(
@@ -215,5 +236,373 @@ public class ProductController {
     public ApiResponse<Void> updateActive(@PathVariable Integer id, @RequestParam boolean active) {
         iProductService.updateActive(id,active );
         return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
+    }
+
+    // ==================== CATEGORY ASSIGNMENT ENDPOINTS ====================
+
+    /**
+     * Assign categories to a product.
+     * Requirements: 2.1 - Allow multiple categories from different types
+     * 
+     * @param productId the product ID
+     * @param categoryIds list of category IDs to assign
+     * @return success response
+     */
+    @PostMapping("/{productId}/categories")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> assignCategoriesToProduct(
+            @PathVariable Integer productId,
+            @RequestBody List<Integer> categoryIds) {
+        try {
+            productCategoryService.assignCategoriesToProduct(productId.longValue(), categoryIds);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Gán danh mục cho sản phẩm thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Replace all categories for a product.
+     * Requirements: 2.3 - Store in many-to-many relationship table
+     * 
+     * @param productId the product ID
+     * @param categoryIds list of category IDs to replace with
+     * @return success response
+     */
+    @PutMapping("/{productId}/categories")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> replaceProductCategories(
+            @PathVariable Integer productId,
+            @RequestBody List<Integer> categoryIds) {
+        try {
+            productCategoryService.replaceProductCategories(productId.longValue(), categoryIds);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Cập nhật danh mục sản phẩm thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Remove a category from a product.
+     * Requirements: 2.4 - Remove without affecting other assignments
+     * 
+     * @param productId the product ID
+     * @param categoryId the category ID to remove
+     * @return success response
+     */
+    @DeleteMapping("/{productId}/categories/{categoryId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> removeCategoryFromProduct(
+            @PathVariable Integer productId,
+            @PathVariable Integer categoryId) {
+        try {
+            productCategoryService.removeCategoryFromProduct(productId.longValue(), categoryId);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Xóa danh mục khỏi sản phẩm thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Get all categories assigned to a product.
+     * 
+     * @param productId the product ID
+     * @return list of categories
+     */
+    @GetMapping("/{productId}/categories")
+    public ResponseEntity<ApiResponse<List<CategoryDTO>>> getProductCategories(@PathVariable Integer productId) {
+        try {
+            List<Category> categories = productCategoryService.getProductCategories(productId.longValue());
+            List<CategoryDTO> categoryDTOs = categories.stream()
+                    .map(CategoryDTO::fromEntity)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.<List<CategoryDTO>>builder()
+                    .statusCode(200)
+                    .message("Lấy danh mục sản phẩm thành công")
+                    .data(categoryDTOs)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<List<CategoryDTO>>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Get categories assigned to a product filtered by type.
+     * 
+     * @param productId the product ID
+     * @param type the category type to filter by
+     * @return list of categories of the specified type
+     */
+    @GetMapping("/{productId}/categories/type/{type}")
+    public ResponseEntity<ApiResponse<List<CategoryDTO>>> getProductCategoriesByType(
+            @PathVariable Integer productId,
+            @PathVariable CategoryType type) {
+        try {
+            List<Category> categories = productCategoryService.getProductCategoriesByType(productId.longValue(), type);
+            List<CategoryDTO> categoryDTOs = categories.stream()
+                    .map(CategoryDTO::fromEntity)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.<List<CategoryDTO>>builder()
+                    .statusCode(200)
+                    .message("Lấy danh mục sản phẩm theo loại thành công")
+                    .data(categoryDTOs)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<List<CategoryDTO>>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Check if a product has required category type (FAN_TYPE or ACCESSORY_TYPE).
+     * Requirements: 2.2 - Require at least one FAN_TYPE or ACCESSORY_TYPE category
+     * 
+     * @param productId the product ID
+     * @return true if product has required category type
+     */
+    @GetMapping("/{productId}/categories/has-required")
+    public ResponseEntity<ApiResponse<Boolean>> hasRequiredCategoryType(@PathVariable Integer productId) {
+        try {
+            boolean hasRequired = productCategoryService.hasRequiredCategoryType(productId.longValue());
+            return ResponseEntity.ok(ApiResponse.<Boolean>builder()
+                    .statusCode(200)
+                    .message(hasRequired ? "Sản phẩm có danh mục bắt buộc" : "Sản phẩm thiếu danh mục bắt buộc")
+                    .data(hasRequired)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Boolean>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Set the primary category for a product.
+     * 
+     * @param productId the product ID
+     * @param categoryId the category ID to set as primary
+     * @return success response
+     */
+    @PutMapping("/{productId}/categories/{categoryId}/primary")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> setPrimaryCategory(
+            @PathVariable Integer productId,
+            @PathVariable Integer categoryId) {
+        try {
+            productCategoryService.setPrimaryCategory(productId.longValue(), categoryId);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Đặt danh mục chính thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    // ==================== TAG ASSIGNMENT ENDPOINTS ====================
+
+    /**
+     * Assign tags to a product.
+     * Requirements: 3.2 - Allow multiple tags per product
+     * 
+     * @param productId the product ID
+     * @param tagIds list of tag IDs to assign
+     * @return success response
+     */
+    @PostMapping("/{productId}/tags")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> assignTagsToProduct(
+            @PathVariable Integer productId,
+            @RequestBody List<Integer> tagIds) {
+        try {
+            productTagService.assignTagsToProduct(productId.longValue(), tagIds);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Gán tag cho sản phẩm thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Replace all tags for a product.
+     * 
+     * @param productId the product ID
+     * @param tagIds list of tag IDs to replace with
+     * @return success response
+     */
+    @PutMapping("/{productId}/tags")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> replaceProductTags(
+            @PathVariable Integer productId,
+            @RequestBody List<Integer> tagIds) {
+        try {
+            productTagService.replaceProductTags(productId.longValue(), tagIds);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Cập nhật tag sản phẩm thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Remove a tag from a product.
+     * 
+     * @param productId the product ID
+     * @param tagId the tag ID to remove
+     * @return success response
+     */
+    @DeleteMapping("/{productId}/tags/{tagId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> removeTagFromProduct(
+            @PathVariable Integer productId,
+            @PathVariable Integer tagId) {
+        try {
+            productTagService.removeTagFromProduct(productId.longValue(), tagId);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Xóa tag khỏi sản phẩm thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Get all tags assigned to a product.
+     * 
+     * @param productId the product ID
+     * @return list of tags
+     */
+    @GetMapping("/{productId}/tags")
+    public ResponseEntity<ApiResponse<List<TagDTO>>> getProductTags(@PathVariable Integer productId) {
+        try {
+            List<Tag> tags = productTagService.getProductTags(productId.longValue());
+            List<TagDTO> tagDTOs = tags.stream()
+                    .map(TagDTO::fromEntity)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.<List<TagDTO>>builder()
+                    .statusCode(200)
+                    .message("Lấy tag sản phẩm thành công")
+                    .data(tagDTOs)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<List<TagDTO>>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Get active tags for a product (considering validity period).
+     * 
+     * @param productId the product ID
+     * @return list of active tags
+     */
+    @GetMapping("/{productId}/tags/active")
+    public ResponseEntity<ApiResponse<List<TagDTO>>> getActiveProductTags(@PathVariable Integer productId) {
+        try {
+            List<Tag> tags = productTagService.getActiveProductTags(productId.longValue());
+            List<TagDTO> tagDTOs = tags.stream()
+                    .map(TagDTO::fromEntity)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.<List<TagDTO>>builder()
+                    .statusCode(200)
+                    .message("Lấy tag đang hoạt động của sản phẩm thành công")
+                    .data(tagDTOs)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<List<TagDTO>>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Assign a tag to a product with validity period.
+     * 
+     * @param productId the product ID
+     * @param tagId the tag ID
+     * @param validFrom start date/time (optional)
+     * @param validUntil end date/time (optional)
+     * @return success response
+     */
+    @PostMapping("/{productId}/tags/{tagId}/validity")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ResponseEntity<ApiResponse<Void>> assignTagWithValidity(
+            @PathVariable Integer productId,
+            @PathVariable Integer tagId,
+            @RequestParam(required = false) LocalDateTime validFrom,
+            @RequestParam(required = false) LocalDateTime validUntil) {
+        try {
+            productTagService.assignTagToProductWithValidity(productId.longValue(), tagId, validFrom, validUntil);
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .statusCode(200)
+                    .message("Gán tag với thời hạn thành công")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Void>builder()
+                            .statusCode(400)
+                            .message(e.getMessage())
+                            .build());
+        }
     }
 }

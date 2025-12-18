@@ -38,7 +38,7 @@ public class StoreInventory {
     @Column(name = "id", columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
-    @Column(name = "store_id", nullable = false)
+    @Column(name = "store_id", nullable = false, columnDefinition = "INT UNSIGNED")
     private Integer storeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
