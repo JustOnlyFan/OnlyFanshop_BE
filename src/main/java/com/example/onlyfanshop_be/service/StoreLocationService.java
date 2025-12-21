@@ -1,13 +1,19 @@
 package com.example.onlyfanshop_be.service;
 
+import com.example.onlyfanshop_be.dto.StaffDTO;
+import com.example.onlyfanshop_be.dto.request.CreateStaffRequest;
 import com.example.onlyfanshop_be.entity.StoreLocation;
 import com.example.onlyfanshop_be.entity.User;
+import com.example.onlyfanshop_be.entity.Warehouse;
 import com.example.onlyfanshop_be.enums.StoreStatus;
 import com.example.onlyfanshop_be.enums.UserStatus;
+import com.example.onlyfanshop_be.enums.WarehouseType;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.StoreLocationRepository;
 import com.example.onlyfanshop_be.repository.UserRepository;
+import com.example.onlyfanshop_be.repository.WarehouseRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 @Service
+@Slf4j
 public class StoreLocationService implements IStoreLocation {
     @Autowired
     private StoreLocationRepository storeLocationRepository;
@@ -22,6 +29,10 @@ public class StoreLocationService implements IStoreLocation {
 	private UserRepository userRepository;
 	@Autowired
 	private StoreInventoryService storeInventoryService;
+	@Autowired
+	private WarehouseRepository warehouseRepository;
+	@Autowired
+	private StaffService staffService;
 
     @Override
     @Transactional(readOnly = true)
@@ -129,5 +140,116 @@ public class StoreLocationService implements IStoreLocation {
 				.collect(Collectors.toList());
 		
 		return filteredStores;
+	}
+
+	/**
+	 * Create a store with associated Staff account and Store_Warehouse
+	 * Requirements: 3.2 - WHEN a Store is created THEN the System SHALL automatically create one Staff account associated with that Store
+	 * Requirements: 3.3 - WHEN a Store is created THEN the System SHALL automatically create one Store_Warehouse associated with that Store
+	 * Requirements: 3.4 - WHEN a Store is created THEN the Store_Warehouse SHALL be empty with no Inventory_Items
+	 */
+	@Override
+	@Transactional
+	public StoreLocation createStoreWithStaffAndWarehouse(StoreLocation location, String staffPassword) {
+		// First, create the store location
+		StoreLocation savedStore = createLocation(location);
+		log.info("Created store location with ID: {}, name: {}", savedStore.getLocationID(), savedStore.getName());
+
+		// Create Staff account for this store (Requirements 3.2)
+		try {
+			createStaffForStore(savedStore, staffPassword);
+		} catch (Exception e) {
+			log.error("Failed to create staff account for store ID: {} - Error: {}", 
+					savedStore.getLocationID(), e.getMessage(), e);
+			throw e;
+		}
+
+		// Create Store_Warehouse for this store (Requirements 3.3, 3.4)
+		try {
+			createWarehouseForStore(savedStore);
+		} catch (Exception e) {
+			log.error("Failed to create warehouse for store ID: {} - Error: {}", 
+					savedStore.getLocationID(), e.getMessage(), e);
+			throw e;
+		}
+
+		// Synchronize staff status with store operational status
+		synchronizeStaffStatus(savedStore.getLocationID(), savedStore.getStatus());
+
+		return savedStore;
+	}
+
+	/**
+	 * Create a Staff account for a store
+	 * Requirements: 3.2 - WHEN a Store is created THEN the System SHALL automatically create one Staff account associated with that Store
+	 */
+	private StaffDTO createStaffForStore(StoreLocation store, String staffPassword) {
+		log.info("Creating staff account for store ID: {}, name: {}", store.getLocationID(), store.getName());
+		
+		CreateStaffRequest staffRequest = new CreateStaffRequest();
+		staffRequest.setStoreLocationId(store.getLocationID());
+		
+		// Use provided password or default password
+		String password = (staffPassword != null && !staffPassword.trim().isEmpty()) 
+				? staffPassword 
+				: "Staff@123"; // Default password
+		staffRequest.setPassword(password);
+		
+		// Username, email, phone will be auto-generated from store info in StaffService
+		StaffDTO staffDTO = staffService.createStaff(staffRequest);
+		log.info("Successfully created staff account with ID: {} for store ID: {}", 
+				staffDTO.getUserID(), store.getLocationID());
+		
+		return staffDTO;
+	}
+
+	/**
+	 * Create a Store_Warehouse for a store
+	 * Requirements: 3.3 - WHEN a Store is created THEN the System SHALL automatically create one Store_Warehouse associated with that Store
+	 * Requirements: 3.4 - WHEN a Store is created THEN the Store_Warehouse SHALL be empty with no Inventory_Items
+	 */
+	private Warehouse createWarehouseForStore(StoreLocation store) {
+		log.info("Creating warehouse for store ID: {}, name: {}", store.getLocationID(), store.getName());
+		
+		// Check if warehouse already exists for this store
+		if (warehouseRepository.existsByStoreId(store.getLocationID())) {
+			log.info("Warehouse already exists for store ID: {}", store.getLocationID());
+			return warehouseRepository.findByStoreId(store.getLocationID())
+					.orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+		}
+		
+		// Create new Store_Warehouse with empty inventory (Requirements 3.4)
+		Warehouse warehouse = Warehouse.builder()
+				.name("Kho " + store.getName())
+				.type(WarehouseType.STORE)
+				.storeId(store.getLocationID())
+				.address(store.getAddress())
+				.phone(store.getPhone())
+				.build();
+		
+		Warehouse savedWarehouse = warehouseRepository.save(warehouse);
+		log.info("Successfully created warehouse with ID: {} for store ID: {}", 
+				savedWarehouse.getId(), store.getLocationID());
+		
+		return savedWarehouse;
+	}
+
+	/**
+	 * Get the Staff account associated with a store
+	 */
+	@Override
+	@Transactional(readOnly = true)
+	public StaffDTO getStoreStaff(int storeId) {
+		List<StaffDTO> staffList = staffService.getStaffByStoreLocation(storeId);
+		return staffList.isEmpty() ? null : staffList.get(0);
+	}
+
+	/**
+	 * Get the Warehouse associated with a store
+	 */
+	@Override
+	@Transactional(readOnly = true)
+	public Warehouse getStoreWarehouse(int storeId) {
+		return warehouseRepository.findByStoreId(storeId).orElse(null);
 	}
 }
