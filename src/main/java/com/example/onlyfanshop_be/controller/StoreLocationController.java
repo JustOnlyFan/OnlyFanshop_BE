@@ -68,42 +68,10 @@ public class StoreLocationController {
                 .openingHours(request.getOpeningHours())
                 .status(request.getStatus() != null ? request.getStatus() : StoreStatus.ACTIVE)
                 .build();
-        StoreLocation saved = iStoreLocation.createLocation(location);
-
-        // Automatically create staff account for this store
-        try {
-            log.info("Creating staff account for store ID: {}, name: {}", saved.getLocationID(), saved.getName());
-            CreateStaffRequest staffRequest = new CreateStaffRequest();
-            staffRequest.setStoreLocationId(saved.getLocationID());
-            // Use provided password or default password
-            String staffPassword = request.getStaffPassword();
-            if (staffPassword == null || staffPassword.trim().isEmpty()) {
-                staffPassword = "Staff@123"; // Default password
-                log.info("Using default password for staff account");
-            } else {
-                log.info("Using provided password for staff account");
-            }
-            staffRequest.setPassword(staffPassword);
-            // Username, email, phone will be auto-generated from store info in StaffService
-            var staffDTO = staffService.createStaff(staffRequest);
-            log.info("Successfully created staff account with ID: {} for store ID: {}", 
-                    staffDTO.getUserID(), saved.getLocationID());
-            // Synchronize staff status with store operational status
-            iStoreLocation.synchronizeStaffStatus(saved.getLocationID(), saved.getStatus());
-        } catch (com.example.onlyfanshop_be.exception.AppException e) {
-            // Log AppException with error code
-            log.error("Failed to create staff account for store ID: {} - ErrorCode: {}, Message: {}", 
-                    saved.getLocationID(), e.getErrorCode(), e.getMessage(), e);
-            // Re-throw to fail the request so admin knows something went wrong
-            throw e;
-        } catch (Exception e) {
-            // Log unexpected exceptions
-            log.error("Unexpected error creating staff account for store ID: {} - Error: {}", 
-                    saved.getLocationID(), e.getMessage(), e);
-            // Re-throw to fail the request
-            throw new com.example.onlyfanshop_be.exception.AppException(
-                    com.example.onlyfanshop_be.exception.ErrorCode.UNCATEGORIZED_EXCEPTION);
-        }
+        
+        // Use the new method that creates store with staff and warehouse automatically
+        // Requirements: 3.2, 3.3, 3.4
+        StoreLocation saved = iStoreLocation.createStoreWithStaffAndWarehouse(location, request.getStaffPassword());
 
         return ApiResponse.<StoreLocation>builder()
                 .statusCode(201)
