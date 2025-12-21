@@ -48,6 +48,10 @@ public class ProductService implements  IProductService {
     private com.example.onlyfanshop_be.repository.ProductCategoryRepository productCategoryRepository;
     @Autowired
     private com.example.onlyfanshop_be.repository.ProductTagRepository productTagRepository;
+    @Autowired
+    private com.example.onlyfanshop_be.repository.WarehouseRepository warehouseRepository;
+    @Autowired
+    private com.example.onlyfanshop_be.repository.InventoryItemRepository inventoryItemRepository;
 
     @Override
     public ApiResponse<HomepageResponse> getHomepage(
@@ -349,6 +353,9 @@ public class ProductService implements  IProductService {
             }
         }
 
+        // 1️⃣1️⃣ Tạo InventoryItem trong Main_Warehouse với quantity = 0 (Requirements 2.2)
+        createMainWarehouseInventoryItem(savedProduct.getId());
+
         return savedProduct;
     }
 
@@ -563,14 +570,54 @@ public class ProductService implements  IProductService {
     }
 
     @Override
+    @Transactional
     public void deleteProduct(int id) {
         Optional<Product> optionalProduct = productRepository.findById(id);
         if (optionalProduct.isPresent()) {
             Product product = optionalProduct.get();
+            
+            // Requirements 1.4: Delete all InventoryItems across all warehouses when product is deleted
+            deleteAllInventoryItemsForProduct(product.getId());
+            
             product.setStatus(com.example.onlyfanshop_be.enums.ProductStatus.inactive);
             productRepository.save(product);
         }else throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
     }
+    
+    /**
+     * Xóa tất cả InventoryItems của một sản phẩm trong tất cả các kho
+     * Requirements 1.4: WHEN Admin deletes a product THEN the System SHALL remove the product 
+     * from Product_Catalog and all associated Inventory_Items
+     */
+    @Transactional
+    public void deleteAllInventoryItemsForProduct(Long productId) {
+        if (productId == null) {
+            System.err.println("ProductService: Cannot delete inventory items - productId is null");
+            return;
+        }
+        
+        try {
+            // Tìm tất cả InventoryItems của sản phẩm này
+            List<com.example.onlyfanshop_be.entity.InventoryItem> inventoryItems = 
+                    inventoryItemRepository.findByProductId(productId);
+            
+            if (inventoryItems.isEmpty()) {
+                System.out.println("ProductService: No inventory items found for product " + productId);
+                return;
+            }
+            
+            // Xóa tất cả InventoryItems
+            inventoryItemRepository.deleteByProductId(productId);
+            
+            System.out.println("ProductService: Deleted " + inventoryItems.size() + 
+                    " inventory item(s) for product " + productId);
+        } catch (Exception e) {
+            System.err.println("ProductService: Error deleting inventory items for product " + productId + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể xóa inventory items cho sản phẩm: " + e.getMessage(), e);
+        }
+    }
+    
     @Override
     public void updateImage(int productId, String imageURL) {
         Optional<Product> productOpt = productRepository.findById(productId);
@@ -1128,6 +1175,56 @@ public class ProductService implements  IProductService {
         } catch (Exception e) {
             System.err.println("Warning: Could not load tags for product " + productId + ": " + e.getMessage());
             return java.util.Collections.emptyList();
+        }
+    }
+    
+    /**
+     * Tạo InventoryItem trong Main_Warehouse với quantity = 0 khi tạo sản phẩm mới
+     * Requirements 2.2: WHEN a new product is added to Product_Catalog THEN the System SHALL 
+     * automatically create an InventoryItem in Main_Warehouse with zero quantity
+     */
+    public void createMainWarehouseInventoryItem(Long productId) {
+        if (productId == null) {
+            System.err.println("ProductService: Cannot create inventory item - productId is null");
+            return;
+        }
+        
+        try {
+            // Tìm Main Warehouse
+            java.util.Optional<com.example.onlyfanshop_be.entity.Warehouse> mainWarehouseOpt = 
+                    warehouseRepository.findFirstByType(com.example.onlyfanshop_be.enums.WarehouseType.MAIN);
+            
+            if (mainWarehouseOpt.isEmpty()) {
+                System.err.println("ProductService: Main Warehouse not found - cannot create inventory item for product " + productId);
+                return;
+            }
+            
+            com.example.onlyfanshop_be.entity.Warehouse mainWarehouse = mainWarehouseOpt.get();
+            
+            // Kiểm tra xem InventoryItem đã tồn tại chưa
+            if (inventoryItemRepository.existsByWarehouseIdAndProductId(mainWarehouse.getId(), productId)) {
+                System.out.println("ProductService: InventoryItem already exists for product " + productId + " in Main Warehouse");
+                return;
+            }
+            
+            // Tạo InventoryItem mới với quantity = 0
+            com.example.onlyfanshop_be.entity.InventoryItem inventoryItem = 
+                    com.example.onlyfanshop_be.entity.InventoryItem.builder()
+                            .warehouseId(mainWarehouse.getId())
+                            .productId(productId)
+                            .quantity(0)
+                            .reservedQuantity(0)
+                            .build();
+            
+            inventoryItemRepository.save(inventoryItem);
+            
+            System.out.println("ProductService: Created InventoryItem for product " + productId + 
+                    " in Main Warehouse (ID: " + mainWarehouse.getId() + ") with quantity 0");
+        } catch (Exception e) {
+            System.err.println("ProductService: Error creating inventory item for product " + productId + ": " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để không ảnh hưởng đến việc tạo sản phẩm
+            // Inventory item có thể được tạo sau bằng cách khác
         }
     }
 }

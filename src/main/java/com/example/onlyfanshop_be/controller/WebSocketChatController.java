@@ -51,7 +51,6 @@ public class WebSocketChatController {
 
             log.info("WebSocket message received from user {} in room {}", senderId, request.getRoomId());
 
-            // Save message to Firebase (for persistence)
             // WebSocket handles real-time delivery, Firebase stores for history
             chatService.sendMessageViaWebSocket(request, senderId);
 
