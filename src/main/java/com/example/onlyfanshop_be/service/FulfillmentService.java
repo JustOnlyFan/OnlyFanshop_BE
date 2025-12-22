@@ -32,6 +32,7 @@ public class FulfillmentService implements IFulfillmentService {
     private final InventoryLogRepository inventoryLogRepository;
     private final ProductRepository productRepository;
     private final StoreLocationRepository storeLocationRepository;
+    private final IDebtOrderService debtOrderService;
 
 
     /**
@@ -383,7 +384,19 @@ public class FulfillmentService implements IFulfillmentService {
                    fulfilledQuantities.values().stream().anyMatch(q -> q > 0)) {
             // Partial fulfillment (Requirements 5.6)
             newStatus = TransferRequestStatus.PARTIAL;
-            // Note: Debt order creation will be handled by DebtOrderService in Task 7
+            
+            // Create debt order for shortage quantities (Requirements 5.6, 6.1)
+            if (!shortageQuantities.isEmpty()) {
+                try {
+                    var debtOrder = debtOrderService.createDebtOrder(request, shortageQuantities);
+                    debtOrderId = debtOrder.getId();
+                    log.info("Created debt order {} for transfer request {} with shortages: {}", 
+                            debtOrderId, request.getId(), shortageQuantities);
+                } catch (Exception e) {
+                    log.error("Failed to create debt order for transfer request {}: {}", 
+                            request.getId(), e.getMessage());
+                }
+            }
         } else {
             // Nothing could be fulfilled
             newStatus = TransferRequestStatus.PENDING;
