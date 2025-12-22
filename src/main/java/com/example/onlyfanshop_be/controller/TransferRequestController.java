@@ -3,7 +3,10 @@ package com.example.onlyfanshop_be.controller;
 import com.example.onlyfanshop_be.dto.TransferRequestDTO;
 import com.example.onlyfanshop_be.dto.request.CreateTransferRequestDTO;
 import com.example.onlyfanshop_be.dto.request.RejectTransferRequestDTO;
+import com.example.onlyfanshop_be.dto.response.AvailabilityCheckResult;
+import com.example.onlyfanshop_be.dto.response.FulfillmentResult;
 import com.example.onlyfanshop_be.enums.TransferRequestStatus;
+import com.example.onlyfanshop_be.service.IFulfillmentService;
 import com.example.onlyfanshop_be.service.ITransferRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * REST Controller for Transfer Request operations
- * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 9.1, 9.2, 9.4, 9.5
  */
 @RestController
 @RequestMapping("/api/transfer-requests")
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 public class TransferRequestController {
     
     private final ITransferRequestService transferRequestService;
+    private final IFulfillmentService fulfillmentService;
     
     /**
      * Create a new transfer request
@@ -93,6 +97,42 @@ public class TransferRequestController {
         
         TransferRequestDTO request = transferRequestService.getRequest(id);
         return ResponseEntity.ok(request);
+    }
+    
+    /**
+     * Check availability for a transfer request
+     * GET /api/transfer-requests/{id}/availability
+     * Requirements: 5.1, 9.1, 9.2, 9.4, 9.5
+     */
+    @GetMapping("/{id}/availability")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Check availability for a transfer request", 
+               description = "Check inventory availability across all warehouses for a transfer request. " +
+                           "Returns Main Warehouse quantity, Store Warehouse breakdown, and fulfillment recommendations.")
+    public ResponseEntity<AvailabilityCheckResult> checkAvailability(
+            @Parameter(description = "Transfer request ID") 
+            @PathVariable Long id) {
+        
+        AvailabilityCheckResult result = fulfillmentService.checkAvailabilityById(id);
+        return ResponseEntity.ok(result);
+    }
+    
+    /**
+     * Fulfill a transfer request
+     * POST /api/transfer-requests/{id}/fulfill
+     * Requirements: 5.5, 5.6
+     */
+    @PostMapping("/{id}/fulfill")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Fulfill a transfer request", 
+               description = "Fulfill a transfer request by deducting inventory from source warehouses. " +
+                           "Creates debt order if partial fulfillment is needed.")
+    public ResponseEntity<FulfillmentResult> fulfillRequest(
+            @Parameter(description = "Transfer request ID") 
+            @PathVariable Long id) {
+        
+        FulfillmentResult result = fulfillmentService.fulfillById(id);
+        return ResponseEntity.ok(result);
     }
     
     /**
