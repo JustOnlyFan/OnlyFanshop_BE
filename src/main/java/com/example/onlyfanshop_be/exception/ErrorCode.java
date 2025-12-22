@@ -39,6 +39,16 @@ public enum ErrorCode {
     REQUIRED_CATEGORY_MISSING(2009, "Sản phẩm phải có danh mục FAN_TYPE hoặc ACCESSORY_TYPE"),
     INVALID_PRICE_RANGE(2010, "Giá tối thiểu phải nhỏ hơn giá tối đa"),
     
+    // Transfer Request error codes
+    TRANSFER_REQUEST_NOT_FOUND(3001, "Không tìm thấy yêu cầu chuyển kho"),
+    TRANSFER_REQUEST_ALREADY_PROCESSED(3002, "Yêu cầu chuyển kho đã được xử lý"),
+    TRANSFER_REQUEST_INVALID_STATUS(3003, "Trạng thái yêu cầu không hợp lệ"),
+    TRANSFER_REQUEST_QUANTITY_EXCEEDS_LIMIT(3004, "Số lượng yêu cầu vượt quá giới hạn (tối đa 30 sản phẩm mỗi loại)"),
+    TRANSFER_REQUEST_PRODUCT_NOT_IN_STORE(3005, "Sản phẩm không tồn tại trong kho cửa hàng"),
+    TRANSFER_REQUEST_EMPTY_ITEMS(3006, "Yêu cầu chuyển kho phải có ít nhất một sản phẩm"),
+    TRANSFER_REQUEST_INVALID_QUANTITY(3007, "Số lượng yêu cầu phải lớn hơn 0"),
+    STORE_NOT_FOUND(3008, "Không tìm thấy cửa hàng"),
+    
 	UNCATEGORIZED_EXCEPTION(1099, "...");
 
 
