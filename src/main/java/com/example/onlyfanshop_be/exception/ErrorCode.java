@@ -49,6 +49,13 @@ public enum ErrorCode {
     TRANSFER_REQUEST_INVALID_QUANTITY(3007, "Số lượng yêu cầu phải lớn hơn 0"),
     STORE_NOT_FOUND(3008, "Không tìm thấy cửa hàng"),
     
+    // Debt Order error codes
+    DEBT_ORDER_NOT_FOUND(4001, "Không tìm thấy đơn nợ"),
+    DEBT_ORDER_ALREADY_COMPLETED(4002, "Đơn nợ đã được hoàn thành"),
+    DEBT_ORDER_CANNOT_FULFILL(4003, "Không đủ hàng để đáp ứng đơn nợ"),
+    DEBT_ORDER_EMPTY_ITEMS(4004, "Đơn nợ phải có ít nhất một sản phẩm"),
+    DEBT_ORDER_ALREADY_EXISTS(4005, "Đơn nợ đã tồn tại cho yêu cầu chuyển kho này"),
+    
 	UNCATEGORIZED_EXCEPTION(1099, "...");
 
 

@@ -37,6 +37,7 @@ public class WarehouseService implements IWarehouseService {
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryLogRepository inventoryLogRepository;
     private final ProductRepository productRepository;
+    private final IDebtOrderService debtOrderService;
 
     /**
      * Get the Main Warehouse with all inventory items
@@ -105,6 +106,18 @@ public class WarehouseService implements IWarehouseService {
         
         log.info("Updated Main Warehouse inventory for product {}: {} -> {}", 
                 productId, previousQuantity, quantity);
+        
+        // Check for fulfillable debt orders when quantity increases (Requirements 6.3, 6.4)
+        if (quantity > previousQuantity) {
+            try {
+                var fulfillableOrders = debtOrderService.checkFulfillableDebtOrders();
+                if (!fulfillableOrders.isEmpty()) {
+                    log.info("Found {} fulfillable debt orders after inventory update", fulfillableOrders.size());
+                }
+            } catch (Exception e) {
+                log.warn("Error checking fulfillable debt orders: {}", e.getMessage());
+            }
+        }
         
         return convertToInventoryItemDTO(savedItem, product, mainWarehouse);
     }
