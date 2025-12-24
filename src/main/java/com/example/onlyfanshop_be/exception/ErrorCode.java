@@ -64,6 +64,11 @@ public enum ErrorCode {
     GHN_ORDER_NOT_FOUND(5005, "Không tìm thấy đơn hàng GHN"),
     GHN_ORDER_CREATION_FAILED(5006, "Tạo đơn hàng GHN thất bại"),
     
+    // Shipment error codes
+    SHIPMENT_NOT_FOUND(6001, "Không tìm thấy đơn vận chuyển"),
+    SHIPMENT_ALREADY_DELIVERED(6002, "Đơn vận chuyển đã được giao"),
+    SHIPMENT_CANNOT_SYNC(6003, "Không thể đồng bộ trạng thái đơn vận chuyển"),
+    
 	UNCATEGORIZED_EXCEPTION(1099, "...");
 
 
