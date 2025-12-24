@@ -56,6 +56,14 @@ public enum ErrorCode {
     DEBT_ORDER_EMPTY_ITEMS(4004, "Đơn nợ phải có ít nhất một sản phẩm"),
     DEBT_ORDER_ALREADY_EXISTS(4005, "Đơn nợ đã tồn tại cho yêu cầu chuyển kho này"),
     
+    // GHN error codes
+    GHN_CONFIG_NOT_FOUND(5001, "Không tìm thấy cấu hình GHN"),
+    GHN_API_ERROR(5002, "Lỗi khi gọi GHN API"),
+    GHN_TOKEN_EXPIRED(5003, "Token GHN đã hết hạn"),
+    GHN_INVALID_CONFIG(5004, "Cấu hình GHN không hợp lệ"),
+    GHN_ORDER_NOT_FOUND(5005, "Không tìm thấy đơn hàng GHN"),
+    GHN_ORDER_CREATION_FAILED(5006, "Tạo đơn hàng GHN thất bại"),
+    
 	UNCATEGORIZED_EXCEPTION(1099, "...");
 
 
