@@ -19,6 +19,7 @@ public class WarehouseDTO {
     private WarehouseType type;
     private Integer storeId;
     private String storeName;
+    private Boolean isActive;
     private String address;
     private String phone;
     private LocalDateTime createdAt;

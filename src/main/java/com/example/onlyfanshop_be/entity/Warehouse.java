@@ -10,14 +10,15 @@ import java.time.LocalDateTime;
 
 /**
  * Warehouse - Kho hàng trong hệ thống
- * MAIN: Kho lớn trung tâm chứa tất cả sản phẩm
- * STORE: Kho của từng cửa hàng
+ * Chỉ hỗ trợ STORE: Kho của từng cửa hàng
+ * Kho tổng (MAIN) đã được loại bỏ
  */
 @Entity
 @Table(name = "warehouses",
     indexes = {
         @Index(name = "idx_warehouse_type", columnList = "type"),
-        @Index(name = "idx_warehouse_store_id", columnList = "store_id")
+        @Index(name = "idx_warehouse_store_id", columnList = "store_id"),
+        @Index(name = "idx_warehouse_is_active", columnList = "is_active")
     })
 @Getter
 @Setter
@@ -45,6 +46,15 @@ public class Warehouse {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JsonIgnore
     private StoreLocation store;
+
+    /**
+     * Trạng thái hoạt động của kho
+     * true: kho đang hoạt động
+     * false: kho đã bị vô hiệu hóa (soft delete)
+     */
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
 
     @Column(name = "address", length = 500)
     private String address;

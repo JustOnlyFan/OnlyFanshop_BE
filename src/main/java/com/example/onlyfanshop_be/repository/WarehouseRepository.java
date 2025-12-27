@@ -17,11 +17,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findByType(WarehouseType type);
     
     /**
-     * Tìm kho lớn (Main Warehouse)
-     */
-    Optional<Warehouse> findFirstByType(WarehouseType type);
-    
-    /**
      * Tìm kho của cửa hàng
      */
     Optional<Warehouse> findByStoreId(Integer storeId);
@@ -35,4 +30,16 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      * Tìm tất cả kho cửa hàng (trừ kho lớn)
      */
     List<Warehouse> findByTypeAndIdNot(WarehouseType type, Long excludeId);
+    
+    /**
+     * Tìm tất cả kho đang hoạt động
+     * Requirements: 7.4 - Khi query active warehouses, hệ thống chỉ trả về các kho có isActive = true
+     */
+    List<Warehouse> findByIsActiveTrue();
+    
+    /**
+     * Tìm kho của cửa hàng đang hoạt động
+     * Requirements: 1.3, 7.4 - Chỉ trả về kho cửa hàng đang hoạt động
+     */
+    Optional<Warehouse> findByStoreIdAndIsActiveTrue(Integer storeId);
 }
