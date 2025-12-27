@@ -10,17 +10,15 @@ import java.util.List;
 /**
  * Service interface for Transfer Request Fulfillment operations
  * Handles availability checking, source allocation, and inventory deduction
- * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 9.1, 9.2, 9.3, 9.4, 9.5
+ * Updated to only support Store Warehouses (Main Warehouse removed)
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.5, 5.6
  */
 public interface IFulfillmentService {
     
     /**
      * Check availability for a transfer request
-     * Requirements: 5.1 - WHEN Admin reviews a Transfer_Request THEN the System SHALL display availability check results for each product
-     * Requirements: 9.1 - WHEN Admin requests availability check for products THEN the System SHALL return quantity available in Main_Warehouse
-     * Requirements: 9.2 - WHEN Main_Warehouse quantity is insufficient THEN the System SHALL return breakdown of available quantities from each Store_Warehouse
-     * Requirements: 9.4 - WHEN availability check completes THEN the System SHALL return fulfillment recommendation with source allocation
-     * Requirements: 9.5 - WHEN no sources can fulfill the request THEN the System SHALL return maximum fulfillable quantity and shortage amount
+     * Requirements: 4.1 - WHEN calculating source allocations THEN the System SHALL only consider Store_Warehouses
+     * Requirements: 4.2 - WHEN a store needs inventory THEN the System SHALL search available quantity from other Store_Warehouses
      * 
      * @param request The transfer request to check availability for
      * @return AvailabilityCheckResult containing detailed availability information
@@ -55,9 +53,10 @@ public interface IFulfillmentService {
     
     /**
      * Calculate source allocations for a specific product and required quantity
-     * Requirements: 5.2 - WHEN checking availability THEN the System SHALL first check Main_Warehouse quantity for each product
-     * Requirements: 5.3 - WHEN Main_Warehouse has insufficient quantity THEN the System SHALL check all other Store_Warehouses for available quantity
-     * Requirements: 5.4 - WHEN multiple Store_Warehouses have available quantity THEN the System SHALL aggregate quantities to fulfill the shortage
+     * Only considers Store Warehouses (Main Warehouse removed)
+     * Requirements: 4.1 - WHEN calculating source allocations THEN the System SHALL only consider Store_Warehouses
+     * Requirements: 4.3 - WHEN multiple Store_Warehouses have available stock THEN the System SHALL prioritize by available quantity (highest first)
+     * Requirements: 4.4 - THE System SHALL exclude the requesting store's warehouse from source allocation
      * 
      * @param productId The product ID to allocate
      * @param requiredQuantity The required quantity
@@ -67,21 +66,36 @@ public interface IFulfillmentService {
     List<SourceAllocation> calculateSourceAllocations(Long productId, int requiredQuantity, Integer excludeStoreId);
     
     /**
-     * Get available quantity for a product in Main Warehouse
-     * Requirements: 9.3 - WHEN calculating available quantity in Store_Warehouse THEN the System SHALL exclude quantities reserved for pending Transfer_Requests
-     * 
-     * @param productId The product ID
-     * @return Available quantity (total - reserved)
-     */
-    int getMainWarehouseAvailableQuantity(Long productId);
-    
-    /**
      * Get available quantity for a product in a specific Store Warehouse
-     * Requirements: 9.3 - WHEN calculating available quantity in Store_Warehouse THEN the System SHALL exclude quantities reserved for pending Transfer_Requests
+     * Requirements: 4.2 - WHEN a store needs inventory THEN the System SHALL search available quantity from other Store_Warehouses
      * 
      * @param productId The product ID
      * @param warehouseId The warehouse ID
      * @return Available quantity (total - reserved)
      */
     int getStoreWarehouseAvailableQuantity(Long productId, Long warehouseId);
+
+    /**
+     * Calculate total available quantity for a product across all active store warehouses
+     * Requirements: 6.1 - Calculate total available from all Store_Warehouses
+     * 
+     * @param productId The product ID
+     * @param excludeStoreId Optional store ID to exclude (the requesting store)
+     * @return Total available quantity across all eligible store warehouses
+     */
+    int calculateTotalAvailableQuantity(Long productId, Integer excludeStoreId);
+
+    /**
+     * Calculate shortage for a product
+     * Requirements: 6.1 - WHEN total available quantity across all Store_Warehouses is less than requested 
+     *               THEN the System SHALL calculate and report the shortage
+     * 
+     * Shortage = requested_quantity - total_available_quantity
+     * 
+     * @param productId The product ID
+     * @param requestedQuantity The requested quantity
+     * @param excludeStoreId Optional store ID to exclude (the requesting store)
+     * @return Shortage quantity (0 if no shortage)
+     */
+    int calculateShortage(Long productId, int requestedQuantity, Integer excludeStoreId);
 }

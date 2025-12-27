@@ -48,6 +48,11 @@ public enum ErrorCode {
     TRANSFER_REQUEST_EMPTY_ITEMS(3006, "Yêu cầu chuyển kho phải có ít nhất một sản phẩm"),
     TRANSFER_REQUEST_INVALID_QUANTITY(3007, "Số lượng yêu cầu phải lớn hơn 0"),
     STORE_NOT_FOUND(3008, "Không tìm thấy cửa hàng"),
+    SOURCE_WAREHOUSE_REQUIRED(3009, "Source warehouse ID is required"),
+    SOURCE_WAREHOUSE_NOT_FOUND(3010, "Không tìm thấy kho nguồn"),
+    SOURCE_WAREHOUSE_INACTIVE(3011, "Kho nguồn đã bị vô hiệu hóa"),
+    SOURCE_WAREHOUSE_INSUFFICIENT_STOCK(3012, "Kho nguồn không đủ hàng"),
+    SAME_WAREHOUSE_TRANSFER(3013, "Không thể chuyển hàng đến cùng một kho"),
     
     // Debt Order error codes
     DEBT_ORDER_NOT_FOUND(4001, "Không tìm thấy đơn nợ"),

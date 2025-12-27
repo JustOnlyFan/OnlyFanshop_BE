@@ -3,7 +3,6 @@ package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.response.*;
 import com.example.onlyfanshop_be.entity.*;
 import com.example.onlyfanshop_be.enums.TransferRequestStatus;
-import com.example.onlyfanshop_be.enums.WarehouseType;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.*;
@@ -18,7 +17,8 @@ import java.util.stream.Collectors;
 /**
  * Implementation of FulfillmentService
  * Handles transfer request fulfillment including availability checking, source allocation, and inventory deduction
- * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 9.1, 9.2, 9.3, 9.4, 9.5
+ * Updated to only support Store Warehouses (Main Warehouse removed)
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.5, 5.6
  */
 @Service
 @RequiredArgsConstructor
@@ -33,6 +33,7 @@ public class FulfillmentService implements IFulfillmentService {
     private final ProductRepository productRepository;
     private final StoreLocationRepository storeLocationRepository;
     private final IDebtOrderService debtOrderService;
+    private final IInternalShipmentService internalShipmentService;
 
 
     /**
@@ -47,7 +48,9 @@ public class FulfillmentService implements IFulfillmentService {
 
     /**
      * Check availability for a transfer request
-     * Requirements: 5.1, 9.1, 9.2, 9.4, 9.5
+     * Only checks from Store Warehouses (Main Warehouse removed)
+     * Requirements: 4.1 - Only consider Store_Warehouses
+     * Requirements: 4.2 - Search available quantity from other Store_Warehouses
      */
     @Override
     public AvailabilityCheckResult checkAvailability(TransferRequest request) {
@@ -107,17 +110,19 @@ public class FulfillmentService implements IFulfillmentService {
 
     /**
      * Check availability for a single product
-     * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5
+     * Only checks from Store Warehouses (Main Warehouse removed)
+     * Requirements: 4.1 - Only consider Store_Warehouses
+     * Requirements: 4.2 - Search available quantity from other Store_Warehouses
      */
     private ProductAvailability checkProductAvailability(Long productId, int requestedQuantity, Integer excludeStoreId) {
         // Get product info
         Product product = productRepository.findById(productId.intValue())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOTEXISTED));
         
-        // Get Main Warehouse availability (Requirements 9.1)
-        int mainWarehouseAvailable = getMainWarehouseAvailableQuantity(productId);
+        // Get store warehouse availabilities (Requirements 4.1, 4.2)
+        List<StoreWarehouseAvailability> storeAvailabilities = getStoreWarehouseAvailabilities(productId, excludeStoreId);
         
-        // Calculate source allocations (Requirements 9.4)
+        // Calculate source allocations (Requirements 4.3, 4.4)
         List<SourceAllocation> allocations = calculateSourceAllocations(productId, requestedQuantity, excludeStoreId);
         
         // Calculate total available from allocations
@@ -125,13 +130,7 @@ public class FulfillmentService implements IFulfillmentService {
                 .mapToInt(SourceAllocation::getQuantity)
                 .sum();
         
-        // Get store warehouse availabilities if main is insufficient (Requirements 9.2)
-        List<StoreWarehouseAvailability> storeAvailabilities = new ArrayList<>();
-        if (mainWarehouseAvailable < requestedQuantity) {
-            storeAvailabilities = getStoreWarehouseAvailabilities(productId, excludeStoreId);
-        }
-        
-        // Calculate shortage (Requirements 9.5)
+        // Calculate shortage (Requirements 6.1)
         int shortage = Math.max(0, requestedQuantity - totalAvailable);
         
         return ProductAvailability.builder()
@@ -139,7 +138,7 @@ public class FulfillmentService implements IFulfillmentService {
                 .productName(product.getName())
                 .productSku(product.getSku())
                 .requestedQuantity(requestedQuantity)
-                .mainWarehouseAvailable(mainWarehouseAvailable)
+                .mainWarehouseAvailable(0) // No longer used - Main Warehouse removed
                 .storeAvailabilities(storeAvailabilities)
                 .totalAvailable(totalAvailable)
                 .shortage(shortage)
@@ -149,16 +148,16 @@ public class FulfillmentService implements IFulfillmentService {
 
     /**
      * Get store warehouse availabilities for a product
-     * Requirements: 9.2
+     * Requirements: 4.2 - Search available quantity from Store_Warehouses
      */
     private List<StoreWarehouseAvailability> getStoreWarehouseAvailabilities(Long productId, Integer excludeStoreId) {
         List<StoreWarehouseAvailability> availabilities = new ArrayList<>();
         
-        // Get all store warehouses
-        List<Warehouse> storeWarehouses = warehouseRepository.findByType(WarehouseType.STORE);
+        // Get all active store warehouses (Requirements 4.1 - only Store Warehouses)
+        List<Warehouse> storeWarehouses = warehouseRepository.findByIsActiveTrue();
         
         for (Warehouse warehouse : storeWarehouses) {
-            // Skip the requesting store's warehouse
+            // Skip the requesting store's warehouse (Requirements 4.4)
             if (excludeStoreId != null && excludeStoreId.equals(warehouse.getStoreId())) {
                 continue;
             }
@@ -192,7 +191,7 @@ public class FulfillmentService implements IFulfillmentService {
             }
         }
         
-        // Sort by available quantity descending
+        // Sort by available quantity descending (Requirements 4.3)
         availabilities.sort((a, b) -> b.getAvailableQuantity().compareTo(a.getAvailableQuantity()));
         
         return availabilities;
@@ -201,84 +200,63 @@ public class FulfillmentService implements IFulfillmentService {
 
     /**
      * Calculate source allocations for a product
-     * Requirements: 5.2 - Check Main_Warehouse first
-     * Requirements: 5.3 - Check Store_Warehouses when main is insufficient
-     * Requirements: 5.4 - Aggregate from multiple stores
+     * Only considers Store Warehouses (Main Warehouse removed)
+     * Requirements: 4.1 - Only consider Store_Warehouses
+     * Requirements: 4.3 - Prioritize by available quantity (highest first)
+     * Requirements: 4.4 - Exclude requesting store's warehouse
      */
     @Override
     public List<SourceAllocation> calculateSourceAllocations(Long productId, int requiredQuantity, Integer excludeStoreId) {
         List<SourceAllocation> allocations = new ArrayList<>();
         int remainingQuantity = requiredQuantity;
         
-        // Step 1: Check Main Warehouse first (Requirements 5.2)
-        Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
-                .orElse(null);
+        // Get all active store warehouses (Requirements 4.1 - only Store Warehouses)
+        List<Warehouse> storeWarehouses = warehouseRepository.findByIsActiveTrue();
         
-        if (mainWarehouse != null) {
-            int mainAvailable = getWarehouseAvailableQuantity(productId, mainWarehouse.getId());
+        // Sort store warehouses by available quantity (descending) for optimal allocation
+        // Requirements 4.3 - prioritize by available quantity (highest first)
+        List<WarehouseWithAvailability> warehousesWithAvailability = new ArrayList<>();
+        
+        for (Warehouse warehouse : storeWarehouses) {
+            // Skip the requesting store's warehouse (Requirements 4.4)
+            if (excludeStoreId != null && excludeStoreId.equals(warehouse.getStoreId())) {
+                continue;
+            }
             
-            if (mainAvailable > 0) {
-                int allocateFromMain = Math.min(mainAvailable, remainingQuantity);
-                allocations.add(SourceAllocation.builder()
-                        .warehouseId(mainWarehouse.getId())
-                        .warehouseName(mainWarehouse.getName())
-                        .warehouseType(WarehouseType.MAIN)
-                        .storeId(null)
-                        .storeName(null)
-                        .quantity(allocateFromMain)
-                        .build());
-                remainingQuantity -= allocateFromMain;
+            int available = getWarehouseAvailableQuantity(productId, warehouse.getId());
+            if (available > 0) {
+                warehousesWithAvailability.add(new WarehouseWithAvailability(warehouse, available));
             }
         }
         
-        // Step 2: If still need more, check Store Warehouses (Requirements 5.3, 5.4)
-        if (remainingQuantity > 0) {
-            List<Warehouse> storeWarehouses = warehouseRepository.findByType(WarehouseType.STORE);
-            
-            // Sort store warehouses by available quantity (descending) for optimal allocation
-            List<WarehouseWithAvailability> warehousesWithAvailability = new ArrayList<>();
-            
-            for (Warehouse warehouse : storeWarehouses) {
-                // Skip the requesting store's warehouse
-                if (excludeStoreId != null && excludeStoreId.equals(warehouse.getStoreId())) {
-                    continue;
-                }
-                
-                int available = getWarehouseAvailableQuantity(productId, warehouse.getId());
-                if (available > 0) {
-                    warehousesWithAvailability.add(new WarehouseWithAvailability(warehouse, available));
-                }
+        // Sort by available quantity descending (Requirements 4.3)
+        warehousesWithAvailability.sort((a, b) -> Integer.compare(b.available, a.available));
+        
+        // Aggregate from multiple stores
+        for (WarehouseWithAvailability wwa : warehousesWithAvailability) {
+            if (remainingQuantity <= 0) {
+                break;
             }
             
-            // Sort by available quantity descending
-            warehousesWithAvailability.sort((a, b) -> Integer.compare(b.available, a.available));
+            int allocateFromStore = Math.min(wwa.available, remainingQuantity);
             
-            // Aggregate from multiple stores (Requirements 5.4)
-            for (WarehouseWithAvailability wwa : warehousesWithAvailability) {
-                if (remainingQuantity <= 0) {
-                    break;
-                }
-                
-                int allocateFromStore = Math.min(wwa.available, remainingQuantity);
-                
-                String storeName = null;
-                if (wwa.warehouse.getStoreId() != null) {
-                    storeName = storeLocationRepository.findById(wwa.warehouse.getStoreId())
-                            .map(StoreLocation::getName)
-                            .orElse(null);
-                }
-                
-                allocations.add(SourceAllocation.builder()
-                        .warehouseId(wwa.warehouse.getId())
-                        .warehouseName(wwa.warehouse.getName())
-                        .warehouseType(WarehouseType.STORE)
-                        .storeId(wwa.warehouse.getStoreId())
-                        .storeName(storeName)
-                        .quantity(allocateFromStore)
-                        .build());
-                
-                remainingQuantity -= allocateFromStore;
+            String storeName = null;
+            if (wwa.warehouse.getStoreId() != null) {
+                storeName = storeLocationRepository.findById(wwa.warehouse.getStoreId())
+                        .map(StoreLocation::getName)
+                        .orElse(null);
             }
+            
+            allocations.add(SourceAllocation.builder()
+                    .warehouseId(wwa.warehouse.getId())
+                    .warehouseName(wwa.warehouse.getName())
+                    .warehouseType(wwa.warehouse.getType())
+                    .storeId(wwa.warehouse.getStoreId())
+                    .storeName(storeName)
+                    .quantity(allocateFromStore)
+                    .build());
+            
+            remainingQuantity -= allocateFromStore;
         }
         
         return allocations;
@@ -311,6 +289,8 @@ public class FulfillmentService implements IFulfillmentService {
 
     /**
      * Fulfill a transfer request
+     * Requirements: 3.3 - WHEN Transfer_Request is approved THEN the System SHALL decrease inventory in source Store_Warehouse and increase in destination Store_Warehouse
+     * Requirements: 5.2 - WHEN Inventory_Request is approved THEN the System SHALL create Internal_Shipment from source to destination store
      * Requirements: 5.5 - Deduct quantities from source warehouses
      * Requirements: 5.6 - Allow partial fulfillment with Debt_Order creation
      */
@@ -328,6 +308,10 @@ public class FulfillmentService implements IFulfillmentService {
         if (items == null || items.isEmpty()) {
             items = transferRequestItemRepository.findByTransferRequestId(request.getId());
         }
+        
+        // Get destination warehouse for the requesting store
+        Warehouse destinationWarehouse = warehouseRepository.findByStoreIdAndIsActiveTrue(request.getStoreId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
         
         Map<Long, Integer> fulfilledQuantities = new HashMap<>();
         Map<Long, Integer> shortageQuantities = new HashMap<>();
@@ -349,13 +333,23 @@ public class FulfillmentService implements IFulfillmentService {
                     .mapToInt(SourceAllocation::getQuantity)
                     .sum();
             
-            // Deduct inventory from source warehouses (Requirements 5.5)
+            // Deduct inventory from source warehouses (Requirements 3.3, 5.5)
             for (SourceAllocation allocation : allocations) {
                 deductInventory(
                         allocation.getWarehouseId(),
                         item.getProductId(),
                         allocation.getQuantity(),
-                        "Transfer Request #" + request.getId() + " fulfillment"
+                        "Transfer Request #" + request.getId() + " fulfillment - source deduction"
+                );
+            }
+            
+            // Increase inventory at destination warehouse (Requirements 3.3)
+            if (totalAllocated > 0) {
+                increaseInventory(
+                        destinationWarehouse.getId(),
+                        item.getProductId(),
+                        totalAllocated,
+                        "Transfer Request #" + request.getId() + " fulfillment - destination receipt"
                 );
             }
             
@@ -377,6 +371,7 @@ public class FulfillmentService implements IFulfillmentService {
         // Update request status
         TransferRequestStatus newStatus;
         Long debtOrderId = null;
+        List<Long> shipmentIds = new ArrayList<>();
         
         if (fullyFulfilled) {
             newStatus = TransferRequestStatus.COMPLETED;
@@ -402,6 +397,21 @@ public class FulfillmentService implements IFulfillmentService {
             newStatus = TransferRequestStatus.PENDING;
         }
         
+        // Create Internal Shipment records (Requirements 5.2)
+        if (!sourceAllocationsMap.isEmpty() && 
+            sourceAllocationsMap.values().stream().anyMatch(list -> !list.isEmpty())) {
+            try {
+                List<InternalShipment> shipments = internalShipmentService.createShipments(request, sourceAllocationsMap);
+                shipmentIds = shipments.stream()
+                        .map(InternalShipment::getId)
+                        .collect(Collectors.toList());
+                log.info("Created {} internal shipments for transfer request {}", shipments.size(), request.getId());
+            } catch (Exception e) {
+                log.error("Failed to create internal shipments for transfer request {}: {}", 
+                        request.getId(), e.getMessage());
+            }
+        }
+        
         request.setStatus(newStatus);
         transferRequestRepository.save(request);
         
@@ -417,8 +427,8 @@ public class FulfillmentService implements IFulfillmentService {
             summary = "Không thể đáp ứng yêu cầu do không đủ hàng";
         }
         
-        log.info("Fulfilled transfer request {}: status={}, fullyFulfilled={}", 
-                request.getId(), newStatus, fullyFulfilled);
+        log.info("Fulfilled transfer request {}: status={}, fullyFulfilled={}, shipments={}", 
+                request.getId(), newStatus, fullyFulfilled, shipmentIds.size());
         
         return FulfillmentResult.builder()
                 .transferRequestId(request.getId())
@@ -428,7 +438,7 @@ public class FulfillmentService implements IFulfillmentService {
                 .shortageQuantities(shortageQuantities)
                 .sourceAllocations(sourceAllocationsMap)
                 .debtOrderId(debtOrderId)
-                .shipmentIds(new ArrayList<>()) // Shipments will be created by ShipmentService in Task 9
+                .shipmentIds(shipmentIds)
                 .summary(summary)
                 .build();
     }
@@ -436,7 +446,7 @@ public class FulfillmentService implements IFulfillmentService {
 
     /**
      * Deduct inventory from a warehouse
-     * Requirements: 5.5
+     * Requirements: 3.3, 5.5
      */
     private void deductInventory(Long warehouseId, Long productId, int quantity, String reason) {
         InventoryItem inventoryItem = inventoryItemRepository
@@ -468,24 +478,46 @@ public class FulfillmentService implements IFulfillmentService {
     }
 
     /**
-     * Get available quantity in Main Warehouse
-     * Requirements: 9.3 - Exclude reserved quantities
+     * Increase inventory at a warehouse (destination)
+     * Requirements: 3.3 - WHEN Transfer_Request is approved THEN the System SHALL increase inventory in destination Store_Warehouse
      */
-    @Override
-    public int getMainWarehouseAvailableQuantity(Long productId) {
-        Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
-                .orElse(null);
+    private void increaseInventory(Long warehouseId, Long productId, int quantity, String reason) {
+        // Get or create inventory item at destination
+        InventoryItem inventoryItem = inventoryItemRepository
+                .findByWarehouseIdAndProductId(warehouseId, productId)
+                .orElseGet(() -> {
+                    InventoryItem newItem = InventoryItem.builder()
+                            .warehouseId(warehouseId)
+                            .productId(productId)
+                            .quantity(0)
+                            .reservedQuantity(0)
+                            .build();
+                    return inventoryItemRepository.save(newItem);
+                });
         
-        if (mainWarehouse == null) {
-            return 0;
-        }
+        int previousQuantity = inventoryItem.getQuantity();
+        int newQuantity = previousQuantity + quantity;
         
-        return getWarehouseAvailableQuantity(productId, mainWarehouse.getId());
+        inventoryItem.setQuantity(newQuantity);
+        inventoryItemRepository.save(inventoryItem);
+        
+        // Create inventory log
+        InventoryLog log = InventoryLog.builder()
+                .warehouseId(warehouseId)
+                .productId(productId)
+                .previousQuantity(previousQuantity)
+                .newQuantity(newQuantity)
+                .reason(reason)
+                .build();
+        inventoryLogRepository.save(log);
+        
+        FulfillmentService.log.debug("Increased {} units of product {} at warehouse {}: {} -> {}", 
+                quantity, productId, warehouseId, previousQuantity, newQuantity);
     }
 
     /**
      * Get available quantity in a Store Warehouse
-     * Requirements: 9.3 - Exclude reserved quantities
+     * Requirements: 4.2 - Search available quantity from Store_Warehouses
      */
     @Override
     public int getStoreWarehouseAvailableQuantity(Long productId, Long warehouseId) {
@@ -500,5 +532,72 @@ public class FulfillmentService implements IFulfillmentService {
         return inventoryItemRepository.findByWarehouseIdAndProductId(warehouseId, productId)
                 .map(InventoryItem::getAvailableQuantity)
                 .orElse(0);
+    }
+
+    /**
+     * Calculate total available quantity for a product across all active store warehouses
+     * Requirements: 6.1 - Calculate total available from all Store_Warehouses
+     * 
+     * @param productId The product ID
+     * @param excludeStoreId Optional store ID to exclude (the requesting store)
+     * @return Total available quantity across all eligible store warehouses
+     */
+    @Override
+    public int calculateTotalAvailableQuantity(Long productId, Integer excludeStoreId) {
+        List<Warehouse> storeWarehouses = warehouseRepository.findByIsActiveTrue();
+        
+        int totalAvailable = 0;
+        for (Warehouse warehouse : storeWarehouses) {
+            // Skip the requesting store's warehouse if specified
+            if (excludeStoreId != null && excludeStoreId.equals(warehouse.getStoreId())) {
+                continue;
+            }
+            totalAvailable += getWarehouseAvailableQuantity(productId, warehouse.getId());
+        }
+        
+        return totalAvailable;
+    }
+
+    /**
+     * Calculate shortage for a product
+     * Requirements: 6.1 - WHEN total available quantity across all Store_Warehouses is less than requested 
+     *               THEN the System SHALL calculate and report the shortage
+     * 
+     * Shortage = requested_quantity - total_available_quantity
+     * 
+     * @param productId The product ID
+     * @param requestedQuantity The requested quantity
+     * @param excludeStoreId Optional store ID to exclude (the requesting store)
+     * @return Shortage quantity (0 if no shortage)
+     */
+    @Override
+    public int calculateShortage(Long productId, int requestedQuantity, Integer excludeStoreId) {
+        int totalAvailable = calculateTotalAvailableQuantity(productId, excludeStoreId);
+        return Math.max(0, requestedQuantity - totalAvailable);
+    }
+
+    /**
+     * Calculate total shortage for a transfer request
+     * Requirements: 6.1 - Calculate shortage = requested - total available from all store warehouses
+     * 
+     * @param request The transfer request
+     * @return Map of product ID to shortage quantity
+     */
+    public Map<Long, Integer> calculateRequestShortages(TransferRequest request) {
+        Map<Long, Integer> shortages = new HashMap<>();
+        
+        List<TransferRequestItem> items = request.getItems();
+        if (items == null || items.isEmpty()) {
+            items = transferRequestItemRepository.findByTransferRequestId(request.getId());
+        }
+        
+        for (TransferRequestItem item : items) {
+            int shortage = calculateShortage(item.getProductId(), item.getRequestedQuantity(), request.getStoreId());
+            if (shortage > 0) {
+                shortages.put(item.getProductId(), shortage);
+            }
+        }
+        
+        return shortages;
     }
 }
