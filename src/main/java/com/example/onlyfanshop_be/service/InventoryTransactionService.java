@@ -15,6 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * InventoryTransactionService - Handles inventory transaction logging
+ * Updated to only support Store Warehouses (Main Warehouse/CENTRAL removed)
+ * Requirements: 1.1 - THE System SHALL only support Store_Warehouse type for all warehouses
+ */
 @Service
 @RequiredArgsConstructor
 public class InventoryTransactionService {
@@ -23,99 +28,30 @@ public class InventoryTransactionService {
     private final StoreInventoryRepository storeInventoryRepository;
 
     /**
-     * Chuyển hàng từ kho tổng sang kho cửa hàng
+     * Transfer inventory between store warehouses
+     * @deprecated Use FulfillmentService for transfer operations
+     * Main Warehouse has been removed - transfers now happen between Store Warehouses
      */
+    @Deprecated
     @Transactional
     public InventoryTransaction transferToStore(Long productId, Integer storeId, Integer quantity, 
                                                  Long requestId, Long performedBy, String note) {
-        // Lấy thông tin product (kho tổng)
-        Product product = productRepository.findById(productId.intValue())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
-
-        if (product.getQuantity() < quantity) {
-            throw new RuntimeException("Kho tổng không đủ hàng. Tồn kho: " + product.getQuantity());
-        }
-
-        // Lấy thông tin store inventory
-        StoreInventory storeInventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
-                .orElseThrow(() -> new RuntimeException("Cửa hàng chưa được cấu hình cho sản phẩm này"));
-
-        Integer centralBefore = product.getQuantity();
-        Integer storeBefore = storeInventory.getQuantity();
-
-        // Trừ kho tổng
-        product.setQuantity(product.getQuantity() - quantity);
-        productRepository.save(product);
-
-        // Cộng kho cửa hàng
-        storeInventory.setQuantity(storeInventory.getQuantity() + quantity);
-        storeInventoryRepository.save(storeInventory);
-
-
-        // Ghi transaction
-        InventoryTransaction transaction = InventoryTransaction.builder()
-                .transactionType(InventoryTransactionType.TRANSFER_TO_STORE)
-                .productId(productId)
-                .quantity(quantity)
-                .sourceType(InventoryLocationType.CENTRAL)
-                .sourceStoreId(null)
-                .destinationType(InventoryLocationType.STORE)
-                .destinationStoreId(storeId)
-                .requestId(requestId)
-                .performedBy(performedBy)
-                .quantityBefore(centralBefore)
-                .quantityAfter(product.getQuantity())
-                .note(note)
-                .build();
-
-        return transactionRepository.save(transaction);
+        throw new UnsupportedOperationException(
+            "transferToStore is deprecated. Main Warehouse has been removed. " +
+            "Use FulfillmentService for store-to-store transfers.");
     }
 
     /**
-     * Trả hàng từ cửa hàng về kho tổng
+     * @deprecated Main Warehouse has been removed from the system.
+     * Use store-to-store transfers instead.
      */
+    @Deprecated
     @Transactional
     public InventoryTransaction returnToCentral(Long productId, Integer storeId, Integer quantity,
                                                  Long performedBy, String note) {
-        // Lấy thông tin store inventory
-        StoreInventory storeInventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cửa hàng"));
-
-        if (storeInventory.getQuantity() < quantity) {
-            throw new RuntimeException("Kho cửa hàng không đủ hàng. Tồn kho: " + storeInventory.getQuantity());
-        }
-
-        // Lấy thông tin product (kho tổng)
-        Product product = productRepository.findById(productId.intValue())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
-
-        Integer storeBefore = storeInventory.getQuantity();
-        Integer centralBefore = product.getQuantity();
-
-        // Trừ kho cửa hàng
-        storeInventory.setQuantity(storeInventory.getQuantity() - quantity);
-        storeInventoryRepository.save(storeInventory);
-
-        // Cộng kho tổng
-        product.setQuantity(product.getQuantity() + quantity);
-        productRepository.save(product);
-
-        // Ghi transaction
-        InventoryTransaction transaction = InventoryTransaction.builder()
-                .transactionType(InventoryTransactionType.RETURN_TO_CENTRAL)
-                .productId(productId)
-                .quantity(quantity)
-                .sourceType(InventoryLocationType.STORE)
-                .sourceStoreId(storeId)
-                .destinationType(InventoryLocationType.CENTRAL)
-                .destinationStoreId(null)
-                .performedBy(performedBy)
-                .quantityBefore(storeBefore)
-                .quantityAfter(storeInventory.getQuantity())
-                .note(note)
-                .build();
-
-        return transactionRepository.save(transaction);
+        throw new UnsupportedOperationException(
+            "returnToCentral is deprecated. Main Warehouse has been removed. " +
+            "Use store-to-store transfers instead.");
     }
 
     /**
@@ -157,31 +93,32 @@ public class InventoryTransactionService {
     }
 
     /**
-     * Nhập hàng vào kho tổng
+     * Import inventory to a store warehouse
+     * Updated to import directly to store warehouses (Main Warehouse removed)
      */
     @Transactional
-    public InventoryTransaction importToCentral(Long productId, Integer quantity, Long performedBy, String note) {
-        Product product = productRepository.findById(productId.intValue())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+    public InventoryTransaction importToStore(Long productId, Integer storeId, Integer quantity, Long performedBy, String note) {
+        StoreInventory storeInventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cửa hàng"));
 
-        Integer quantityBefore = product.getQuantity();
+        Integer quantityBefore = storeInventory.getQuantity();
 
-        // Cộng kho tổng
-        product.setQuantity(product.getQuantity() + quantity);
-        productRepository.save(product);
+        // Cộng kho cửa hàng
+        storeInventory.setQuantity(storeInventory.getQuantity() + quantity);
+        storeInventoryRepository.save(storeInventory);
 
         // Ghi transaction
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .transactionType(InventoryTransactionType.IMPORT)
                 .productId(productId)
                 .quantity(quantity)
-                .sourceType(InventoryLocationType.CENTRAL)
-                .sourceStoreId(null)
-                .destinationType(InventoryLocationType.CENTRAL)
-                .destinationStoreId(null)
+                .sourceType(InventoryLocationType.STORE)
+                .sourceStoreId(storeId)
+                .destinationType(InventoryLocationType.STORE)
+                .destinationStoreId(storeId)
                 .performedBy(performedBy)
                 .quantityBefore(quantityBefore)
-                .quantityAfter(product.getQuantity())
+                .quantityAfter(storeInventory.getQuantity())
                 .note(note)
                 .build();
 
@@ -189,58 +126,52 @@ public class InventoryTransactionService {
     }
 
     /**
-     * Điều chỉnh tồn kho (kiểm kê)
+     * @deprecated Use importToStore instead. Main Warehouse has been removed.
+     */
+    @Deprecated
+    @Transactional
+    public InventoryTransaction importToCentral(Long productId, Integer quantity, Long performedBy, String note) {
+        throw new UnsupportedOperationException(
+            "importToCentral is deprecated. Main Warehouse has been removed. " +
+            "Use importToStore() to import directly to store warehouses.");
+    }
+
+    /**
+     * Điều chỉnh tồn kho (kiểm kê) - Only for store warehouses
+     * Updated: storeId is now required (Main Warehouse removed)
      */
     @Transactional
     public InventoryTransaction adjustInventory(Long productId, Integer storeId, Integer newQuantity,
                                                  Long performedBy, String note) {
         if (storeId == null) {
-            // Điều chỉnh kho tổng
-            Product product = productRepository.findById(productId.intValue())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
-
-            Integer quantityBefore = product.getQuantity();
-            int difference = newQuantity - quantityBefore;
-
-            product.setQuantity(newQuantity);
-            productRepository.save(product);
-
-            return transactionRepository.save(InventoryTransaction.builder()
-                    .transactionType(InventoryTransactionType.ADJUSTMENT)
-                    .productId(productId)
-                    .quantity(Math.abs(difference))
-                    .sourceType(InventoryLocationType.CENTRAL)
-                    .destinationType(InventoryLocationType.CENTRAL)
-                    .performedBy(performedBy)
-                    .quantityBefore(quantityBefore)
-                    .quantityAfter(newQuantity)
-                    .note(note + " (Chênh lệch: " + (difference >= 0 ? "+" : "") + difference + ")")
-                    .build());
-        } else {
-            // Điều chỉnh kho cửa hàng
-            StoreInventory storeInventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cửa hàng"));
-
-            Integer quantityBefore = storeInventory.getQuantity();
-            int difference = newQuantity - quantityBefore;
-
-            storeInventory.setQuantity(newQuantity);
-            storeInventoryRepository.save(storeInventory);
-
-            return transactionRepository.save(InventoryTransaction.builder()
-                    .transactionType(InventoryTransactionType.ADJUSTMENT)
-                    .productId(productId)
-                    .quantity(Math.abs(difference))
-                    .sourceType(InventoryLocationType.STORE)
-                    .sourceStoreId(storeId)
-                    .destinationType(InventoryLocationType.STORE)
-                    .destinationStoreId(storeId)
-                    .performedBy(performedBy)
-                    .quantityBefore(quantityBefore)
-                    .quantityAfter(newQuantity)
-                    .note(note + " (Chênh lệch: " + (difference >= 0 ? "+" : "") + difference + ")")
-                    .build());
+            throw new UnsupportedOperationException(
+                "storeId is required. Main Warehouse has been removed. " +
+                "Inventory adjustments must be done on store warehouses.");
         }
+        
+        // Điều chỉnh kho cửa hàng
+        StoreInventory storeInventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cửa hàng"));
+
+        Integer quantityBefore = storeInventory.getQuantity();
+        int difference = newQuantity - quantityBefore;
+
+        storeInventory.setQuantity(newQuantity);
+        storeInventoryRepository.save(storeInventory);
+
+        return transactionRepository.save(InventoryTransaction.builder()
+                .transactionType(InventoryTransactionType.ADJUSTMENT)
+                .productId(productId)
+                .quantity(Math.abs(difference))
+                .sourceType(InventoryLocationType.STORE)
+                .sourceStoreId(storeId)
+                .destinationType(InventoryLocationType.STORE)
+                .destinationStoreId(storeId)
+                .performedBy(performedBy)
+                .quantityBefore(quantityBefore)
+                .quantityAfter(newQuantity)
+                .note(note + " (Chênh lệch: " + (difference >= 0 ? "+" : "") + difference + ")")
+                .build());
     }
 
     /**

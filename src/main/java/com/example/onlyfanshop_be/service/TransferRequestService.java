@@ -51,7 +51,7 @@ public class TransferRequestService implements ITransferRequestService {
 
     /**
      * Create a new transfer request for a store
-     * Requirements: 4.1, 4.2, 4.3, 4.4
+     * Requirements: 3.1, 3.2, 4.1, 4.2, 4.3, 4.4
      */
     @Override
     @Transactional
@@ -65,18 +65,38 @@ public class TransferRequestService implements ITransferRequestService {
             throw new AppException(ErrorCode.TRANSFER_REQUEST_EMPTY_ITEMS);
         }
         
-        // Get store warehouse
-        Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
-                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
-        
-        // Validate all items
-        for (CreateTransferRequestItemDTO item : request.getItems()) {
-            validateTransferRequestItem(item, storeWarehouse.getId());
+        // Validate source warehouse is provided (Requirements 3.1)
+        if (request.getSourceWarehouseId() == null) {
+            throw new AppException(ErrorCode.SOURCE_WAREHOUSE_REQUIRED);
         }
         
-        // Create transfer request
+        // Validate source warehouse exists and is active (Requirements 3.1, 3.2)
+        Warehouse sourceWarehouse = warehouseRepository.findById(request.getSourceWarehouseId())
+                .orElseThrow(() -> new AppException(ErrorCode.SOURCE_WAREHOUSE_NOT_FOUND));
+        
+        if (!Boolean.TRUE.equals(sourceWarehouse.getIsActive())) {
+            throw new AppException(ErrorCode.SOURCE_WAREHOUSE_INACTIVE);
+        }
+        
+        // Get destination store warehouse
+        Warehouse destWarehouse = warehouseRepository.findByStoreId(storeId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        
+        // Validate source and destination are different (Requirements 3.5)
+        if (sourceWarehouse.getId().equals(destWarehouse.getId())) {
+            throw new AppException(ErrorCode.SAME_WAREHOUSE_TRANSFER);
+        }
+        
+        // Validate all items and check source warehouse has sufficient quantity (Requirements 3.2)
+        for (CreateTransferRequestItemDTO item : request.getItems()) {
+            validateTransferRequestItem(item, destWarehouse.getId());
+            validateSourceWarehouseQuantity(item, sourceWarehouse.getId());
+        }
+        
+        // Create transfer request with source warehouse (Requirements 3.1)
         TransferRequest transferRequest = TransferRequest.builder()
                 .storeId(storeId)
+                .sourceWarehouseId(request.getSourceWarehouseId())
                 .status(TransferRequestStatus.PENDING)
                 .build();
         
@@ -97,10 +117,30 @@ public class TransferRequestService implements ITransferRequestService {
         transferRequestItemRepository.saveAll(items);
         savedRequest.setItems(items);
         
-        log.info("Created transfer request {} for store {} with {} items", 
-                savedRequest.getId(), storeId, items.size());
+        log.info("Created transfer request {} for store {} from source warehouse {} with {} items", 
+                savedRequest.getId(), storeId, request.getSourceWarehouseId(), items.size());
         
-        return convertToDTO(savedRequest, store, null);
+        return convertToDTO(savedRequest, store, null, sourceWarehouse);
+    }
+    
+    /**
+     * Validate source warehouse has sufficient quantity for the requested item
+     * Requirements: 3.2 - WHEN creating Transfer_Request THEN the System SHALL validate that source warehouse has sufficient available quantity
+     * Requirements: 3.4 - IF source Store_Warehouse has insufficient quantity THEN the System SHALL reject the Transfer_Request
+     */
+    private void validateSourceWarehouseQuantity(CreateTransferRequestItemDTO item, Long sourceWarehouseId) {
+        InventoryItem inventoryItem = inventoryItemRepository
+                .findByWarehouseIdAndProductId(sourceWarehouseId, item.getProductId())
+                .orElse(null);
+        
+        int availableQuantity = 0;
+        if (inventoryItem != null) {
+            availableQuantity = inventoryItem.getQuantity() != null ? inventoryItem.getQuantity() : 0;
+        }
+        
+        if (availableQuantity < item.getQuantity()) {
+            throw new AppException(ErrorCode.SOURCE_WAREHOUSE_INSUFFICIENT_STOCK);
+        }
     }
     
     /**
@@ -265,6 +305,7 @@ public class TransferRequestService implements ITransferRequestService {
     private TransferRequestDTO convertToDTO(TransferRequest request) {
         StoreLocation store = null;
         User processedByUser = null;
+        Warehouse sourceWarehouse = null;
         
         if (request.getStoreId() != null) {
             store = storeLocationRepository.findById(request.getStoreId()).orElse(null);
@@ -274,13 +315,17 @@ public class TransferRequestService implements ITransferRequestService {
             processedByUser = userRepository.findById(request.getProcessedBy()).orElse(null);
         }
         
-        return convertToDTO(request, store, processedByUser);
+        if (request.getSourceWarehouseId() != null) {
+            sourceWarehouse = warehouseRepository.findById(request.getSourceWarehouseId()).orElse(null);
+        }
+        
+        return convertToDTO(request, store, processedByUser, sourceWarehouse);
     }
     
     /**
      * Convert TransferRequest entity to DTO with pre-loaded entities
      */
-    private TransferRequestDTO convertToDTO(TransferRequest request, StoreLocation store, User processedByUser) {
+    private TransferRequestDTO convertToDTO(TransferRequest request, StoreLocation store, User processedByUser, Warehouse sourceWarehouse) {
         // Load items if not already loaded
         List<TransferRequestItem> items = request.getItems();
         if (items == null) {
@@ -302,6 +347,8 @@ public class TransferRequestService implements ITransferRequestService {
                 .id(request.getId())
                 .storeId(request.getStoreId())
                 .storeName(store != null ? store.getName() : null)
+                .sourceWarehouseId(request.getSourceWarehouseId())
+                .sourceWarehouseName(sourceWarehouse != null ? sourceWarehouse.getName() : null)
                 .status(request.getStatus())
                 .createdAt(request.getCreatedAt())
                 .processedAt(request.getProcessedAt())

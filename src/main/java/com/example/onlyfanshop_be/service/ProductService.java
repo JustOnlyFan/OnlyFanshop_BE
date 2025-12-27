@@ -1179,52 +1179,16 @@ public class ProductService implements  IProductService {
     }
     
     /**
-     * Tạo InventoryItem trong Main_Warehouse với quantity = 0 khi tạo sản phẩm mới
-     * Requirements 2.2: WHEN a new product is added to Product_Catalog THEN the System SHALL 
-     * automatically create an InventoryItem in Main_Warehouse with zero quantity
+     * @deprecated Main Warehouse has been removed from the system.
+     * Inventory items are now created directly in Store Warehouses.
+     * This method is kept for backward compatibility but does nothing.
+     * Requirements: 1.1 - THE System SHALL only support Store_Warehouse type for all warehouses
      */
+    @Deprecated
     public void createMainWarehouseInventoryItem(Long productId) {
-        if (productId == null) {
-            System.err.println("ProductService: Cannot create inventory item - productId is null");
-            return;
-        }
-        
-        try {
-            // Tìm Main Warehouse
-            java.util.Optional<com.example.onlyfanshop_be.entity.Warehouse> mainWarehouseOpt = 
-                    warehouseRepository.findFirstByType(com.example.onlyfanshop_be.enums.WarehouseType.MAIN);
-            
-            if (mainWarehouseOpt.isEmpty()) {
-                System.err.println("ProductService: Main Warehouse not found - cannot create inventory item for product " + productId);
-                return;
-            }
-            
-            com.example.onlyfanshop_be.entity.Warehouse mainWarehouse = mainWarehouseOpt.get();
-            
-            // Kiểm tra xem InventoryItem đã tồn tại chưa
-            if (inventoryItemRepository.existsByWarehouseIdAndProductId(mainWarehouse.getId(), productId)) {
-                System.out.println("ProductService: InventoryItem already exists for product " + productId + " in Main Warehouse");
-                return;
-            }
-            
-            // Tạo InventoryItem mới với quantity = 0
-            com.example.onlyfanshop_be.entity.InventoryItem inventoryItem = 
-                    com.example.onlyfanshop_be.entity.InventoryItem.builder()
-                            .warehouseId(mainWarehouse.getId())
-                            .productId(productId)
-                            .quantity(0)
-                            .reservedQuantity(0)
-                            .build();
-            
-            inventoryItemRepository.save(inventoryItem);
-            
-            System.out.println("ProductService: Created InventoryItem for product " + productId + 
-                    " in Main Warehouse (ID: " + mainWarehouse.getId() + ") with quantity 0");
-        } catch (Exception e) {
-            System.err.println("ProductService: Error creating inventory item for product " + productId + ": " + e.getMessage());
-            e.printStackTrace();
-            // Không throw exception để không ảnh hưởng đến việc tạo sản phẩm
-            // Inventory item có thể được tạo sau bằng cách khác
-        }
+        // Main Warehouse has been removed - this method is now a no-op
+        // Inventory items should be created in Store Warehouses using WarehouseService.addProductToStoreWarehouse()
+        System.out.println("ProductService: createMainWarehouseInventoryItem is deprecated. " +
+                "Main Warehouse has been removed. Use WarehouseService.addProductToStoreWarehouse() instead.");
     }
 }

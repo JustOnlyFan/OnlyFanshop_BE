@@ -5,7 +5,6 @@ import com.example.onlyfanshop_be.dto.DebtOrderDTO;
 import com.example.onlyfanshop_be.dto.response.SourceAllocation;
 import com.example.onlyfanshop_be.entity.*;
 import com.example.onlyfanshop_be.enums.DebtOrderStatus;
-import com.example.onlyfanshop_be.enums.WarehouseType;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.*;
@@ -144,9 +143,12 @@ public class DebtOrderService implements IDebtOrderService {
             throw new AppException(ErrorCode.DEBT_ORDER_CANNOT_FULFILL);
         }
         
-        // Get Main Warehouse
-        Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
-                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        // Get all active store warehouses (Main Warehouse removed)
+        List<Warehouse> activeWarehouses = warehouseRepository.findByIsActiveTrue();
+        
+        if (activeWarehouses.isEmpty()) {
+            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+        }
         
         // Load items
         List<DebtItem> items = debtItemRepository.findByDebtOrderId(id);
@@ -155,12 +157,23 @@ public class DebtOrderService implements IDebtOrderService {
         for (DebtItem item : items) {
             int remainingQuantity = item.getRemainingQuantity();
             if (remainingQuantity > 0) {
-                // Deduct from Main Warehouse
-                deductInventory(mainWarehouse.getId(), item.getProductId(), remainingQuantity,
-                        "Debt Order #" + id + " fulfillment");
+                // Find warehouses with available stock and deduct
+                int quantityToFulfill = remainingQuantity;
+                for (Warehouse warehouse : activeWarehouses) {
+                    if (quantityToFulfill <= 0) break;
+                    
+                    int available = getWarehouseAvailableQuantity(item.getProductId(), warehouse.getId());
+                    if (available > 0) {
+                        int deductAmount = Math.min(available, quantityToFulfill);
+                        deductInventory(warehouse.getId(), item.getProductId(), deductAmount,
+                                "Debt Order #" + id + " fulfillment from warehouse " + warehouse.getName());
+                        quantityToFulfill -= deductAmount;
+                    }
+                }
                 
                 // Update fulfilled quantity
-                item.setFulfilledQuantity(item.getOwedQuantity());
+                int actualFulfilled = remainingQuantity - quantityToFulfill;
+                item.setFulfilledQuantity(item.getFulfilledQuantity() + actualFulfilled);
                 debtItemRepository.save(item);
             }
         }
@@ -179,8 +192,9 @@ public class DebtOrderService implements IDebtOrderService {
 
     /**
      * Check all pending debt orders and mark as FULFILLABLE if inventory is available
-     * Requirements: 6.3 - WHEN Admin updates Main_Warehouse inventory THEN the System SHALL check if any Debt_Orders can be fulfilled
+     * Requirements: 6.3 - WHEN Admin updates Store_Warehouse inventory THEN the System SHALL check if any Debt_Orders can be fulfilled
      * Requirements: 6.4 - WHEN a Debt_Order can be fulfilled THEN the System SHALL notify Admin and allow fulfillment processing
+     * Updated: Now checks availability across all Store Warehouses (Main Warehouse removed)
      */
     @Override
     @Transactional
@@ -210,6 +224,7 @@ public class DebtOrderService implements IDebtOrderService {
 
     /**
      * Check if a specific debt order can be fulfilled based on current inventory
+     * Updated: Now checks availability across all Store Warehouses (Main Warehouse removed)
      */
     @Override
     public boolean canFulfillDebtOrder(Long debtOrderId) {
@@ -220,23 +235,26 @@ public class DebtOrderService implements IDebtOrderService {
             return false;
         }
         
-        // Get Main Warehouse
-        Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
-                .orElse(null);
+        // Get all active store warehouses (Main Warehouse removed)
+        List<Warehouse> activeWarehouses = warehouseRepository.findByIsActiveTrue();
         
-        if (mainWarehouse == null) {
+        if (activeWarehouses.isEmpty()) {
             return false;
         }
         
         // Load items
         List<DebtItem> items = debtItemRepository.findByDebtOrderId(debtOrderId);
         
-        // Check if all items can be fulfilled from Main Warehouse
+        // Check if all items can be fulfilled from available Store Warehouses
         for (DebtItem item : items) {
             int remainingQuantity = item.getRemainingQuantity();
             if (remainingQuantity > 0) {
-                int availableQuantity = getMainWarehouseAvailableQuantity(item.getProductId(), mainWarehouse.getId());
-                if (availableQuantity < remainingQuantity) {
+                // Calculate total available across all store warehouses
+                int totalAvailable = 0;
+                for (Warehouse warehouse : activeWarehouses) {
+                    totalAvailable += getWarehouseAvailableQuantity(item.getProductId(), warehouse.getId());
+                }
+                if (totalAvailable < remainingQuantity) {
                     return false;
                 }
             }
@@ -259,9 +277,9 @@ public class DebtOrderService implements IDebtOrderService {
     // ==================== Private Helper Methods ====================
 
     /**
-     * Get available quantity in Main Warehouse for a product
+     * Get available quantity in a warehouse for a product
      */
-    private int getMainWarehouseAvailableQuantity(Long productId, Long warehouseId) {
+    private int getWarehouseAvailableQuantity(Long productId, Long warehouseId) {
         return inventoryItemRepository.findByWarehouseIdAndProductId(warehouseId, productId)
                 .map(InventoryItem::getAvailableQuantity)
                 .orElse(0);
