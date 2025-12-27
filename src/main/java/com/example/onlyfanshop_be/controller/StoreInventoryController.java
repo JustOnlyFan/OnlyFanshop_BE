@@ -17,9 +17,6 @@ import java.util.List;
 public class StoreInventoryController {
     private final StoreInventoryService storeInventoryService;
 
-    /**
-     * Lấy danh sách stores có bán sản phẩm (isAvailable = true)
-     */
     @GetMapping("/product/{productId}/stores")
     public ResponseEntity<ApiResponse<List<StoreLocation>>> getStoresWithProduct(
             @PathVariable Long productId,
@@ -40,9 +37,6 @@ public class StoreInventoryController {
                 .build());
     }
 
-    /**
-     * Lấy danh sách sản phẩm có sẵn tại store
-     */
     @GetMapping("/store/{storeId}/products")
     public ResponseEntity<ApiResponse<List<StoreInventoryDTO>>> getStoreProducts(
             @PathVariable Integer storeId,
@@ -55,9 +49,6 @@ public class StoreInventoryController {
                 .build());
     }
 
-    /**
-     * Bật/tắt việc bán sản phẩm ở store (Admin only)
-     */
     @PutMapping("/store/{storeId}/product/{productId}/toggle")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<StoreInventoryDTO>> toggleProductAvailability(
@@ -73,9 +64,6 @@ public class StoreInventoryController {
                 .build());
     }
 
-    /**
-     * Thêm sản phẩm vào store (Admin only)
-     */
     @PostMapping("/store/{storeId}/products")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<StoreInventoryDTO>>> addProductsToStore(
@@ -89,9 +77,6 @@ public class StoreInventoryController {
                 .build());
     }
 
-    /**
-     * Lấy danh sách sản phẩm chưa có trong store (để thêm mới)
-     */
     @GetMapping("/store/{storeId}/available-products")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<com.example.onlyfanshop_be.entity.Product>>> getProductsNotInStore(
@@ -104,9 +89,6 @@ public class StoreInventoryController {
                 .build());
     }
 
-    /**
-     * Lấy tất cả sản phẩm trong hệ thống kèm trạng thái cho phép bán tại store
-     */
     @GetMapping("/store/{storeId}/all-products")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<StoreInventoryDTO>>> getAllProductsWithStoreStatus(
@@ -119,9 +101,6 @@ public class StoreInventoryController {
                 .build());
     }
 
-    /**
-     * Cập nhật danh sách sản phẩm cho phép bán tại store (bulk update)
-     */
     @PutMapping("/store/{storeId}/products")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateStoreProducts(

@@ -15,9 +15,6 @@ import java.util.Optional;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Integer> {
 
-    /**
-     * Lấy tin nhắn theo conversation với phân trang
-     */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
            "(cm.sender.id = :userId1 AND cm.receiver.id = :userId2) OR " +
            "(cm.sender.id = :userId2 AND cm.receiver.id = :userId1) " +
@@ -26,21 +23,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Intege
                                              @Param("userId2") Long userId2, 
                                              Pageable pageable);
 
-    /**
-     * Lấy tin nhắn chưa đọc của user
-     */
     @Query("SELECT cm FROM ChatMessage cm WHERE cm.receiver.id = :userId ORDER BY cm.sentAt DESC")
     List<ChatMessage> findUnreadMessagesByUserId(@Param("userId") Long userId);
 
-    /**
-     * Đếm số tin nhắn chưa đọc
-     */
     @Query("SELECT COUNT(cm) FROM ChatMessage cm WHERE cm.receiver.id = :userId")
     Long countUnreadMessagesByUserId(@Param("userId") Long userId);
 
-    /**
-     * Lấy tin nhắn mới nhất giữa hai user
-     */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
            "(cm.sender.id = :userId1 AND cm.receiver.id = :userId2) OR " +
            "(cm.sender.id = :userId2 AND cm.receiver.id = :userId1) " +
@@ -48,9 +36,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Intege
     Optional<ChatMessage> findLatestMessageBetweenUsers(@Param("userId1") Long userId1, 
                                                        @Param("userId2") Long userId2);
 
-    /**
-     * Lấy tin nhắn trong khoảng thời gian (cho real-time sync)
-     */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
            "((cm.sender.id = :userId1 AND cm.receiver.id = :userId2) OR " +
            "(cm.sender.id = :userId2 AND cm.receiver.id = :userId1)) " +
@@ -59,9 +44,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Intege
                                        @Param("userId2") Long userId2, 
                                        @Param("since") LocalDateTime since);
 
-    /**
-     * Lấy tất cả tin nhắn của user (cho admin)
-     */
     @Query("SELECT cm FROM ChatMessage cm WHERE " +
            "cm.sender.id = :userId OR cm.receiver.id = :userId " +
            "ORDER BY cm.sentAt DESC")

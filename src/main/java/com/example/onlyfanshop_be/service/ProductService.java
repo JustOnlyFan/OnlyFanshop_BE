@@ -126,8 +126,7 @@ public class ProductService implements  IProductService {
 
             Page<Product> productPage = productRepository.findAll(spec, pageable);
             List<Product> products = productPage.getContent();
-            
-            // Load all product images in batch to avoid N+1 query problem
+
             java.util.Map<Long, String> productImageMap = loadProductImagesBatch(products);
 
             List<ProductDTO> productDTOs = products.stream()
@@ -213,7 +212,6 @@ public class ProductService implements  IProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        // Sử dụng helper method để build DTO với tất cả các field mới
         ProductDetailDTO dto = buildProductDetailDTO(product);
 
         return ApiResponse.<ProductDetailDTO>builder()
@@ -229,36 +227,30 @@ public class ProductService implements  IProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
 
-        // Ánh xạ từ Entity -> DTO với tất cả các field mới
         return buildProductDetailDTO(product);
     }
 
     @Override
     public Product createProduct(ProductDetailRequest request) {
-        // 1️⃣ Kiểm tra danh mục
         Category category = null;
         if (request.getCategoryID() != null) {
             category = categoryRepository.findById(request.getCategoryID())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + request.getCategoryID()));
         }
 
-        // 2️⃣ Kiểm tra thương hiệu
         Brand brand = null;
         if (request.getBrandID() != null) {
             brand = brandRepository.findById(request.getBrandID())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + request.getBrandID()));
         }
 
-        // 3️⃣ Generate slug từ productName (luôn tự động generate, không nhận từ request)
         String slug = generateSlug(request.getProductName());
 
-        // 4️⃣ Generate SKU (luôn tự động generate, không nhận từ request)
         if (brand == null) {
             throw new RuntimeException("Không thể tạo SKU: Sản phẩm phải có thương hiệu để tự động sinh mã SKU");
         }
         String sku = generateSku(brand.getId(), brand.getName());
-        
-        // 5️⃣ Kiểm tra và load colors
+
         List<com.example.onlyfanshop_be.entity.Color> colors = new java.util.ArrayList<>();
         if (request.getColorIds() != null && !request.getColorIds().isEmpty()) {
             colors = colorRepository.findAllById(request.getColorIds());
@@ -266,15 +258,13 @@ public class ProductService implements  IProductService {
                 throw new RuntimeException("Một hoặc nhiều màu sắc không tồn tại");
             }
         }
-        
-        // 6️⃣ Kiểm tra và load warranty
+
         com.example.onlyfanshop_be.entity.Warranty warranty = null;
         if (request.getWarrantyId() != null) {
             warranty = warrantyRepository.findById(request.getWarrantyId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin bảo hành có ID: " + request.getWarrantyId()));
         }
 
-        // 7️⃣ Tạo Product entity với tất cả các field mới
         Product product = Product.builder()
                 .name(request.getProductName())
                 .slug(slug)
@@ -321,27 +311,22 @@ public class ProductService implements  IProductService {
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
 
-        // 8️⃣ Lưu product vào DB trước
         Product savedProduct = productRepository.save(product);
-        
-        // 9️⃣ Set colors relationship (sau khi product đã được save)
+
         if (!colors.isEmpty()) {
             savedProduct.setColors(colors);
             savedProduct = productRepository.save(savedProduct);
         }
-        
-        // 🔟 Tạo ProductImage nếu có imageURL (save trực tiếp để đảm bảo lưu vào DB)
+
         if (request.getImageURL() != null && !request.getImageURL().trim().isEmpty()) {
             try {
-                // Tạo ProductImage entity
                 com.example.onlyfanshop_be.entity.ProductImage productImage = com.example.onlyfanshop_be.entity.ProductImage.builder()
                         .productId(savedProduct.getId())
                         .imageUrl(request.getImageURL().trim())
-                        .isMain(true) // Đặt làm ảnh chính
+                        .isMain(true)
                         .sortOrder(0)
                         .build();
-                
-                // Save trực tiếp vào database (không dựa vào cascade)
+
                 productImageRepository.save(productImage);
                 
                 System.out.println("ProductService: Created ProductImage with URL: " + request.getImageURL());
@@ -353,7 +338,6 @@ public class ProductService implements  IProductService {
             }
         }
 
-        // 1️⃣1️⃣ Tạo InventoryItem trong Main_Warehouse với quantity = 0 (Requirements 2.2)
         createMainWarehouseInventoryItem(savedProduct.getId());
 
         return savedProduct;
@@ -364,14 +348,11 @@ public class ProductService implements  IProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
 
-        // Cập nhật các field cơ bản
         if (updatedProduct.getProductName() != null) {
             product.setName(updatedProduct.getProductName());
-            // Regenerate slug khi productName thay đổi (slug luôn tự động generate)
             product.setSlug(generateSlug(updatedProduct.getProductName()));
         }
-        
-        // Slug và SKU không thể update trực tiếp (luôn tự động generate)
+
         
         if (updatedProduct.getBriefDescription() != null) {
             product.setShortDescription(updatedProduct.getBriefDescription());
@@ -384,8 +365,7 @@ public class ProductService implements  IProductService {
         if (updatedProduct.getPrice() != null) {
             product.setBasePrice(java.math.BigDecimal.valueOf(updatedProduct.getPrice()));
         }
-        
-        // Cập nhật các field mới
+
         if (updatedProduct.getPowerWatt() != null) {
             product.setPowerWatt(updatedProduct.getPowerWatt());
         }
@@ -393,8 +373,7 @@ public class ProductService implements  IProductService {
         if (updatedProduct.getBladeDiameterCm() != null) {
             product.setBladeDiameterCm(updatedProduct.getBladeDiameterCm());
         }
-        
-        // Cập nhật technical specifications
+
         if (updatedProduct.getVoltage() != null) {
             product.setVoltage(updatedProduct.getVoltage());
         }
@@ -425,8 +404,7 @@ public class ProductService implements  IProductService {
         if (updatedProduct.getAdjustableHeight() != null) {
             product.setAdjustableHeight(updatedProduct.getAdjustableHeight());
         }
-        
-        // Cập nhật features
+
         if (updatedProduct.getRemoteControl() != null) {
             product.setRemoteControl(updatedProduct.getRemoteControl());
         }
@@ -454,8 +432,7 @@ public class ProductService implements  IProductService {
         if (updatedProduct.getEnergySaving() != null) {
             product.setEnergySaving(updatedProduct.getEnergySaving());
         }
-        
-        // Cập nhật other information
+
         if (updatedProduct.getSafetyStandards() != null) {
             product.setSafetyStandards(updatedProduct.getSafetyStandards());
         }
@@ -468,9 +445,7 @@ public class ProductService implements  IProductService {
         if (updatedProduct.getEnergyRating() != null) {
             product.setEnergyRating(updatedProduct.getEnergyRating());
         }
-        
-        // fanType removed - no longer used
-        
+
         if (updatedProduct.getColorDefault() != null) {
             product.setColorDefault(updatedProduct.getColorDefault());
         }
@@ -478,13 +453,11 @@ public class ProductService implements  IProductService {
         if (updatedProduct.getWarrantyMonths() != null) {
             product.setWarrantyMonths(updatedProduct.getWarrantyMonths());
         }
-        
-        // Cập nhật quantity
+
         if (updatedProduct.getQuantity() != null) {
             product.setQuantity(updatedProduct.getQuantity());
         }
-        
-        // Cập nhật Image URL - Handle through ProductImage entity
+
         if (updatedProduct.getImageURL() != null && !updatedProduct.getImageURL().trim().isEmpty()) {
             // Xóa các ảnh cũ bằng cách clear images list (orphanRemoval sẽ tự động xóa)
             if (product.getImages() != null && !product.getImages().isEmpty()) {
@@ -583,12 +556,7 @@ public class ProductService implements  IProductService {
             productRepository.save(product);
         }else throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
     }
-    
-    /**
-     * Xóa tất cả InventoryItems của một sản phẩm trong tất cả các kho
-     * Requirements 1.4: WHEN Admin deletes a product THEN the System SHALL remove the product 
-     * from Product_Catalog and all associated Inventory_Items
-     */
+
     @Transactional
     public void deleteAllInventoryItemsForProduct(Long productId) {
         if (productId == null) {
@@ -605,8 +573,7 @@ public class ProductService implements  IProductService {
                 System.out.println("ProductService: No inventory items found for product " + productId);
                 return;
             }
-            
-            // Xóa tất cả InventoryItems
+
             inventoryItemRepository.deleteByProductId(productId);
             
             System.out.println("ProductService: Deleted " + inventoryItems.size() + 
@@ -628,15 +595,13 @@ public class ProductService implements  IProductService {
         Product product = productOpt.get();
         
         try {
-            // Xóa các ảnh cũ bằng cách query và delete trực tiếp
             List<com.example.onlyfanshop_be.entity.ProductImage> existingImages = 
                     productImageRepository.findByProductId(product.getId());
             if (existingImages != null && !existingImages.isEmpty()) {
                 System.out.println("ProductService: Deleting " + existingImages.size() + " old ProductImage(s)");
                 productImageRepository.deleteAll(existingImages);
             }
-            
-            // Tạo ảnh mới nếu có imageURL
+
             if (imageURL != null && !imageURL.trim().isEmpty()) {
                 // Tạo ProductImage entity
                 com.example.onlyfanshop_be.entity.ProductImage productImage = 
@@ -646,8 +611,7 @@ public class ProductService implements  IProductService {
                                 .isMain(true) // Đặt làm ảnh chính
                                 .sortOrder(0)
                                 .build();
-                
-                // Save trực tiếp vào database
+
                 productImageRepository.save(productImage);
                 
                 System.out.println("ProductService: Updated ProductImage with URL: " + imageURL);
@@ -691,7 +655,6 @@ public class ProductService implements  IProductService {
                         cb.equal(root.get("brandId"), brandId));
             }
 
-            // Filter theo giá
             if (minPrice != null) {
                 spec = spec.and((root, query, cb) ->
                         cb.greaterThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(minPrice)));
@@ -701,13 +664,11 @@ public class ProductService implements  IProductService {
                         cb.lessThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(maxPrice)));
             }
 
-            // Filter theo số cánh quạt
             if (bladeCount != null && bladeCount > 0) {
                 spec = spec.and((root, query, cb) ->
                         cb.equal(root.get("bladeCount"), bladeCount));
             }
 
-            // Filter theo tiện ích
             if (remoteControl != null && remoteControl) {
                 spec = spec.and((root, query, cb) ->
                         cb.equal(root.get("remoteControl"), true));
@@ -721,7 +682,6 @@ public class ProductService implements  IProductService {
                         cb.isNotNull(root.get("timer")));
             }
 
-            // Filter theo công suất
             if (minPower != null) {
                 spec = spec.and((root, query, cb) ->
                         cb.greaterThanOrEqualTo(root.get("powerWatt"), minPower));
@@ -733,8 +693,7 @@ public class ProductService implements  IProductService {
 
             Page<Product> productPage = productRepository.findAll(spec, pageable);
             List<Product> products = productPage.getContent();
-            
-            // Load all product images in batch to avoid N+1 query problem
+
             java.util.Map<Long, String> productImageMap = loadProductImagesBatch(products);
 
             List<ProductDTO> productDTOs = products.stream()
@@ -755,8 +714,7 @@ public class ProductService implements  IProductService {
                                     p.getCategory().getCategoryName()
                             );
                         }
-                        
-                        // Get image URL from map (already loaded in batch)
+
                         String imageURL = productImageMap.get(p.getId());
                         
                         return ProductDTO.builder()
@@ -829,23 +787,14 @@ public class ProductService implements  IProductService {
 
     @Override
     public void updateActiveByBrand(int brandID) {
-        // Note: Brand no longer has isActive field in new schema
-        // This method may need to be updated based on business requirements
-        // For now, we keep products active
-        // You may want to implement different logic based on your requirements
         productRepository.findByBrandId(brandID);
     }
 
     @Override
     public void updateActiveByCategory(int categoryID) {
-        // Note: Category no longer has isActive field in new schema
-        // This method may need to be updated based on business requirements
-        // For now, we keep products active
-        // You may want to implement different logic based on your requirements
         productRepository.findByCategoryId(categoryID);
     }
-    
-    // Helper method to map legacy field names to actual entity field names
+
     private String mapSortField(String sortBy) {
         if (sortBy == null || sortBy.isEmpty()) {
             return "id"; // Default sort field
@@ -867,45 +816,37 @@ public class ProductService implements  IProductService {
             case "name" -> "name";
             case "id" -> "id";
             default -> {
-                // If the field doesn't exist in Product entity, default to "id"
-                // This prevents "Could not resolve attribute" errors
                 System.out.println("Warning: Unknown sort field '" + sortBy + "', defaulting to 'id'");
                 yield "id";
             }
         };
     }
-    
-    // Helper method to generate SKU from brand name and sequential number
+
     private String generateSku(Integer brandId, String brandName) {
         if (brandName == null || brandName.trim().isEmpty()) {
             throw new RuntimeException("Tên thương hiệu không được để trống");
         }
-        
-        // Đếm số lượng sản phẩm hiện có của brand này
+
         Long productCount = productRepository.countByBrandId(brandId);
         if (productCount == null) {
             productCount = 0L;
         }
-        
-        // Số thứ tự tiếp theo (bắt đầu từ 001)
+
         int nextSequence = productCount.intValue() + 1;
-        
-        // Format brand name: uppercase, thay khoảng trắng và ký tự đặc biệt bằng underscore
+
         String brandPrefix = brandName.toUpperCase()
                 .trim()
-                .replaceAll("[^A-Z0-9]", "_") // Thay tất cả ký tự không phải chữ và số bằng underscore
-                .replaceAll("_+", "_") // Thay nhiều underscore liên tiếp bằng một underscore
-                .replaceAll("^_|_$", ""); // Loại bỏ underscore ở đầu và cuối
+                .replaceAll("[^A-Z0-9]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
         
         if (brandPrefix.isEmpty()) {
             brandPrefix = "BRAND";
         }
-        
-        // Format SKU: BRANDNAME_XXX (với XXX là số có 3 chữ số)
+
         return String.format("%s_%03d", brandPrefix, nextSequence);
     }
-    
-    // Helper method to generate slug from product name
+
     private String generateSlug(String productName) {
         if (productName == null || productName.trim().isEmpty()) {
             return "product-" + System.currentTimeMillis();
@@ -952,8 +893,7 @@ public class ProductService implements  IProductService {
         
         return slug;
     }
-    
-    // Helper method to load product images in batch (avoids N+1 query problem)
+
     private java.util.Map<Long, String> loadProductImagesBatch(List<Product> products) {
         java.util.Map<Long, String> imageMap = new java.util.HashMap<>();
         
@@ -973,24 +913,20 @@ public class ProductService implements  IProductService {
         }
         
         try {
-            // Load all images for all products in one query (much more efficient)
             List<com.example.onlyfanshop_be.entity.ProductImage> allImages = 
                     productImageRepository.findByProductIdIn(productIds);
-            
-            // Group images by productId and get main image for each product
+
             java.util.Map<Long, java.util.List<com.example.onlyfanshop_be.entity.ProductImage>> imagesByProduct = 
                     allImages.stream()
                             .collect(java.util.stream.Collectors.groupingBy(
                                     com.example.onlyfanshop_be.entity.ProductImage::getProductId));
-            
-            // Extract main image (or first image) for each product
+
             for (java.util.Map.Entry<Long, java.util.List<com.example.onlyfanshop_be.entity.ProductImage>> entry : 
                     imagesByProduct.entrySet()) {
                 Long productId = entry.getKey();
                 java.util.List<com.example.onlyfanshop_be.entity.ProductImage> images = entry.getValue();
                 
                 if (images != null && !images.isEmpty()) {
-                    // Get main image if available, otherwise get first image
                     String imageURL = images.stream()
                             .filter(com.example.onlyfanshop_be.entity.ProductImage::getIsMain)
                             .map(com.example.onlyfanshop_be.entity.ProductImage::getImageUrl)
@@ -1006,8 +942,7 @@ public class ProductService implements  IProductService {
         
         return imageMap;
     }
-    
-    // Helper method to get product image URL (handles lazy loading)
+
     private String getProductImageURL(Product product, List<com.example.onlyfanshop_be.entity.ProductImage> images) {
         if (images != null && !images.isEmpty()) {
             return images.stream()
@@ -1016,8 +951,6 @@ public class ProductService implements  IProductService {
                     .findFirst()
                     .orElse(images.get(0).getImageUrl());
         }
-        // Fallback: try to get from product's getImageURL() method
-        // This will trigger lazy loading if images haven't been loaded
         try {
             return product.getImageURL();
         } catch (Exception e) {
@@ -1025,36 +958,26 @@ public class ProductService implements  IProductService {
             return null;
         }
     }
-    
-    // Helper method to build ProductDetailDTO from Product entity
+
     private ProductDetailDTO buildProductDetailDTO(Product product) {
-        // Load colors if needed (they are lazy loaded)
-        // Accessing colors will trigger lazy loading if not already loaded
         List<com.example.onlyfanshop_be.entity.Color> colors = null;
         try {
             colors = product.getColors();
-            // Force initialization if it's a lazy collection
             if (colors != null) {
                 // Access size to trigger lazy loading
                 colors.size();
             }
         } catch (Exception e) {
-            // If lazy loading fails, colors will be null
             System.err.println("Warning: Could not load colors for product " + product.getId() + ": " + e.getMessage());
         }
-        
-        // Load images separately to avoid MultipleBagFetchException
-        // Accessing images will trigger lazy loading if not already loaded
+
         List<com.example.onlyfanshop_be.entity.ProductImage> images = null;
         try {
             images = product.getImages();
-            // Force initialization if it's a lazy collection
             if (images != null) {
-                // Access size to trigger lazy loading
                 images.size();
             }
         } catch (Exception e) {
-            // If lazy loading fails, images will be null
             System.err.println("Warning: Could not load images for product " + product.getId() + ": " + e.getMessage());
         }
         
@@ -1125,8 +1048,7 @@ public class ProductService implements  IProductService {
                 .productTags(loadProductTags(product.getId()))
                 .build();
     }
-    
-    // Helper method to build technical specifications string
+
     private String buildTechnicalSpecifications(Product product) {
         StringBuilder specs = new StringBuilder();
         if (product.getPowerWatt() != null) {
@@ -1143,8 +1065,7 @@ public class ProductService implements  IProductService {
         }
         return specs.length() > 0 ? specs.toString().trim() : null;
     }
-    
-    // Helper method to load product categories
+
     private List<com.example.onlyfanshop_be.dto.ProductCategoryDTO> loadProductCategories(Long productId) {
         if (productId == null) {
             return java.util.Collections.emptyList();
@@ -1160,8 +1081,7 @@ public class ProductService implements  IProductService {
             return java.util.Collections.emptyList();
         }
     }
-    
-    // Helper method to load product tags
+
     private List<com.example.onlyfanshop_be.dto.ProductTagDTO> loadProductTags(Long productId) {
         if (productId == null) {
             return java.util.Collections.emptyList();
@@ -1177,17 +1097,9 @@ public class ProductService implements  IProductService {
             return java.util.Collections.emptyList();
         }
     }
-    
-    /**
-     * @deprecated Main Warehouse has been removed from the system.
-     * Inventory items are now created directly in Store Warehouses.
-     * This method is kept for backward compatibility but does nothing.
-     * Requirements: 1.1 - THE System SHALL only support Store_Warehouse type for all warehouses
-     */
+
     @Deprecated
     public void createMainWarehouseInventoryItem(Long productId) {
-        // Main Warehouse has been removed - this method is now a no-op
-        // Inventory items should be created in Store Warehouses using WarehouseService.addProductToStoreWarehouse()
         System.out.println("ProductService: createMainWarehouseInventoryItem is deprecated. " +
                 "Main Warehouse has been removed. Use WarehouseService.addProductToStoreWarehouse() instead.");
     }

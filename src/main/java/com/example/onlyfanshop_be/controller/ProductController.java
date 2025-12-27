@@ -23,12 +23,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Controller for managing products.
- * Provides endpoints for product CRUD operations, category assignment, and tag assignment.
- * 
- * Requirements: 2.1, 2.2, 2.3, 2.4, 3.2
- */
 @RestController
 @RequestMapping("/product")
 public class ProductController {
@@ -268,14 +262,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Replace all categories for a product.
-     * Requirements: 2.3 - Store in many-to-many relationship table
-     * 
-     * @param productId the product ID
-     * @param categoryIds list of category IDs to replace with
-     * @return success response
-     */
     @PutMapping("/{productId}/categories")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> replaceProductCategories(
@@ -296,14 +282,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Remove a category from a product.
-     * Requirements: 2.4 - Remove without affecting other assignments
-     * 
-     * @param productId the product ID
-     * @param categoryId the category ID to remove
-     * @return success response
-     */
     @DeleteMapping("/{productId}/categories/{categoryId}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> removeCategoryFromProduct(
@@ -324,12 +302,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Get all categories assigned to a product.
-     * 
-     * @param productId the product ID
-     * @return list of categories
-     */
     @GetMapping("/{productId}/categories")
     public ResponseEntity<ApiResponse<List<CategoryDTO>>> getProductCategories(@PathVariable Integer productId) {
         try {
@@ -352,13 +324,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Get categories assigned to a product filtered by type.
-     * 
-     * @param productId the product ID
-     * @param type the category type to filter by
-     * @return list of categories of the specified type
-     */
     @GetMapping("/{productId}/categories/type/{type}")
     public ResponseEntity<ApiResponse<List<CategoryDTO>>> getProductCategoriesByType(
             @PathVariable Integer productId,
@@ -383,13 +348,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Check if a product has required category type (FAN_TYPE or ACCESSORY_TYPE).
-     * Requirements: 2.2 - Require at least one FAN_TYPE or ACCESSORY_TYPE category
-     * 
-     * @param productId the product ID
-     * @return true if product has required category type
-     */
     @GetMapping("/{productId}/categories/has-required")
     public ResponseEntity<ApiResponse<Boolean>> hasRequiredCategoryType(@PathVariable Integer productId) {
         try {
@@ -408,13 +366,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Set the primary category for a product.
-     * 
-     * @param productId the product ID
-     * @param categoryId the category ID to set as primary
-     * @return success response
-     */
     @PutMapping("/{productId}/categories/{categoryId}/primary")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> setPrimaryCategory(
@@ -435,16 +386,6 @@ public class ProductController {
         }
     }
 
-    // ==================== TAG ASSIGNMENT ENDPOINTS ====================
-
-    /**
-     * Assign tags to a product.
-     * Requirements: 3.2 - Allow multiple tags per product
-     * 
-     * @param productId the product ID
-     * @param tagIds list of tag IDs to assign
-     * @return success response
-     */
     @PostMapping("/{productId}/tags")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> assignTagsToProduct(
@@ -465,13 +406,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Replace all tags for a product.
-     * 
-     * @param productId the product ID
-     * @param tagIds list of tag IDs to replace with
-     * @return success response
-     */
     @PutMapping("/{productId}/tags")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> replaceProductTags(
@@ -492,13 +426,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Remove a tag from a product.
-     * 
-     * @param productId the product ID
-     * @param tagId the tag ID to remove
-     * @return success response
-     */
     @DeleteMapping("/{productId}/tags/{tagId}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> removeTagFromProduct(
@@ -519,12 +446,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Get all tags assigned to a product.
-     * 
-     * @param productId the product ID
-     * @return list of tags
-     */
     @GetMapping("/{productId}/tags")
     public ResponseEntity<ApiResponse<List<TagDTO>>> getProductTags(@PathVariable Integer productId) {
         try {
@@ -547,12 +468,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Get active tags for a product (considering validity period).
-     * 
-     * @param productId the product ID
-     * @return list of active tags
-     */
     @GetMapping("/{productId}/tags/active")
     public ResponseEntity<ApiResponse<List<TagDTO>>> getActiveProductTags(@PathVariable Integer productId) {
         try {
@@ -575,15 +490,6 @@ public class ProductController {
         }
     }
 
-    /**
-     * Assign a tag to a product with validity period.
-     * 
-     * @param productId the product ID
-     * @param tagId the tag ID
-     * @param validFrom start date/time (optional)
-     * @param validUntil end date/time (optional)
-     * @return success response
-     */
     @PostMapping("/{productId}/tags/{tagId}/validity")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Void>> assignTagWithValidity(

@@ -37,27 +37,22 @@ public class StaffService {
 
     @Transactional
     public StaffDTO createStaff(CreateStaffRequest request) {
-        // Validate store location is required
         if (request.getStoreLocationId() == null) {
             throw new AppException(ErrorCode.INVALID_INPUT); // Store location is required
         }
 
-        // Get store location
         StoreLocation storeLocation = storeLocationRepository.findById(request.getStoreLocationId())
                 .orElseThrow(() -> new AppException(ErrorCode.LOCATION_NOT_FOUND));
-        
-        // Check if store already has a staff assigned
+
         List<User> existingStaff = userRepository.findByStoreLocationId(request.getStoreLocationId());
         if (!existingStaff.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_INPUT); // Store already has staff
         }
 
-        // Auto-generate fullName and email from store if not provided
         String fullName = request.getFullName();
         String email = request.getEmail();
         String phone = request.getPhoneNumber();
 
-        // Normalize store name: remove special chars, convert to lowercase, remove spaces, remove accents
         String normalizedStoreName = storeLocation.getName()
                 .toLowerCase()
                 .replaceAll("[àáạảãâầấậẩẫăằắặẳẵ]", "a")
@@ -70,7 +65,6 @@ public class StaffService {
                 .replaceAll("[^a-z0-9\\s]", "") // Remove special chars
                 .replaceAll("\\s+", ""); // Remove spaces
 
-        // Email: Use store email if available, otherwise use provided email
         if (email == null || email.trim().isEmpty()) {
             if (storeLocation.getEmail() != null && !storeLocation.getEmail().trim().isEmpty()) {
                 email = storeLocation.getEmail();
@@ -79,17 +73,14 @@ public class StaffService {
             }
         }
 
-        // If phone is not provided, use store phone
         if (phone == null || phone.trim().isEmpty()) {
             phone = storeLocation.getPhone();
         }
 
-        // Validate email uniqueness
         if (userRepository.existsByEmail(email)) {
             throw new AppException(ErrorCode.EMAIL_USED);
         }
 
-        // Get staff role - must exist, try different case variations
         Role staffRole = roleRepository.findByName("staff")
                 .orElseGet(() -> {
                     // Try uppercase
@@ -114,8 +105,6 @@ public class StaffService {
 
         log.info("Using staff role with roleId: {}, roleName: {}", staffRole.getId(), staffRole.getName());
 
-        // Create staff user with temporary fullname (will be updated after getting the ID)
-        // Use temporary fullname to avoid conflicts
         String tempFullname = "staff_temp_" + System.currentTimeMillis();
         while (userRepository.existsByFullname(tempFullname)) {
             tempFullname = "staff_temp_" + System.currentTimeMillis();
@@ -133,21 +122,17 @@ public class StaffService {
                 .build();
 
         User savedStaff = userRepository.save(staff);
-        
-        // Now generate the final fullName with staff ID
+
         String finalFullName;
         if (fullName == null || fullName.trim().isEmpty()) {
-            // Format: Staff + storeName
             finalFullName = "Staff " + storeLocation.getName();
         } else {
             finalFullName = fullName.trim();
         }
 
-        // Update fullname with final value
         savedStaff.setFullname(finalFullName);
         User verifiedStaff = userRepository.save(savedStaff);
-        
-        // Verify the saved staff has correct role
+
         log.info("Staff created with ID: {}, username: {}, email: {}, roleId: {}", 
                 verifiedStaff.getId(), verifiedStaff.getFullname(), verifiedStaff.getEmail(), verifiedStaff.getRoleId());
         
@@ -196,7 +181,6 @@ public class StaffService {
             throw new AppException(ErrorCode.USER_NOTEXISTED);
         }
 
-        // Update fields
         if (request.getFullName() != null) {
             String fullName = request.getFullName().trim();
             staff.setFullname(fullName);
@@ -217,13 +201,11 @@ public class StaffService {
             staff.setStatus(request.getStatus());
         }
 
-        // Handle store location assignment
         if (request.getStoreLocationId() != null) {
             if (!storeLocationRepository.existsById(request.getStoreLocationId())) {
                 throw new AppException(ErrorCode.LOCATION_NOT_FOUND);
             }
 
-            // If assigning a new store, check if it already has staff
             if (!request.getStoreLocationId().equals(staff.getStoreLocationId())) {
                 List<User> existingStaff = userRepository.findByStoreLocationId(request.getStoreLocationId());
                 if (!existingStaff.isEmpty() && !existingStaff.get(0).getId().equals(staffId)) {
@@ -265,7 +247,6 @@ public class StaffService {
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
 
-        // Staff can only update their own profile (not store assignment or status)
         if (request.getFullName() != null) {
             String fullName = request.getFullName().trim();
             staff.setFullname(fullName);
@@ -306,7 +287,6 @@ public class StaffService {
             throw new AppException(ErrorCode.USER_NOTEXISTED);
         }
 
-        // Reset password to default
         String defaultPassword = "Staff@123";
         staff.setPasswordHash(passwordEncoder.encode(defaultPassword));
         userRepository.save(staff);

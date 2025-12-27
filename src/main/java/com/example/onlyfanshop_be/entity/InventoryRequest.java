@@ -10,11 +10,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * InventoryRequest - Yêu cầu nhập hàng từ cửa hàng đến kho tổng
- * Flow: Cửa hàng tạo request → Admin duyệt → Chuyển hàng từ kho tổng sang kho cửa hàng
- * Một request có thể chứa nhiều sản phẩm (items)
- */
 @Entity
 @Table(name = "inventory_requests",
     indexes = {
@@ -42,9 +37,6 @@ public class InventoryRequest {
     @JsonIgnore
     private StoreLocation store;
 
-    /**
-     * Danh sách sản phẩm trong yêu cầu
-     */
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<InventoryRequestItem> items = new ArrayList<>();
@@ -70,9 +62,6 @@ public class InventoryRequest {
     @Builder.Default
     private InventoryRequestStatus status = InventoryRequestStatus.PENDING;
 
-    /**
-     * User tạo yêu cầu (nhân viên cửa hàng)
-     */
     @Column(name = "requested_by", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long requestedBy;
 
@@ -82,9 +71,6 @@ public class InventoryRequest {
     @JsonIgnore
     private User requester;
 
-    /**
-     * Admin duyệt yêu cầu
-     */
     @Column(name = "approved_by", columnDefinition = "BIGINT UNSIGNED")
     private Long approvedBy;
 
@@ -94,15 +80,9 @@ public class InventoryRequest {
     @JsonIgnore
     private User approver;
 
-    /**
-     * Ghi chú từ cửa hàng khi tạo yêu cầu
-     */
     @Column(name = "request_note", length = 500)
     private String requestNote;
 
-    /**
-     * Ghi chú từ admin khi duyệt/từ chối
-     */
     @Column(name = "admin_note", length = 500)
     private String adminNote;
 

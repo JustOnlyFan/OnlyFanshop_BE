@@ -9,10 +9,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * InventoryTransaction - Lịch sử giao dịch kho
- * Ghi lại mọi thay đổi số lượng tồn kho (chuyển kho, bán hàng, điều chỉnh, nhập hàng)
- */
 @Entity
 @Table(name = "inventory_transactions",
     indexes = {
@@ -47,23 +43,13 @@ public class InventoryTransaction {
     @JsonIgnore
     private Product product;
 
-
-    /**
-     * Số lượng giao dịch (luôn dương)
-     */
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    /**
-     * Loại nguồn: CENTRAL (kho tổng) hoặc STORE (kho cửa hàng)
-     */
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 20)
     private InventoryLocationType sourceType;
 
-    /**
-     * ID cửa hàng nguồn (null nếu sourceType = CENTRAL)
-     */
     @Column(name = "source_store_id", columnDefinition = "INT UNSIGNED")
     private Integer sourceStoreId;
 
@@ -73,16 +59,10 @@ public class InventoryTransaction {
     @JsonIgnore
     private StoreLocation sourceStore;
 
-    /**
-     * Loại đích: CENTRAL (kho tổng) hoặc STORE (kho cửa hàng)
-     */
     @Enumerated(EnumType.STRING)
     @Column(name = "destination_type", nullable = false, length = 20)
     private InventoryLocationType destinationType;
 
-    /**
-     * ID cửa hàng đích (null nếu destinationType = CENTRAL)
-     */
     @Column(name = "destination_store_id", columnDefinition = "INT UNSIGNED")
     private Integer destinationStoreId;
 
@@ -92,9 +72,6 @@ public class InventoryTransaction {
     @JsonIgnore
     private StoreLocation destinationStore;
 
-    /**
-     * Liên kết đến InventoryRequest (nếu giao dịch từ request nhập hàng)
-     */
     @Column(name = "request_id", columnDefinition = "BIGINT UNSIGNED")
     private Long requestId;
 
@@ -104,9 +81,6 @@ public class InventoryTransaction {
     @JsonIgnore
     private InventoryRequest request;
 
-    /**
-     * Liên kết đến Order (nếu giao dịch từ bán hàng)
-     */
     @Column(name = "order_id", columnDefinition = "BIGINT UNSIGNED")
     private Long orderId;
 
@@ -116,9 +90,6 @@ public class InventoryTransaction {
     @JsonIgnore
     private Order order;
 
-    /**
-     * User thực hiện giao dịch
-     */
     @Column(name = "performed_by", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long performedBy;
 
@@ -128,15 +99,9 @@ public class InventoryTransaction {
     @JsonIgnore
     private User performer;
 
-    /**
-     * Số lượng tồn kho trước giao dịch (để audit)
-     */
     @Column(name = "quantity_before")
     private Integer quantityBefore;
 
-    /**
-     * Số lượng tồn kho sau giao dịch (để audit)
-     */
     @Column(name = "quantity_after")
     private Integer quantityAfter;
 

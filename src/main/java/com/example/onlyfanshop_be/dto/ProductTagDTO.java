@@ -3,10 +3,6 @@ package com.example.onlyfanshop_be.dto;
 import com.example.onlyfanshop_be.entity.ProductTag;
 import lombok.*;
 
-/**
- * DTO for ProductTag relationship.
- * Used to return tag information for a product.
- */
 @Getter
 @Setter
 @AllArgsConstructor

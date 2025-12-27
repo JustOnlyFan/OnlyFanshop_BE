@@ -4,10 +4,6 @@ import com.example.onlyfanshop_be.entity.Tag;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
-/**
- * DTO for Tag entity.
- * Used for API responses and serialization.
- */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -20,12 +16,7 @@ public class TagDTO {
     private String displayName;
     private String badgeColor;
     private Integer displayOrder;
-    
-    /**
-     * Converts a Tag entity to TagDTO.
-     * @param tag the Tag entity
-     * @return TagDTO representation
-     */
+
     public static TagDTO fromEntity(Tag tag) {
         if (tag == null) {
             return null;
@@ -38,11 +29,7 @@ public class TagDTO {
                 .displayOrder(tag.getDisplayOrder())
                 .build();
     }
-    
-    /**
-     * Converts this DTO to a Tag entity.
-     * @return Tag entity
-     */
+
     public Tag toEntity() {
         return Tag.builder()
                 .id(this.id)

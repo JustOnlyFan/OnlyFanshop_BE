@@ -9,10 +9,6 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * TransferRequest - Yêu cầu nhập hàng từ Staff cửa hàng
- * Hỗ trợ điều chuyển hàng trực tiếp giữa các kho cửa hàng
- */
 @Entity
 @Table(name = "transfer_requests",
     indexes = {
@@ -41,10 +37,6 @@ public class TransferRequest {
     @JsonIgnore
     private StoreLocation store;
 
-    /**
-     * ID của kho nguồn - nơi hàng được chuyển đi
-     * Bắt buộc phải chỉ định kho nguồn khi tạo yêu cầu điều chuyển
-     */
     @Column(name = "source_warehouse_id", columnDefinition = "BIGINT UNSIGNED")
     private Long sourceWarehouseId;
 

@@ -41,9 +41,6 @@ public class InventoryRequestController {
     private final StoreLocationRepository storeLocationRepository;
     private final ProductRepository productRepository;
 
-    /**
-     * Cửa hàng tạo yêu cầu nhập hàng (hỗ trợ nhiều sản phẩm)
-     */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<InventoryRequestDTO>> createRequest(
@@ -55,7 +52,6 @@ public class InventoryRequestController {
         InventoryRequest request;
         
         if (dto.getItems() != null && !dto.getItems().isEmpty()) {
-            // New format: multiple items
             request = inventoryRequestService.createRequestWithItems(
                     dto.getStoreId(),
                     dto.getItems(),
@@ -63,7 +59,6 @@ public class InventoryRequestController {
                     dto.getNote()
             );
         } else if (dto.getProductId() != null && dto.getQuantity() != null) {
-            // Legacy format: single product
             request = inventoryRequestService.createRequest(
                     dto.getStoreId(),
                     dto.getProductId(),
@@ -82,10 +77,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-
-    /**
-     * Admin duyệt yêu cầu
-     */
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InventoryRequestDTO>> approveRequest(
@@ -109,9 +100,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Admin từ chối yêu cầu
-     */
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InventoryRequestDTO>> rejectRequest(
@@ -134,58 +122,16 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Chuyển trạng thái sang SHIPPING (đang vận chuyển)
-     */
-    @PutMapping("/{id}/shipping")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<InventoryRequestDTO>> startShipping(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        InventoryRequest request = inventoryRequestService.startShipping(id, user.getId());
-
-        return ResponseEntity.ok(ApiResponse.<InventoryRequestDTO>builder()
-                .statusCode(200)
-                .message("Đã chuyển sang trạng thái vận chuyển")
-                .data(convertToDTO(request))
-                .build());
-    }
-
-    /**
-     * Hoàn thành giao hàng (DELIVERED) - cập nhật số lượng kho
-     */
-    @PutMapping("/{id}/delivered")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<InventoryRequestDTO>> completeDelivery(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        InventoryRequest request = inventoryRequestService.completeDelivery(id, user.getId());
-
-        return ResponseEntity.ok(ApiResponse.<InventoryRequestDTO>builder()
-                .statusCode(200)
-                .message("Đã giao hàng thành công - Số lượng kho đã được cập nhật")
-                .data(convertToDTO(request))
-                .build());
-    }
-
-    /**
-     * Legacy: Hoàn thành chuyển hàng (sau khi duyệt)
-     */
     @PutMapping("/{id}/complete")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<InventoryRequestDTO>> completeTransfer(
+    public ResponseEntity<ApiResponse<InventoryRequestDTO>> completeRequest(
             @PathVariable Long id,
+            @RequestParam Integer sourceStoreId,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        InventoryRequest request = inventoryRequestService.completeTransfer(id, user.getId());
+        InventoryRequest request = inventoryRequestService.completeRequest(id, sourceStoreId, user.getId());
 
         return ResponseEntity.ok(ApiResponse.<InventoryRequestDTO>builder()
                 .statusCode(200)
@@ -194,9 +140,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Cửa hàng hủy yêu cầu
-     */
     @PutMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<InventoryRequestDTO>> cancelRequest(@PathVariable Long id) {
@@ -209,9 +152,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Lấy danh sách requests pending (cho admin)
-     */
     @GetMapping("/pending")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<InventoryRequestDTO>>> getPendingRequests() {
@@ -225,9 +165,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Lấy danh sách requests của một store
-     */
     @GetMapping("/store/{storeId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<InventoryRequestDTO>>> getStoreRequests(
@@ -242,9 +179,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Lấy danh sách requests theo status với pagination
-     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<InventoryRequestDTO>>> getRequests(
@@ -265,9 +199,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Lấy chi tiết request
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<InventoryRequestDTO>> getRequest(@PathVariable Long id) {
@@ -280,9 +211,6 @@ public class InventoryRequestController {
                 .build());
     }
 
-    /**
-     * Đếm số requests pending
-     */
     @GetMapping("/pending/count")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countPendingRequests() {
@@ -302,7 +230,6 @@ public class InventoryRequestController {
         User approver = request.getApprovedBy() != null
                 ? userRepository.findById(request.getApprovedBy()).orElse(null) : null;
 
-        // Convert items
         List<InventoryRequestItem> items = request.getItems();
         if (items == null || items.isEmpty()) {
             items = inventoryRequestItemRepository.findByRequestId(request.getId());
@@ -311,7 +238,6 @@ public class InventoryRequestController {
         List<InventoryRequestItemDTO> itemDTOs = new ArrayList<>();
         int totalQuantity = 0;
         
-        // Legacy fields for backward compatibility
         Long legacyProductId = request.getProductId();
         String legacyProductName = null;
         String legacyProductImageUrl = null;
@@ -345,7 +271,6 @@ public class InventoryRequestController {
             
             totalQuantity += item.getRequestedQuantity();
             
-            // Set legacy fields from first item if not set
             if (legacyProductId == null) {
                 legacyProductId = item.getProductId();
                 legacyProductName = productName;
@@ -355,7 +280,6 @@ public class InventoryRequestController {
             }
         }
         
-        // If legacy fields are set but name is not, fetch product
         if (legacyProductId != null && legacyProductName == null) {
             Product product = productRepository.findById(legacyProductId.intValue()).orElse(null);
             if (product != null) {
@@ -377,7 +301,6 @@ public class InventoryRequestController {
                 .items(itemDTOs)
                 .totalItems(itemDTOs.size())
                 .totalQuantity(totalQuantity)
-                // Legacy fields
                 .productId(legacyProductId)
                 .productName(legacyProductName)
                 .productImageUrl(legacyProductImageUrl)

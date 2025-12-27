@@ -8,11 +8,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Warehouse - Kho hàng trong hệ thống
- * Chỉ hỗ trợ STORE: Kho của từng cửa hàng
- * Kho tổng (MAIN) đã được loại bỏ
- */
 @Entity
 @Table(name = "warehouses",
     indexes = {
@@ -47,11 +42,6 @@ public class Warehouse {
     @JsonIgnore
     private StoreLocation store;
 
-    /**
-     * Trạng thái hoạt động của kho
-     * true: kho đang hoạt động
-     * false: kho đã bị vô hiệu hóa (soft delete)
-     */
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;

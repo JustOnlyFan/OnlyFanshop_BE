@@ -6,9 +6,6 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * DTO for Warehouse entity
- */
 @Data
 @Builder
 @NoArgsConstructor

@@ -5,9 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * TransferRequestItem - Chi tiết sản phẩm trong yêu cầu chuyển kho
- */
 @Entity
 @Table(name = "transfer_request_items",
     indexes = {
@@ -50,17 +47,11 @@ public class TransferRequestItem {
     @Builder.Default
     private Integer fulfilledQuantity = 0;
 
-    /**
-     * Số lượng còn thiếu
-     */
     @Transient
     public Integer getShortageQuantity() {
         return requestedQuantity - fulfilledQuantity;
     }
 
-    /**
-     * Kiểm tra đã đáp ứng đủ chưa
-     */
     @Transient
     public boolean isFullyFulfilled() {
         return fulfilledQuantity >= requestedQuantity;

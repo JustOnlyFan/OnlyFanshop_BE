@@ -98,10 +98,8 @@ public class StoreLocationService implements IStoreLocation {
 		StoreLocation existing = storeLocationRepository.findById(id)
 				.orElseThrow(() -> new AppException(ErrorCode.LOCATION_NOT_FOUND));
 
-		// Ensure staff accounts are locked before removal
 		synchronizeStaffStatus(existing.getLocationID(), StoreStatus.CLOSED);
 
-		// Safe to delete
 		storeLocationRepository.deleteById(id);
     }
 
@@ -129,7 +127,6 @@ public class StoreLocationService implements IStoreLocation {
 	@Override
 	@Transactional(readOnly = true)
 	public List<StoreLocation> getStoresWithProduct(Long productId, String city, String district) {
-		// Sử dụng StoreInventoryService để lấy danh sách stores có bán sản phẩm (isAvailable = true)
 		List<StoreLocation> stores = storeInventoryService.getStoresWithProduct(productId);
 		
 		// Filter by city if provided, and only active stores
@@ -142,20 +139,12 @@ public class StoreLocationService implements IStoreLocation {
 		return filteredStores;
 	}
 
-	/**
-	 * Create a store with associated Staff account and Store_Warehouse
-	 * Requirements: 3.2 - WHEN a Store is created THEN the System SHALL automatically create one Staff account associated with that Store
-	 * Requirements: 3.3 - WHEN a Store is created THEN the System SHALL automatically create one Store_Warehouse associated with that Store
-	 * Requirements: 3.4 - WHEN a Store is created THEN the Store_Warehouse SHALL be empty with no Inventory_Items
-	 */
 	@Override
 	@Transactional
 	public StoreLocation createStoreWithStaffAndWarehouse(StoreLocation location, String staffPassword) {
-		// First, create the store location
 		StoreLocation savedStore = createLocation(location);
 		log.info("Created store location with ID: {}, name: {}", savedStore.getLocationID(), savedStore.getName());
 
-		// Create Staff account for this store (Requirements 3.2)
 		try {
 			createStaffForStore(savedStore, staffPassword);
 		} catch (Exception e) {
@@ -164,7 +153,6 @@ public class StoreLocationService implements IStoreLocation {
 			throw e;
 		}
 
-		// Create Store_Warehouse for this store (Requirements 3.3, 3.4)
 		try {
 			createWarehouseForStore(savedStore);
 		} catch (Exception e) {
@@ -173,29 +161,22 @@ public class StoreLocationService implements IStoreLocation {
 			throw e;
 		}
 
-		// Synchronize staff status with store operational status
 		synchronizeStaffStatus(savedStore.getLocationID(), savedStore.getStatus());
 
 		return savedStore;
 	}
 
-	/**
-	 * Create a Staff account for a store
-	 * Requirements: 3.2 - WHEN a Store is created THEN the System SHALL automatically create one Staff account associated with that Store
-	 */
 	private StaffDTO createStaffForStore(StoreLocation store, String staffPassword) {
 		log.info("Creating staff account for store ID: {}, name: {}", store.getLocationID(), store.getName());
 		
 		CreateStaffRequest staffRequest = new CreateStaffRequest();
 		staffRequest.setStoreLocationId(store.getLocationID());
-		
-		// Use provided password or default password
+
 		String password = (staffPassword != null && !staffPassword.trim().isEmpty()) 
 				? staffPassword 
-				: "Staff@123"; // Default password
+				: "Staff@123";
 		staffRequest.setPassword(password);
-		
-		// Username, email, phone will be auto-generated from store info in StaffService
+
 		StaffDTO staffDTO = staffService.createStaff(staffRequest);
 		log.info("Successfully created staff account with ID: {} for store ID: {}", 
 				staffDTO.getUserID(), store.getLocationID());
@@ -203,22 +184,15 @@ public class StoreLocationService implements IStoreLocation {
 		return staffDTO;
 	}
 
-	/**
-	 * Create a Store_Warehouse for a store
-	 * Requirements: 3.3 - WHEN a Store is created THEN the System SHALL automatically create one Store_Warehouse associated with that Store
-	 * Requirements: 3.4 - WHEN a Store is created THEN the Store_Warehouse SHALL be empty with no Inventory_Items
-	 */
 	private Warehouse createWarehouseForStore(StoreLocation store) {
 		log.info("Creating warehouse for store ID: {}, name: {}", store.getLocationID(), store.getName());
-		
-		// Check if warehouse already exists for this store
+
 		if (warehouseRepository.existsByStoreId(store.getLocationID())) {
 			log.info("Warehouse already exists for store ID: {}", store.getLocationID());
 			return warehouseRepository.findByStoreId(store.getLocationID())
 					.orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 		}
-		
-		// Create new Store_Warehouse with empty inventory (Requirements 3.4)
+
 		Warehouse warehouse = Warehouse.builder()
 				.name("Kho " + store.getName())
 				.type(WarehouseType.STORE)
@@ -234,22 +208,4 @@ public class StoreLocationService implements IStoreLocation {
 		return savedWarehouse;
 	}
 
-	/**
-	 * Get the Staff account associated with a store
-	 */
-	@Override
-	@Transactional(readOnly = true)
-	public StaffDTO getStoreStaff(int storeId) {
-		List<StaffDTO> staffList = staffService.getStaffByStoreLocation(storeId);
-		return staffList.isEmpty() ? null : staffList.get(0);
-	}
-
-	/**
-	 * Get the Warehouse associated with a store
-	 */
-	@Override
-	@Transactional(readOnly = true)
-	public Warehouse getStoreWarehouse(int storeId) {
-		return warehouseRepository.findByStoreId(storeId).orElse(null);
-	}
 }

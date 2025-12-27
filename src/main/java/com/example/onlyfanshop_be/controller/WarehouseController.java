@@ -19,11 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * REST Controller for Warehouse management operations
- * Hệ thống chỉ hỗ trợ Store Warehouses - kho tổng (Main Warehouse) đã được loại bỏ
- * Requirements: 1.1, 2.1, 2.2, 2.4, 7.2
- */
 @RestController
 @RequestMapping("/api/warehouses")
 @RequiredArgsConstructor
@@ -32,12 +27,7 @@ import java.util.List;
 public class WarehouseController {
     
     private final IWarehouseService warehouseService;
-    
-    /**
-     * GET /api/warehouses
-     * Get all active store warehouses
-     * Requirements: 2.4 - THE System SHALL allow Admin to view inventory across all Store_Warehouses
-     */
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get All Active Warehouses", description = "Retrieves all active store warehouses")
@@ -50,12 +40,7 @@ public class WarehouseController {
                 .data(warehouses)
                 .build());
     }
-    
-    /**
-     * GET /api/warehouses/main
-     * DEPRECATED - Main Warehouse is no longer supported
-     * Requirements: 1.4 - IF a request references Main_Warehouse type THEN the System SHALL return an error
-     */
+
     @GetMapping("/main")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get Main Warehouse (DEPRECATED)", description = "Main warehouse is no longer supported")
@@ -63,12 +48,7 @@ public class WarehouseController {
         log.warn("Attempted to access deprecated Main Warehouse endpoint");
         throw new AppException(ErrorCode.INVALID_WAREHOUSE_TYPE);
     }
-    
-    /**
-     * PUT /api/warehouses/main/inventory/{productId}
-     * DEPRECATED - Main Warehouse is no longer supported
-     * Requirements: 1.4 - IF a request references Main_Warehouse type THEN the System SHALL return an error
-     */
+
     @PutMapping("/main/inventory/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update Main Warehouse Inventory (DEPRECATED)", description = "Main warehouse is no longer supported")
@@ -78,11 +58,7 @@ public class WarehouseController {
         log.warn("Attempted to update deprecated Main Warehouse inventory");
         throw new AppException(ErrorCode.INVALID_WAREHOUSE_TYPE);
     }
-    
-    /**
-     * GET /api/warehouses/stores/{storeId}
-     * Get a Store Warehouse by store ID
-     */
+
     @GetMapping("/stores/{storeId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get Store Warehouse", description = "Retrieves a store warehouse with all inventory items")
@@ -95,12 +71,7 @@ public class WarehouseController {
                 .data(warehouse)
                 .build());
     }
-    
-    /**
-     * PUT /api/warehouses/stores/{storeId}/inventory/{productId}
-     * Update quantity for a product in a Store Warehouse
-     * Requirements: 2.1 - WHEN Admin updates inventory quantity THEN the System SHALL update the Inventory_Item in the specified Store_Warehouse
-     */
+
     @PutMapping("/stores/{storeId}/inventory/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update Store Warehouse Inventory", description = "Updates the quantity of a product in a store warehouse")
@@ -118,12 +89,7 @@ public class WarehouseController {
                 .data(inventoryItem)
                 .build());
     }
-    
-    /**
-     * POST /api/warehouses/stores/{storeId}/products
-     * Add a product to a Store Warehouse
-     * Requirements: 2.2 - WHEN Admin adds a product to a store THEN the System SHALL create an Inventory_Item with the specified quantity
-     */
+
     @PostMapping("/stores/{storeId}/products")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Add Product to Store Warehouse", description = "Adds a product to a store warehouse with specified quantity")
@@ -140,12 +106,7 @@ public class WarehouseController {
                 .data(inventoryItem)
                 .build());
     }
-    
-    /**
-     * DELETE /api/warehouses/{warehouseId}
-     * Deactivate a warehouse (soft delete)
-     * Requirements: 7.2 - WHEN System migrates THEN the System SHALL mark old Main_Warehouse records as inactive
-     */
+
     @DeleteMapping("/{warehouseId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Deactivate Warehouse", description = "Marks a warehouse as inactive (soft delete)")

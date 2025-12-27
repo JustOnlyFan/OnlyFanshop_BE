@@ -174,11 +174,8 @@ public class CartItemController {
     @PutMapping("/onCheck")
     public ApiResponse<Void> onCheck(@RequestParam Integer cartItemID){
         ApiResponse<Void> response = new ApiResponse<>();
-        // Note: Checked field removed from CartItem in new schema
-        // This method is kept for backward compatibility but does nothing
         CartItem item = cartItemRepository.findById((long) cartItemID)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOTEXISTED));
-        // No action needed as checked field is not in new schema
         return   response;
     }
 }

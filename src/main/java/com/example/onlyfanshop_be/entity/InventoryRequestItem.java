@@ -5,9 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * InventoryRequestItem - Chi tiết từng sản phẩm trong yêu cầu nhập hàng
- */
 @Entity
 @Table(name = "inventory_request_items",
     indexes = {
@@ -42,15 +39,9 @@ public class InventoryRequestItem {
     @JsonIgnore
     private Product product;
 
-    /**
-     * Số lượng yêu cầu
-     */
     @Column(name = "requested_quantity", nullable = false)
     private Integer requestedQuantity;
 
-    /**
-     * Số lượng được duyệt (có thể khác với số lượng yêu cầu)
-     */
     @Column(name = "approved_quantity")
     private Integer approvedQuantity;
 }

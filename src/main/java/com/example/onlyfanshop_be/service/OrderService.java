@@ -218,13 +218,12 @@ public class OrderService implements IOrderService {
         }
 
         try {
-            // OrderStatus enum values are lowercase
+
             String statusLower = status.toLowerCase().trim();
             OrderStatus orderStatus = OrderStatus.valueOf(statusLower);
             order.setStatus(orderStatus);
             orderRepository.save(order);
 
-            // ✅ Gửi thông báo cho người dùng
             User user = order.getUser();
             if (user != null) {
                 String message;
@@ -250,7 +249,6 @@ public class OrderService implements IOrderService {
                         break;
                 }
 
-                // ✅ Gọi service gửi thông báo
                 notificationService.sendNotification(user.getId().intValue(), message);
             }
 

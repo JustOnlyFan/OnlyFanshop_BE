@@ -1,8 +1,10 @@
 package com.example.onlyfanshop_be.entity;
+
 import com.example.onlyfanshop_be.enums.StoreStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
+
 @Entity
 @Table(name = "store_locations")
 @Getter

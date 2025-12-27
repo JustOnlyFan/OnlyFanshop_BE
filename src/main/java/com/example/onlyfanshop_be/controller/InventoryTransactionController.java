@@ -31,75 +31,22 @@ public class InventoryTransactionController {
     private final StoreLocationRepository storeLocationRepository;
     private final ProductRepository productRepository;
 
-    /**
-     * Chuyển hàng từ kho tổng sang kho cửa hàng (Admin)
-     */
-    @PostMapping("/transfer-to-store")
+    @PostMapping("/transfer-between-stores")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<InventoryTransactionDTO>> transferToStore(
-            @Valid @RequestBody TransferInventoryDTO dto,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        InventoryTransaction transaction = transactionService.transferToStore(
-                dto.getProductId(),
-                dto.getStoreId(),
-                dto.getQuantity(),
-                null,
-                user.getId(),
-                dto.getNote()
-        );
-
-        return ResponseEntity.ok(ApiResponse.<InventoryTransactionDTO>builder()
-                .statusCode(200)
-                .message("Chuyển hàng thành công")
-                .data(convertToDTO(transaction))
-                .build());
-    }
-
-
-    /**
-     * Trả hàng từ cửa hàng về kho tổng (Admin)
-     */
-    @PostMapping("/return-to-central")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<InventoryTransactionDTO>> returnToCentral(
-            @Valid @RequestBody TransferInventoryDTO dto,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        InventoryTransaction transaction = transactionService.returnToCentral(
-                dto.getProductId(),
-                dto.getStoreId(),
-                dto.getQuantity(),
-                user.getId(),
-                dto.getNote()
-        );
-
-        return ResponseEntity.ok(ApiResponse.<InventoryTransactionDTO>builder()
-                .statusCode(200)
-                .message("Trả hàng về kho tổng thành công")
-                .data(convertToDTO(transaction))
-                .build());
-    }
-
-    /**
-     * Nhập hàng vào kho tổng (Admin)
-     */
-    @PostMapping("/import")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<InventoryTransactionDTO>> importToCentral(
+    public ResponseEntity<ApiResponse<InventoryTransactionDTO>> transferBetweenStores(
             @RequestParam Long productId,
+            @RequestParam Integer sourceStoreId,
+            @RequestParam Integer destStoreId,
             @RequestParam Integer quantity,
             @RequestParam(required = false) String note,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        InventoryTransaction transaction = transactionService.importToCentral(
+        InventoryTransaction transaction = transactionService.transferBetweenStores(
                 productId,
+                sourceStoreId,
+                destStoreId,
                 quantity,
                 user.getId(),
                 note
@@ -107,14 +54,37 @@ public class InventoryTransactionController {
 
         return ResponseEntity.ok(ApiResponse.<InventoryTransactionDTO>builder()
                 .statusCode(200)
-                .message("Nhập hàng vào kho tổng thành công")
+                .message("Chuyển hàng giữa các kho thành công")
                 .data(convertToDTO(transaction))
                 .build());
     }
 
-    /**
-     * Điều chỉnh tồn kho (kiểm kê) - Admin
-     */
+    @PostMapping("/import-to-store")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryTransactionDTO>> importToStore(
+            @RequestParam Long productId,
+            @RequestParam Integer storeId,
+            @RequestParam Integer quantity,
+            @RequestParam(required = false) String note,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        InventoryTransaction transaction = transactionService.importToStore(
+                productId,
+                storeId,
+                quantity,
+                user.getId(),
+                note != null ? note : "Nhập hàng vào kho cửa hàng"
+        );
+
+        return ResponseEntity.ok(ApiResponse.<InventoryTransactionDTO>builder()
+                .statusCode(200)
+                .message("Nhập hàng vào kho cửa hàng thành công")
+                .data(convertToDTO(transaction))
+                .build());
+    }
+
     @PostMapping("/adjust")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InventoryTransactionDTO>> adjustInventory(
@@ -138,9 +108,6 @@ public class InventoryTransactionController {
                 .build());
     }
 
-    /**
-     * Lấy lịch sử giao dịch của product
-     */
     @GetMapping("/product/{productId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<InventoryTransactionDTO>>> getProductTransactions(
@@ -155,9 +122,6 @@ public class InventoryTransactionController {
                 .build());
     }
 
-    /**
-     * Lấy lịch sử giao dịch của store
-     */
     @GetMapping("/store/{storeId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<InventoryTransactionDTO>>> getStoreTransactions(
@@ -172,9 +136,6 @@ public class InventoryTransactionController {
                 .build());
     }
 
-    /**
-     * Lấy lịch sử giao dịch theo request
-     */
     @GetMapping("/request/{requestId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<InventoryTransactionDTO>>> getRequestTransactions(
@@ -205,10 +166,10 @@ public class InventoryTransactionController {
                 .quantity(transaction.getQuantity())
                 .sourceType(transaction.getSourceType())
                 .sourceStoreId(transaction.getSourceStoreId())
-                .sourceStoreName(sourceStore != null ? sourceStore.getName() : "Kho tổng")
+                .sourceStoreName(sourceStore != null ? sourceStore.getName() : null)
                 .destinationType(transaction.getDestinationType())
                 .destinationStoreId(transaction.getDestinationStoreId())
-                .destinationStoreName(destStore != null ? destStore.getName() : "Kho tổng")
+                .destinationStoreName(destStore != null ? destStore.getName() : null)
                 .requestId(transaction.getRequestId())
                 .orderId(transaction.getOrderId())
                 .performedBy(transaction.getPerformedBy())

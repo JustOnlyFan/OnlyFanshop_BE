@@ -11,11 +11,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * StoreInventory - Quản lý sản phẩm ở mỗi cửa hàng
- * Mỗi store có thể bán sản phẩm (isAvailable = true) hoặc không (isAvailable = false)
- * Admin có thể bật/tắt việc bán sản phẩm ở mỗi store
- */
 @Entity
 @Table(name = "store_inventory",
     uniqueConstraints = {
@@ -59,17 +54,10 @@ public class StoreInventory {
     @Column(name = "variant_id")
     private Long variantId;
 
-    /**
-     * isAvailable: true = store này có bán sản phẩm này, false = không bán
-     * Admin có thể bật/tắt việc bán sản phẩm ở mỗi store
-     */
     @Column(name = "is_available", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 1")
     @Builder.Default
     private Boolean isAvailable = true;
 
-    /**
-     * quantity: Số lượng tồn kho tại store này (optional, có thể để null nếu không theo dõi số lượng)
-     */
     @Column(name = "quantity", columnDefinition = "INT DEFAULT 0")
     @Builder.Default
     private Integer quantity = 0;

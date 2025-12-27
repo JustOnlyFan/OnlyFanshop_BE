@@ -23,13 +23,11 @@ public class OrderDetailsDTO {
     private LocalDateTime orderDate;  // Ngày đặt hàng
     private Double totalPrice;        // Tổng tiền đơn hàng
 
-    // ✅ Thông tin người mua
     private String address;           // Địa chỉ giao hàng
     private String customerName;      // Tên khách hàng
     private String email;             // Email khách hàng
-    private String phone;             // ☑️ Gợi ý thêm: số điện thoại người nhận
+    private String phone;
 
-    // ✅ Giỏ hàng hoặc danh sách sản phẩm
     private CartDTO cartDTO;          // Nếu bạn muốn lấy toàn bộ giỏ hàng
     private java.util.List<OrderItemLiteDTO> itemsLite; // Danh sách nhẹ để client dễ dùng
 }

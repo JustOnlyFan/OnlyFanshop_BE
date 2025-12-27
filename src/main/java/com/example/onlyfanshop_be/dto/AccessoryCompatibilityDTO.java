@@ -6,12 +6,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * DTO for AccessoryCompatibility entity.
- * Used for displaying compatibility information between accessory products and fan types/brands/models.
- * 
- * Requirements: 8.3 - Display which fan types and models the accessory is compatible with
- */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -19,64 +13,17 @@ import java.time.LocalDateTime;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AccessoryCompatibilityDTO {
-    
-    /**
-     * Unique identifier for the compatibility entry.
-     */
+
     private Long id;
-    
-    /**
-     * The accessory product ID that this compatibility entry belongs to.
-     */
     private Long accessoryProductId;
-    
-    /**
-     * The accessory product name (for display purposes).
-     */
     private String accessoryProductName;
-    
-    /**
-     * The fan type category ID that this accessory is compatible with.
-     */
     private Integer compatibleFanTypeId;
-    
-    /**
-     * The fan type category name (for display purposes).
-     */
     private String compatibleFanTypeName;
-    
-    /**
-     * The brand ID that this accessory is compatible with.
-     */
     private Integer compatibleBrandId;
-    
-    /**
-     * The brand name (for display purposes).
-     */
     private String compatibleBrandName;
-    
-    /**
-     * Specific model names that this accessory is compatible with.
-     */
     private String compatibleModel;
-    
-    /**
-     * Additional notes about compatibility.
-     */
     private String notes;
-    
-    /**
-     * Timestamp when this compatibility entry was created.
-     */
     private LocalDateTime createdAt;
-    
-    /**
-     * Converts an AccessoryCompatibility entity to AccessoryCompatibilityDTO.
-     * Resolves related entity names (fan type, brand, product) for display.
-     * 
-     * @param entity the AccessoryCompatibility entity
-     * @return AccessoryCompatibilityDTO representation
-     */
     public static AccessoryCompatibilityDTO fromEntity(AccessoryCompatibility entity) {
         if (entity == null) {
             return null;
@@ -98,14 +45,7 @@ public class AccessoryCompatibilityDTO {
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
-    
-    /**
-     * Converts this DTO to an AccessoryCompatibility entity.
-     * Note: This does not set the related entity references (accessoryProduct, compatibleFanType, compatibleBrand).
-     * Only the ID fields are set.
-     * 
-     * @return AccessoryCompatibility entity
-     */
+
     public AccessoryCompatibility toEntity() {
         return AccessoryCompatibility.builder()
                 .id(this.id)
@@ -117,17 +57,7 @@ public class AccessoryCompatibilityDTO {
                 .createdAt(this.createdAt)
                 .build();
     }
-    
-    /**
-     * Creates a simple AccessoryCompatibilityDTO with only essential fields.
-     * Useful for creating new compatibility entries.
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @param compatibleFanTypeId the compatible fan type category ID
-     * @param compatibleBrandId the compatible brand ID
-     * @param compatibleModel the compatible model names
-     * @return simple AccessoryCompatibilityDTO
-     */
+
     public static AccessoryCompatibilityDTO simple(
             Long accessoryProductId,
             Integer compatibleFanTypeId,
@@ -140,39 +70,19 @@ public class AccessoryCompatibilityDTO {
                 .compatibleModel(compatibleModel)
                 .build();
     }
-    
-    /**
-     * Checks if this compatibility entry has fan type information.
-     * 
-     * @return true if fan type ID is set
-     */
+
     public boolean hasFanTypeCompatibility() {
         return compatibleFanTypeId != null;
     }
-    
-    /**
-     * Checks if this compatibility entry has brand information.
-     * 
-     * @return true if brand ID is set
-     */
+
     public boolean hasBrandCompatibility() {
         return compatibleBrandId != null;
     }
-    
-    /**
-     * Checks if this compatibility entry has model information.
-     * 
-     * @return true if model string is not null or empty
-     */
+
     public boolean hasModelCompatibility() {
         return compatibleModel != null && !compatibleModel.trim().isEmpty();
     }
-    
-    /**
-     * Gets a display-friendly summary of the compatibility.
-     * 
-     * @return formatted compatibility summary string
-     */
+
     public String getCompatibilitySummary() {
         StringBuilder summary = new StringBuilder();
         

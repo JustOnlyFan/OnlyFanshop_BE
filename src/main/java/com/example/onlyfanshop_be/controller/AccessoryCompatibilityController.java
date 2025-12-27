@@ -14,13 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Controller for managing accessory compatibility information.
- * Provides endpoints for CRUD operations on compatibility entries and
- * querying accessories by compatible fan type.
- * 
- * Requirements: 8.2, 8.3, 8.4, 9.1, 9.2, 9.3, 9.4
- */
 @RestController
 @RequestMapping("/accessory-compatibility")
 public class AccessoryCompatibilityController {
@@ -28,15 +21,6 @@ public class AccessoryCompatibilityController {
     @Autowired
     private AccessoryCompatibilityService accessoryCompatibilityService;
 
-    // ==================== PUBLIC ENDPOINTS ====================
-
-    /**
-     * Get compatibility information for an accessory product.
-     * Requirements: 8.3 - Show which fan types and models the accessory is compatible with
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @return list of compatibility entries
-     */
     @GetMapping("/public/product/{accessoryProductId}")
     public ResponseEntity<ApiResponse<List<AccessoryCompatibilityDTO>>> getCompatibilityByProduct(
             @PathVariable Long accessoryProductId) {
@@ -61,14 +45,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-
-    /**
-     * Get accessories compatible with a specific fan type.
-     * Requirements: 8.4 - Filter accessories by compatible fan type
-     * 
-     * @param fanTypeId the fan type category ID
-     * @return list of accessory products
-     */
     @GetMapping("/public/fan-type/{fanTypeId}/accessories")
     public ResponseEntity<ApiResponse<List<Product>>> getAccessoriesByFanType(@PathVariable Integer fanTypeId) {
         try {
@@ -88,12 +64,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Get accessories compatible with a specific brand.
-     * 
-     * @param brandId the brand ID
-     * @return list of accessory products
-     */
     @GetMapping("/public/brand/{brandId}/accessories")
     public ResponseEntity<ApiResponse<List<Product>>> getAccessoriesByBrand(@PathVariable Integer brandId) {
         try {
@@ -113,13 +83,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Get accessories compatible with a specific fan type and brand.
-     * 
-     * @param fanTypeId the fan type category ID
-     * @param brandId the brand ID
-     * @return list of accessory products
-     */
     @GetMapping("/public/fan-type/{fanTypeId}/brand/{brandId}/accessories")
     public ResponseEntity<ApiResponse<List<Product>>> getAccessoriesByFanTypeAndBrand(
             @PathVariable Integer fanTypeId,
@@ -141,12 +104,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Search compatibility entries by model pattern.
-     * 
-     * @param modelPattern the model pattern to search for
-     * @return list of compatibility entries
-     */
     @GetMapping("/public/search")
     public ResponseEntity<ApiResponse<List<AccessoryCompatibilityDTO>>> searchByModel(
             @RequestParam String modelPattern) {
@@ -170,12 +127,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Get a compatibility entry by ID.
-     * 
-     * @param id the compatibility entry ID
-     * @return the compatibility entry
-     */
     @GetMapping("/public/{id}")
     public ResponseEntity<ApiResponse<AccessoryCompatibilityDTO>> getCompatibilityById(@PathVariable Long id) {
         try {
@@ -196,15 +147,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    // ==================== ADMIN ENDPOINTS ====================
-
-    /**
-     * Create a new compatibility entry.
-     * Requirements: 9.1, 9.2 - Specify compatible fan types and models/brands
-     * 
-     * @param dto the compatibility data to create
-     * @return the created compatibility entry
-     */
     @PostMapping("/admin/create")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<AccessoryCompatibilityDTO>> createCompatibility(
@@ -229,14 +171,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Update an existing compatibility entry.
-     * Requirements: 9.4 - Reflect changes immediately
-     * 
-     * @param id the compatibility entry ID
-     * @param dto the updated compatibility data
-     * @return the updated compatibility entry
-     */
     @PutMapping("/admin/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<AccessoryCompatibilityDTO>> updateCompatibility(
@@ -261,12 +195,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Delete a compatibility entry.
-     * 
-     * @param id the compatibility entry ID to delete
-     * @return success response
-     */
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCompatibility(@PathVariable Long id) {
@@ -285,14 +213,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Add multiple compatibility entries for an accessory product.
-     * Requirements: 9.1, 9.2 - Specify compatible fan types and models/brands
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @param dtos list of compatibility entries to add
-     * @return list of created compatibility entries
-     */
     @PostMapping("/admin/product/{accessoryProductId}/bulk")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<List<AccessoryCompatibilityDTO>>> addCompatibilities(
@@ -324,14 +244,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Replace all compatibility entries for an accessory product.
-     * Requirements: 9.3 - Store relationship in dedicated table
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @param dtos list of new compatibility entries
-     * @return list of created compatibility entries
-     */
     @PutMapping("/admin/product/{accessoryProductId}/replace")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<List<AccessoryCompatibilityDTO>>> replaceCompatibilities(
@@ -362,12 +274,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Delete all compatibility entries for an accessory product.
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @return success response
-     */
     @DeleteMapping("/admin/product/{accessoryProductId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAllByAccessoryProduct(@PathVariable Long accessoryProductId) {
@@ -386,12 +292,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Check if an accessory has any compatibility entries.
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @return true if the accessory has compatibility entries
-     */
     @GetMapping("/admin/product/{accessoryProductId}/has-entries")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Boolean>> hasCompatibilityEntries(@PathVariable Long accessoryProductId) {
@@ -411,12 +311,6 @@ public class AccessoryCompatibilityController {
         }
     }
 
-    /**
-     * Get the count of compatibility entries for an accessory product.
-     * 
-     * @param accessoryProductId the accessory product ID
-     * @return the number of compatibility entries
-     */
     @GetMapping("/admin/product/{accessoryProductId}/count")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Long>> getCompatibilityCount(@PathVariable Long accessoryProductId) {

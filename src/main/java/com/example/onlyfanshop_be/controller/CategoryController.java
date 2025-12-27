@@ -14,19 +14,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Controller for managing categories.
- * Provides endpoints for category CRUD operations by type and category tree retrieval.
- * 
- * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
- */
 @RestController
 @RequestMapping("/category")
 public class CategoryController {
     @Autowired
     private CategoryService categoryService;
 
-    // ==================== EXISTING ENDPOINTS (Backward Compatibility) ====================
 
     @GetMapping("/public")
     public List<Category> getAllCategories() {
@@ -59,15 +52,6 @@ public class CategoryController {
         return categoryService.toggleActive(id, active);
     }
 
-    // ==================== NEW ENDPOINTS FOR EXPANDED CATEGORY SYSTEM ====================
-
-    /**
-     * Get all categories by type.
-     * Requirements: 1.1 - Category type filtering
-     * 
-     * @param type the category type to filter by
-     * @return list of categories with the specified type
-     */
     @GetMapping("/public/type/{type}")
     public ResponseEntity<ApiResponse<List<CategoryDTO>>> getCategoriesByType(@PathVariable CategoryType type) {
         try {
@@ -90,13 +74,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Get category tree by type (hierarchical structure).
-     * Requirements: 1.3 - Tree structure with up to 3 levels
-     * 
-     * @param type the category type to filter by
-     * @return list of root categories with their children hierarchy
-     */
     @GetMapping("/public/tree/{type}")
     public ResponseEntity<ApiResponse<List<CategoryDTO>>> getCategoryTree(@PathVariable CategoryType type) {
         try {
@@ -119,11 +96,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Get all available category types.
-     * 
-     * @return list of all category types
-     */
     @GetMapping("/public/types")
     public ResponseEntity<ApiResponse<CategoryType[]>> getAllCategoryTypes() {
         return ResponseEntity.ok(ApiResponse.<CategoryType[]>builder()
@@ -133,13 +105,6 @@ public class CategoryController {
                 .build());
     }
 
-    /**
-     * Get child categories by parent ID.
-     * Requirements: 1.2 - Parent-child relationship
-     * 
-     * @param parentId the parent category ID
-     * @return list of child categories
-     */
     @GetMapping("/public/children/{parentId}")
     public ResponseEntity<ApiResponse<List<CategoryDTO>>> getChildCategories(@PathVariable Integer parentId) {
         try {
@@ -162,13 +127,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Get category depth in hierarchy.
-     * Requirements: 1.3 - Hierarchy depth validation
-     * 
-     * @param id the category ID
-     * @return the depth level of the category
-     */
     @GetMapping("/{id}/depth")
     public ResponseEntity<ApiResponse<Integer>> getCategoryDepth(@PathVariable Integer id) {
         try {
@@ -187,13 +145,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Create a category with full validation (type, parent-child consistency, depth).
-     * Requirements: 1.1, 1.2, 1.3, 1.4
-     * 
-     * @param categoryDTO the category data to create
-     * @return the created category
-     */
     @PostMapping("/admin/create")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<CategoryDTO>> createCategoryWithValidation(@RequestBody CategoryDTO categoryDTO) {
@@ -217,14 +168,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Update a category with full validation.
-     * Requirements: 1.4 - Slug auto-generation on name update
-     * 
-     * @param id the category ID
-     * @param categoryDTO the updated category data
-     * @return the updated category
-     */
     @PutMapping("/admin/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<CategoryDTO>> updateCategoryWithValidation(
@@ -249,13 +192,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Delete a category with children check.
-     * Requirements: 1.5 - Prevent deletion of categories with children
-     * 
-     * @param id the category ID to delete
-     * @return success response or error if category has children
-     */
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCategoryWithChildrenCheck(@PathVariable Integer id) {
@@ -274,12 +210,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Get category by ID as DTO.
-     * 
-     * @param id the category ID
-     * @return the category DTO
-     */
     @GetMapping("/public/dto/{id}")
     public ResponseEntity<ApiResponse<CategoryDTO>> getCategoryDTOById(@PathVariable Integer id) {
         try {

@@ -98,21 +98,6 @@ public class OrderController {
         return orderService.getOrdersCancelled(userId, role);
     }
 
-    @DeleteMapping("/deleteAllOrders")
-    public ApiResponse<Void> deleteAllOrders(HttpServletRequest request) {
-        String token = jwtTokenProvider.extractToken(request);
-        String role = jwtTokenProvider.getRoleFromJWT(token);
-        
-        // Only admin can delete all orders
-        if (!"ADMIN".equalsIgnoreCase(role)) {
-            return ApiResponse.<Void>builder()
-                    .statusCode(403)
-                    .message("Chỉ admin mới có quyền xóa tất cả đơn hàng")
-                    .build();
-        }
-        
-        return orderService.deleteAllOrders();
-    }
     @GetMapping("/badgeCount")
     public ApiResponse<Map<String, Long>> getOrderBadgeCount(HttpServletRequest request) {
         String token = jwtTokenProvider.extractToken(request);

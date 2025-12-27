@@ -7,9 +7,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * InventoryItem - Sản phẩm với số lượng tồn kho trong một kho cụ thể
- */
 @Entity
 @Table(name = "inventory_items",
     uniqueConstraints = {
@@ -70,9 +67,6 @@ public class InventoryItem {
         updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Số lượng có sẵn = tổng số lượng - số lượng đã đặt trước
-     */
     @Transient
     public Integer getAvailableQuantity() {
         return quantity - reservedQuantity;

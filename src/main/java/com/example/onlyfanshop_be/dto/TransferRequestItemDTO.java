@@ -2,9 +2,6 @@ package com.example.onlyfanshop_be.dto;
 
 import lombok.*;
 
-/**
- * DTO for TransferRequestItem entity
- */
 @Data
 @Builder
 @NoArgsConstructor

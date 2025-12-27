@@ -7,10 +7,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-/**
- * Seeder for roles - runs before AdminSeeder
- * Seeds: customer, staff, admin
- */
 @Component
 @Order(1) // Run before AdminSeeder (which is Order 2)
 public class RoleSeeder implements CommandLineRunner {

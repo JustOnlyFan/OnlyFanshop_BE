@@ -11,16 +11,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderDTO {
+
     private Integer orderID;
-
     private String paymentMethod;
-
     private String billingAddress;
-
     private String orderStatus;
-
     private LocalDateTime orderDate;
-
     private Double totalPrice;
 
     // First product info for list display
