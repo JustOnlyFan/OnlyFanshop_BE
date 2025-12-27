@@ -56,8 +56,7 @@ public class UserService implements IUserService {
                     .status(user.getStatus())
                     .storeLocationId(user.getStoreLocationId())
                     .build();
-            
-            // Load role if needed
+
             if (user.getRoleId() != null) {
                 roleRepository.findById(user.getRoleId()).ifPresent(role -> {
                     dto.setRole(role);
@@ -79,14 +78,13 @@ public class UserService implements IUserService {
             UserDTO dto = UserDTO.builder()
                     .userID(user.getId())
                     .email(user.getEmail())
-                    .fullName(user.getFullname()) // For backward compatibility
+                    .fullName(user.getFullname())
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
                     .storeLocationId(user.getStoreLocationId())
                     .build();
-            
-            // Load role if needed
+
             if (user.getRoleId() != null) {
                 roleRepository.findById(user.getRoleId()).ifPresent(role -> {
                     dto.setRole(role);
@@ -105,15 +103,13 @@ public class UserService implements IUserService {
         Optional<User> userOtp = userRepository.findById(userDTO.getUserID());
         if (userOtp.isPresent()) {
             User user = userOtp.get();
-            
-            // Update phone
+
             if (userDTO.getPhoneNumber() != null) {
                 user.setPhone(userDTO.getPhoneNumber());
             } else if (userDTO.getPhone() != null) {
                 user.setPhone(userDTO.getPhone());
             }
 
-            // Update username (normalize: remove spaces)
             if (userDTO.getFullName() != null) {
                 user.setFullname(userDTO.getFullName().trim().replaceAll("\\s+", ""));
             }
@@ -123,14 +119,13 @@ public class UserService implements IUserService {
             UserDTO responseDto = UserDTO.builder()
                     .userID(user.getId())
                     .email(user.getEmail())
-                    .fullName(user.getFullname()) // For backward compatibility
+                    .fullName(user.getFullname())
                     .phoneNumber(user.getPhone())
                     .phone(user.getPhone())
                     .status(user.getStatus())
                     .storeLocationId(user.getStoreLocationId())
                     .build();
-            
-            // Load role
+
             if (user.getRoleId() != null) {
                 roleRepository.findById(user.getRoleId()).ifPresent(role -> {
                     responseDto.setRole(role);
@@ -157,7 +152,6 @@ public class UserService implements IUserService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // Revoke all tokens after password change
         List<Token> tokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(user.getId());
         tokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
         tokenRepository.saveAll(tokens);
@@ -167,8 +161,7 @@ public class UserService implements IUserService {
     public void changeAddress(int userID, String address) {
         User user = userRepository.findById((long) userID)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_EXISTED));
-        
-        // Update or create default address
+
         Optional<UserAddress> defaultAddress = userAddressRepository.findByUserIdAndIsDefault(user.getId(), true);
         if (defaultAddress.isPresent()) {
             UserAddress addr = defaultAddress.get();
@@ -196,20 +189,13 @@ public class UserService implements IUserService {
         tokenRepository.deleteByToken(token);
     }
 
-    /**
-     * Map frontend field names to entity field names for sorting
-     * @param sortField Field name from frontend (e.g., "fullname", "userID")
-     * @return Entity field name (e.g., "fullname", "id")
-     */
     private String mapSortField(String sortField) {
         if (sortField == null || sortField.isBlank()) {
-            return "id"; // Default sort field
+            return "id";
         }
         
         String lowerField = sortField.toLowerCase().trim();
-        
-        // Map common frontend field names to entity field names
-        // Valid entity fields: id, fullname, email, phone, status, createdAt, updatedAt, lastLoginAt, roleId
+
         switch (lowerField) {
             case "username":
             case "user_name":
@@ -246,7 +232,6 @@ public class UserService implements IUserService {
             case "role":
                 return "roleId";
             default:
-                // If field doesn't match, default to id to avoid errors
                 System.out.println("Warning: Unknown sort field '" + sortField + "', using default 'id'");
                 return "id";
         }
@@ -257,7 +242,6 @@ public class UserService implements IUserService {
             String keyword, String role, int page, int size,
             String sortField, String sortDirection) {
 
-        // Map frontend field names to entity field names
         String mappedSortField = mapSortField(sortField);
         
         Sort sort = sortDirection.equalsIgnoreCase("DESC")
@@ -268,7 +252,6 @@ public class UserService implements IUserService {
 
         Byte roleId = null;
         if (role != null && !role.isBlank()) {
-            // Find role by name
             Optional<Role> roleEntity = roleRepository.findByName(role.toLowerCase());
             if (roleEntity.isPresent()) {
                 roleId = roleEntity.get().getId();
@@ -282,14 +265,13 @@ public class UserService implements IUserService {
         Page<UserDTO> dtoPage = userPage.map(user -> {
             UserDTO dto = new UserDTO();
             dto.setUserID(user.getId());
-            dto.setFullName(user.getFullname()); // For backward compatibility
+            dto.setFullName(user.getFullname());
             dto.setEmail(user.getEmail());
             dto.setPhoneNumber(user.getPhone());
             dto.setPhone(user.getPhone());
             dto.setStatus(user.getStatus());
             dto.setStoreLocationId(user.getStoreLocationId());
-            
-            // Load role
+
             if (user.getRoleId() != null) {
                 roleRepository.findById(user.getRoleId()).ifPresent(roleEntity -> {
                     dto.setRole(roleEntity);
@@ -394,7 +376,6 @@ public class UserService implements IUserService {
                             .build())
                     .orElse(null);
         } catch (Exception e) {
-            // In case of any lazy loading issues, fall back gracefully
             return null;
         }
     }

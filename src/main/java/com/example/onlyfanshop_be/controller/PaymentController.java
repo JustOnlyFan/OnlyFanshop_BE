@@ -124,10 +124,7 @@ public class PaymentController {
                 .subtract(discountTotal != null ? discountTotal : BigDecimal.ZERO);
         return new BigDecimal[]{subtotal, totalAmount};
     }
-    //    @GetMapping("/vn-pay")
-//    public ApiResponse<PaymentDTO.VNPayResponse> pay(HttpServletRequest request, @RequestParam Double amount, @RequestParam String bankCode,@RequestParam int cardId) {
-//        return ApiResponse.<PaymentDTO.VNPayResponse>builder().statusCode(200).message("Thanh cong").data(paymentService.createVnPayPayment(request,amount,bankCode, cardId)).build();
-//    }
+
     @GetMapping("/vn-pay")
     public ApiResponse<PaymentDTO.VNPayResponse> pay(
             HttpServletRequest request,
@@ -138,15 +135,12 @@ public class PaymentController {
             @RequestParam(required = false) String recipientPhoneNumber,
             @RequestParam(required = false, defaultValue = "web") String clientType
     ) {
-        // ✅ 1. Lấy token từ header
         String token = jwtTokenProvider.extractToken(request);
         Long userId = jwtTokenProvider.getUserIdFromJWT(token);
         Cart cart;
-        // ✅ 2. Lấy cart tương ứng với user (no status field in new schema)
         cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
 
-        // ✅ 3. Gọi service xử lý thanh toán
         PaymentDTO.VNPayResponse responseData = paymentService.createVnPayPayment(
                 request, amount, bankCode, cart.getId().intValue(), address, recipientPhoneNumber, clientType);
 
@@ -168,35 +162,28 @@ public class PaymentController {
             @RequestParam(required = false) Integer storeId
     ) {
         try {
-            // ✅ 1. Lấy token từ header
             String token = jwtTokenProvider.extractToken(request);
             Long userId = jwtTokenProvider.getUserIdFromJWT(token);
-            
-            // ✅ 2. Lấy cart tương ứng với user (no status field in new schema)
+
             Cart cart = cartRepository.findByUserId(userId)
                     .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
 
-            // ✅ 3. Lấy user
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOTEXISTED));
 
-            // ✅ 4. Tạo hoặc lấy UserAddress
             UserAddress userAddress = getOrCreateUserAddress(user, address, recipientPhoneNumber);
-            
-            // ✅ 5. Lấy cart items
+
             List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
             if (cartItems.isEmpty()) {
                 throw new AppException(ErrorCode.CART_NOTFOUND);
             }
 
-            // ✅ 7. Tính toán subtotal và total
             BigDecimal shippingFee = BigDecimal.ZERO; // Can be calculated based on delivery type
             BigDecimal discountTotal = BigDecimal.ZERO;
             BigDecimal[] totals = calculateOrderTotals(cartItems, shippingFee, discountTotal);
             BigDecimal subtotal = totals[0];
             BigDecimal totalAmount = totals[1];
 
-            // ✅ 8. Tạo order
             Order order = Order.builder()
                     .userId(user.getId())
                     .addressId(userAddress.getId())
@@ -213,7 +200,6 @@ public class PaymentController {
                     .build();
             order = orderRepository.save(order);
 
-            // ✅ 9. Tạo order items từ cart items
             for (CartItem cartItem : cartItems) {
                 Product product = cartItem.getProduct();
                 if (product == null) {
@@ -236,12 +222,10 @@ public class PaymentController {
                         .build();
                 orderItemRepository.save(orderItem);
             }
-            
-            // ✅ 10. Xóa cart items và cart
+
             cartItemRepository.deleteAll(cartItems);
             cartRepository.delete(cart);
 
-            // ✅ 11. Gửi thông báo
             notificationService.sendNotification(
                     user.getId().intValue(),
                     "Đơn hàng #" + order.getOrderCode() + " đã được tạo thành công! Chờ xác nhận."
@@ -293,7 +277,7 @@ public class PaymentController {
                 .build();
         
         if ("00".equals(responseCode)) {
-            // ✅ Giao dịch thành công
+            // Giao dịch thành công
             Cart cart = cartRepository.findById(Long.parseLong(cardIdStr))
                     .orElseThrow(() -> new AppException(ErrorCode.CART_NOTFOUND));
             
@@ -303,17 +287,17 @@ public class PaymentController {
             // Get all cart items (no status field in new schema)
             List<CartItem> cartItemsOrder = cartItemRepository.findByCartId(cart.getId());
 
-            // ✅ Tạo hoặc lấy UserAddress
+            // Tạo hoặc lấy UserAddress
             UserAddress userAddress = getOrCreateUserAddress(user, address, recipientPhoneNumber);
             
-            // ✅ Tính toán subtotal và total
+            // Tính toán subtotal và total
             BigDecimal shippingFee = BigDecimal.ZERO;
             BigDecimal discountTotal = BigDecimal.ZERO;
             BigDecimal[] totals = calculateOrderTotals(cartItemsOrder, shippingFee, discountTotal);
             BigDecimal subtotal = totals[0];
             BigDecimal totalAmount = totals[1];
 
-            // ✅ Tạo order
+            // Tạo order
             Order order = Order.builder()
                     .userId(user.getId())
                     .addressId(userAddress.getId())
@@ -331,7 +315,7 @@ public class PaymentController {
                     .build();
             order = orderRepository.save(order);
             
-            // ✅ Tạo order items từ cart items
+            // Tạo order items từ cart items
             for (CartItem cartItem : cartItemsOrder) {
                 Product product = cartItem.getProduct();
                 if (product == null) {
@@ -355,23 +339,23 @@ public class PaymentController {
                 orderItemRepository.save(orderItem);
             }
             
-            // ✅ Xóa cart items và cart
+            // Xóa cart items và cart
             cartItemRepository.deleteAll(cartItemsOrder);
             cartRepository.delete(cart);
 
-            // ✅ Cập nhật payment
+            // Cập nhật payment
             payment.setOrderId(order.getId());
             payment.setStatus(PaymentTransactionStatus.success);
             payment.setUpdatedAt(LocalDateTime.now());
             paymentRepository.save(payment);
 
-            // ✅ Gọi service gửi thông báo (tự động lưu DB + đẩy Firebase)
+            // Gọi service gửi thông báo (tự động lưu DB + đẩy Firebase)
             notificationService.sendNotification(
                     user.getId().intValue(),
                     "Thanh toán thành công đơn hàng #" + order.getOrderCode()
             );
 
-            // ✅ Redirect theo client type
+            // Redirect theo client type
             String redirectUrl;
             if ("web".equalsIgnoreCase(clientType)) {
                 redirectUrl = vnPayConfig.getWebBaseUrl() + "/payment-result?status=success&code=" + paymentCode + "&order=" + order.getId();
@@ -381,12 +365,12 @@ public class PaymentController {
             response.sendRedirect(redirectUrl);
 
         } else {
-            // ❌ Giao dịch thất bại
+            // Giao dịch thất bại
             payment.setStatus(PaymentTransactionStatus.failed);
             payment.setUpdatedAt(LocalDateTime.now());
             paymentRepository.save(payment);
 
-            // ✅ Redirect theo client type
+            // Redirect theo client type
             String redirectUrl;
             if ("web".equalsIgnoreCase(clientType)) {
                 redirectUrl = vnPayConfig.getWebBaseUrl() + "/payment-result?status=fail&code=" + paymentCode;

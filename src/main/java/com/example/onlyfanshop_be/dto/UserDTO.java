@@ -21,6 +21,7 @@ public class UserDTO {
     private String phoneNumber;
     private String phone;
     private String address;
+
     @JsonIgnore
     private Role role;
     private String roleName;
@@ -29,6 +30,7 @@ public class UserDTO {
     private String token;
     private String refreshToken;
     private Integer storeLocationId;
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private StoreLocationSummaryDTO storeLocation;
 }

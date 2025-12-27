@@ -27,11 +27,6 @@ public class WebSocketChatController {
     private final ChatService chatService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    /**
-     * Handle incoming messages via WebSocket
-     * Client sends to: /app/chat.sendMessage
-     * Server broadcasts to: /topic/chat/{roomId}
-     */
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(@Payload SendMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -66,19 +61,12 @@ public class WebSocketChatController {
 
             // Broadcast to all subscribers of this room
             messagingTemplate.convertAndSend("/topic/chat/" + request.getRoomId(), messageDTO);
-            
-            // Also send to specific user if needed (for typing indicators, etc.)
-            // messagingTemplate.convertAndSendToUser(userId, "/queue/messages", messageDTO);
 
         } catch (Exception e) {
             log.error("Error handling WebSocket message: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Handle user joining a chat room
-     * Client sends to: /app/chat.addUser
-     */
     @MessageMapping("/chat.addUser")
     @SendTo("/topic/public")
     public void addUser(@Payload String roomId, SimpMessageHeaderAccessor headerAccessor) {
@@ -104,15 +92,8 @@ public class WebSocketChatController {
 
     private String extractUserIdFromAuth(Authentication auth) {
         try {
-            // Try to get user ID from authentication name (which should be email)
             String email = auth.getName();
-            
-            // Extract user ID from JWT token stored in session or use email to lookup
-            // For now, we'll need to get it from the token that was used during connection
-            // The token should be available in the session attributes
-            
-            // Alternative: Store user ID in authentication details during WebSocket connection
-            // For simplicity, we'll extract from the authentication name/principal
+
             if (auth.getDetails() instanceof java.util.Map) {
                 @SuppressWarnings("unchecked")
                 java.util.Map<String, Object> details = (java.util.Map<String, Object>) auth.getDetails();
@@ -120,9 +101,6 @@ public class WebSocketChatController {
                     return details.get("userId").toString();
                 }
             }
-            
-            // Fallback: Try to get from principal name if it's stored as user ID
-            // This is a temporary solution - in production, store user ID in session during connection
             return email;
         } catch (Exception e) {
             log.error("Error extracting user ID: " + e.getMessage());

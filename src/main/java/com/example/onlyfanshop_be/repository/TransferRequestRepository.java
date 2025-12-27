@@ -11,38 +11,15 @@ import java.util.List;
 
 @Repository
 public interface TransferRequestRepository extends JpaRepository<TransferRequest, Long> {
-    
-    /**
-     * Tìm requests theo status
-     */
+
     Page<TransferRequest> findByStatusOrderByCreatedAtDesc(TransferRequestStatus status, Pageable pageable);
-    
-    /**
-     * Tìm requests theo store
-     */
+
     Page<TransferRequest> findByStoreIdOrderByCreatedAtDesc(Integer storeId, Pageable pageable);
-    
-    /**
-     * Tìm requests theo store và status
-     */
+
     Page<TransferRequest> findByStoreIdAndStatusOrderByCreatedAtDesc(
         Integer storeId, 
         TransferRequestStatus status, 
         Pageable pageable
     );
-    
-    /**
-     * Tìm tất cả requests theo status
-     */
-    List<TransferRequest> findByStatus(TransferRequestStatus status);
-    
-    /**
-     * Đếm số requests theo status
-     */
-    long countByStatus(TransferRequestStatus status);
-    
-    /**
-     * Đếm số requests theo store và status
-     */
-    long countByStoreIdAndStatus(Integer storeId, TransferRequestStatus status);
+
 }

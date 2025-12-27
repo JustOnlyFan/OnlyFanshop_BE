@@ -1,12 +1,8 @@
 package com.example.onlyfanshop_be.enums;
 
-/**
- * Loại giao dịch kho
- */
 public enum InventoryTransactionType {
-    TRANSFER_TO_STORE,   // Chuyển từ kho tổng sang kho cửa hàng
-    RETURN_TO_CENTRAL,   // Trả hàng từ cửa hàng về kho tổng
+    TRANSFER,            // Chuyển hàng giữa các kho cửa hàng
     ADJUSTMENT,          // Điều chỉnh số lượng (kiểm kê)
     SALE,                // Bán hàng (trừ kho cửa hàng)
-    IMPORT               // Nhập hàng vào kho tổng
+    IMPORT               // Nhập hàng vào kho cửa hàng
 }

@@ -22,9 +22,6 @@ public class StoreInventoryService {
     private final StoreLocationRepository storeLocationRepository;
     private final ProductRepository productRepository;
 
-    /**
-     * Khi tạo sản phẩm mới, tự động thêm vào tất cả các stores (isAvailable = true)
-     */
     @Transactional
     public void addProductToAllStores(Long productId) {
         List<StoreLocation> allStores = storeLocationRepository.findAll();
@@ -46,9 +43,6 @@ public class StoreInventoryService {
         }
     }
 
-    /**
-     * Bật/tắt việc bán sản phẩm ở một store cụ thể
-     */
     @Transactional
     public StoreInventory toggleProductAvailability(Integer storeId, Long productId, Boolean isAvailable) {
         StoreInventory inventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
@@ -59,9 +53,6 @@ public class StoreInventoryService {
         return storeInventoryRepository.save(inventory);
     }
 
-    /**
-     * Lấy danh sách stores có bán sản phẩm (isAvailable = true)
-     */
     @Transactional(readOnly = true)
     public List<StoreLocation> getStoresWithProduct(Long productId) {
         List<StoreInventory> inventories = storeInventoryRepository.findAvailableStoresByProductId(productId);
@@ -73,9 +64,6 @@ public class StoreInventoryService {
         return storeLocationRepository.findAllById(storeIds);
     }
 
-    /**
-     * Lấy danh sách sản phẩm có sẵn tại store
-     */
     @Transactional(readOnly = true)
     public List<StoreInventoryDTO> getStoreProducts(Integer storeId, boolean includeInactive) {
         List<StoreInventory> inventories = includeInactive
@@ -87,9 +75,6 @@ public class StoreInventoryService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Lấy thông tin store inventory theo storeId và productId
-     */
     @Transactional(readOnly = true)
     public StoreInventoryDTO getStoreInventory(Integer storeId, Long productId) {
         StoreInventory inventory = storeInventoryRepository.findByStoreIdAndProductId(storeId, productId)
@@ -98,58 +83,20 @@ public class StoreInventoryService {
         return inventory != null ? convertToDTO(inventory) : null;
     }
 
-    /**
-     * Thêm sản phẩm vào store cụ thể
-     */
-    @Transactional
-    public StoreInventoryDTO addProductToStore(Integer storeId, Long productId) {
-        // Kiểm tra store tồn tại
-        StoreLocation store = storeLocationRepository.findById(storeId)
-                .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));
-        
-        // Kiểm tra product tồn tại
-        Product product = productRepository.findById(productId.intValue())
-                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
-        
-        // Kiểm tra đã tồn tại chưa
-        if (storeInventoryRepository.findByStoreIdAndProductId(storeId, productId).isPresent()) {
-            throw new RuntimeException("Sản phẩm đã tồn tại trong cửa hàng này");
-        }
-        
-        StoreInventory inventory = StoreInventory.builder()
-                .storeId(storeId)
-                .productId(productId)
-                .variantId(null)
-                .isAvailable(true)
-                .quantity(0)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-        
-        storeInventoryRepository.save(inventory);
-        return convertToDTO(inventory);
-    }
-
-    /**
-     * Thêm nhiều sản phẩm vào store cùng lúc
-     */
     @Transactional
     public List<StoreInventoryDTO> addProductsToStore(Integer storeId, List<Long> productIds) {
-        // Kiểm tra store tồn tại
         storeLocationRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));
         
         List<StoreInventoryDTO> results = new java.util.ArrayList<>();
         
         for (Long productId : productIds) {
-            // Kiểm tra product tồn tại
             if (!productRepository.existsById(productId.intValue())) {
-                continue; // Skip invalid products
+                continue;
             }
-            
-            // Kiểm tra đã tồn tại chưa
+
             if (storeInventoryRepository.findByStoreIdAndProductId(storeId, productId).isPresent()) {
-                continue; // Skip existing products
+                continue;
             }
             
             StoreInventory inventory = StoreInventory.builder()
@@ -169,9 +116,6 @@ public class StoreInventoryService {
         return results;
     }
 
-    /**
-     * Lấy danh sách sản phẩm chưa có trong store (để thêm mới)
-     */
     @Transactional(readOnly = true)
     public List<Product> getProductsNotInStore(Integer storeId) {
         List<StoreInventory> existingInventories = storeInventoryRepository.findByStoreId(storeId);
@@ -190,15 +134,11 @@ public class StoreInventoryService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Lấy tất cả sản phẩm trong hệ thống kèm trạng thái cho phép bán tại store
-     */
     @Transactional(readOnly = true)
     public List<StoreInventoryDTO> getAllProductsWithStoreStatus(Integer storeId) {
         List<Product> allProducts = productRepository.findAll();
         List<StoreInventory> existingInventories = storeInventoryRepository.findByStoreId(storeId);
-        
-        // Map productId -> StoreInventory
+
         java.util.Map<Long, StoreInventory> inventoryMap = existingInventories.stream()
                 .collect(Collectors.toMap(StoreInventory::getProductId, inv -> inv));
         
@@ -230,12 +170,8 @@ public class StoreInventoryService {
         }).collect(Collectors.toList());
     }
 
-    /**
-     * Cập nhật danh sách sản phẩm cho phép bán tại store (bulk update)
-     */
     @Transactional
     public void updateStoreProducts(Integer storeId, List<Long> enabledProductIds) {
-        // Kiểm tra store tồn tại
         storeLocationRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));
         
@@ -271,9 +207,6 @@ public class StoreInventoryService {
         }
     }
 
-    /**
-     * Convert StoreInventory entity to DTO
-     */
     private StoreInventoryDTO convertToDTO(StoreInventory inventory) {
         try {
             StoreLocation store = storeLocationRepository.findById(inventory.getStoreId()).orElse(null);

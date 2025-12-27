@@ -16,7 +16,7 @@ public enum ErrorCode {
     NOTIFICATION_NOT_FOUND(1011,"Không tìm thấy thông báo"),
     BUY_METHOD_INVALID(1012,"Không thể xác định cách mua sản phẩm"),
     UNAUTHORIZED(1013, "Không được phép"),
-	INVALID_INPUT(1014, "Dữ liệu không hợp lệ"),
+    INVALID_INPUT(1014, "Dữ liệu không hợp lệ"),
     WRONG_PORTAL_ADMIN(1021, "Bạn đang dùng sai trang web. Vui lòng sử dụng trang Admin để đăng nhập."),
     WRONG_PORTAL_STAFF(1022, "Bạn đang dùng sai trang web. Vui lòng sử dụng trang Staff để đăng nhập."),
     WRONG_PORTAL_CUSTOMER(1023, "Bạn đang dùng sai trang web. Vui lòng sử dụng trang khách hàng để đăng nhập."),
@@ -25,7 +25,7 @@ public enum ErrorCode {
     WAREHOUSE_INVENTORY_NOT_FOUND(1017, "Không tìm thấy tồn kho"),
     INSUFFICIENT_STOCK(1018, "Không đủ hàng trong kho"),
     INVALID_WAREHOUSE_TRANSFER(1019, "Không thể chuyển kho"),
-	INVALID_WAREHOUSE_TYPE(1020, "Loại kho hàng không hợp lệ"),
+    INVALID_WAREHOUSE_TYPE(1020, "Loại kho hàng không hợp lệ"),
     
     // Category error codes
     CATEGORY_NOT_FOUND(2001, "Không tìm thấy danh mục"),
@@ -53,28 +53,10 @@ public enum ErrorCode {
     SOURCE_WAREHOUSE_INACTIVE(3011, "Kho nguồn đã bị vô hiệu hóa"),
     SOURCE_WAREHOUSE_INSUFFICIENT_STOCK(3012, "Kho nguồn không đủ hàng"),
     SAME_WAREHOUSE_TRANSFER(3013, "Không thể chuyển hàng đến cùng một kho"),
+    TRANSFER_REQUEST_NOT_APPROVED(3014, "Yêu cầu chuyển kho chưa được duyệt"),
+    TRANSFER_REQUEST_CANNOT_CANCEL(3015, "Không thể hủy yêu cầu chuyển kho ở trạng thái này"),
     
-    // Debt Order error codes
-    DEBT_ORDER_NOT_FOUND(4001, "Không tìm thấy đơn nợ"),
-    DEBT_ORDER_ALREADY_COMPLETED(4002, "Đơn nợ đã được hoàn thành"),
-    DEBT_ORDER_CANNOT_FULFILL(4003, "Không đủ hàng để đáp ứng đơn nợ"),
-    DEBT_ORDER_EMPTY_ITEMS(4004, "Đơn nợ phải có ít nhất một sản phẩm"),
-    DEBT_ORDER_ALREADY_EXISTS(4005, "Đơn nợ đã tồn tại cho yêu cầu chuyển kho này"),
-    
-    // GHN error codes
-    GHN_CONFIG_NOT_FOUND(5001, "Không tìm thấy cấu hình GHN"),
-    GHN_API_ERROR(5002, "Lỗi khi gọi GHN API"),
-    GHN_TOKEN_EXPIRED(5003, "Token GHN đã hết hạn"),
-    GHN_INVALID_CONFIG(5004, "Cấu hình GHN không hợp lệ"),
-    GHN_ORDER_NOT_FOUND(5005, "Không tìm thấy đơn hàng GHN"),
-    GHN_ORDER_CREATION_FAILED(5006, "Tạo đơn hàng GHN thất bại"),
-    
-    // Shipment error codes
-    SHIPMENT_NOT_FOUND(6001, "Không tìm thấy đơn vận chuyển"),
-    SHIPMENT_ALREADY_DELIVERED(6002, "Đơn vận chuyển đã được giao"),
-    SHIPMENT_CANNOT_SYNC(6003, "Không thể đồng bộ trạng thái đơn vận chuyển"),
-    
-	UNCATEGORIZED_EXCEPTION(1099, "...");
+    UNCATEGORIZED_EXCEPTION(1099, "...");
 
 
     private int code;

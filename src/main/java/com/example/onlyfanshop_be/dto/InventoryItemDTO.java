@@ -4,9 +4,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * DTO for InventoryItem entity
- */
 @Data
 @Builder
 @NoArgsConstructor

@@ -34,30 +34,24 @@ public class GoogleAuthService {
     public ApiResponse<UserDTO> handleGoogleLogin(String email, String username) {
         System.out.println("GoogleAuthService: Processing login for email: " + email + ", username: " + username);
 
-        // Kiểm tra xem user đã tồn tại chưa
         Optional<User> existingUser = userRepository.findByEmail(email);
         System.out.println("GoogleAuthService: Existing user found: " + existingUser.isPresent());
 
         if (existingUser.isPresent()) {
-            // User đã tồn tại
             User user = existingUser.get();
-            
-            // Update last login time
+
             user.setLastLoginAt(LocalDateTime.now());
             userRepository.save(user);
-            
-            // Revoke các token cũ
+
             List<Token> validTokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(user.getId());
             validTokens.forEach(t -> { t.setExpired(true); t.setRevoked(true); });
             tokenRepository.saveAll(validTokens);
-            
-            // Load role entity
+
             Role roleEntity = null;
             if (user.getRoleId() != null) {
                 roleEntity = roleRepository.findById(user.getRoleId()).orElse(null);
             }
-            
-            // Tạo Access/Refresh token mới
+
             String access = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId(), roleEntity, user.getFullname());
             String refresh = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getId(), roleEntity);
             
@@ -78,7 +72,6 @@ public class GoogleAuthService {
                     .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
                     .build());
 
-            // Build UserDTO
             UserDTO userDTO = UserDTO.builder()
                     .userID(user.getId())
                     .fullName(user.getFullname())
@@ -101,15 +94,12 @@ public class GoogleAuthService {
             response.setData(userDTO);
             return response;
         } else {
-            // Tạo user mới
             System.out.println("GoogleAuthService: Creating new user");
-            
-            // Get customer role (default role_id = 1)
+
             Role customerRole = roleRepository.findByName("customer")
                     .orElse(roleRepository.findById((byte) 1)
                             .orElseThrow(() -> new RuntimeException("Customer role not found")));
 
-            // Use username as fullName
             String fullName = (username != null ? username : email).trim();
             
             User newUser = User.builder()
@@ -119,15 +109,13 @@ public class GoogleAuthService {
                     .status(UserStatus.active)
                     .createdAt(LocalDateTime.now())
                     .lastLoginAt(LocalDateTime.now())
-                    // No password for Google login
-                    .passwordHash("") // Empty password for Google OAuth users
+                    .passwordHash("")
                     .build();
 
             System.out.println("GoogleAuthService: Saving new user to database");
             User savedUser = userRepository.save(newUser);
             System.out.println("GoogleAuthService: User saved with ID: " + savedUser.getId());
 
-            // Tạo Access/Refresh token cho user mới
             String access = jwtTokenProvider.generateAccessToken(savedUser.getEmail(), savedUser.getId(), customerRole, savedUser.getFullname());
             String refresh = jwtTokenProvider.generateRefreshToken(savedUser.getEmail(), savedUser.getId(), customerRole);
             
@@ -148,7 +136,6 @@ public class GoogleAuthService {
                     .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
                     .build());
 
-            // Build UserDTO
             UserDTO userDTO = UserDTO.builder()
                     .userID(savedUser.getId())
                     .fullName(savedUser.getFullname())

@@ -8,10 +8,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Entity representing the many-to-many relationship between products and tags.
- * Supports validity periods for time-limited tags (e.g., seasonal promotions).
- */
 @Entity
 @Table(name = "product_tags",
     indexes = {
@@ -49,17 +45,9 @@ public class ProductTag {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "productTags"})
     private Tag tag;
 
-    /**
-     * Start date/time when this tag becomes active for the product.
-     * If null, the tag is active immediately.
-     */
     @Column(name = "valid_from")
     private LocalDateTime validFrom;
 
-    /**
-     * End date/time when this tag expires for the product.
-     * If null, the tag never expires.
-     */
     @Column(name = "valid_until")
     private LocalDateTime validUntil;
 
@@ -73,10 +61,6 @@ public class ProductTag {
         }
     }
 
-    /**
-     * Checks if this product tag is currently active based on validity period.
-     * @return true if the tag is currently active
-     */
     @Transient
     public boolean isActive() {
         LocalDateTime now = LocalDateTime.now();
@@ -85,11 +69,6 @@ public class ProductTag {
         return afterStart && beforeEnd;
     }
 
-    /**
-     * Checks if this product tag is active at a specific point in time.
-     * @param dateTime the date/time to check
-     * @return true if the tag is active at the specified time
-     */
     public boolean isActiveAt(LocalDateTime dateTime) {
         if (dateTime == null) {
             return isActive();

@@ -15,9 +15,6 @@ public class AdjustInventoryDTO {
     @NotNull(message = "Product ID không được để trống")
     private Long productId;
 
-    /**
-     * Store ID (null = điều chỉnh kho tổng)
-     */
     private Integer storeId;
 
     @NotNull(message = "Số lượng mới không được để trống")

@@ -9,11 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * DTO for Category with hierarchy support.
- * Includes all category fields including type, parent reference, and children list.
- * Supports serialization/deserialization for API responses.
- */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -30,18 +25,10 @@ public class CategoryDTO {
     private String iconUrl;
     private Integer displayOrder;
     private Boolean isActive;
-    
-    /**
-     * List of child categories for hierarchy representation.
-     */
+
     @Builder.Default
     private List<CategoryDTO> children = new ArrayList<>();
-    
-    /**
-     * Converts a Category entity to CategoryDTO without children.
-     * @param category the Category entity
-     * @return CategoryDTO representation
-     */
+
     public static CategoryDTO fromEntity(Category category) {
         if (category == null) {
             return null;
@@ -59,12 +46,7 @@ public class CategoryDTO {
                 .children(new ArrayList<>())
                 .build();
     }
-    
-    /**
-     * Converts a Category entity to CategoryDTO with children (recursive).
-     * @param category the Category entity
-     * @return CategoryDTO representation with children
-     */
+
     public static CategoryDTO fromEntityWithChildren(Category category) {
         if (category == null) {
             return null;
@@ -77,12 +59,7 @@ public class CategoryDTO {
         }
         return dto;
     }
-    
-    /**
-     * Converts this DTO to a Category entity.
-     * Note: This does not set the parent or children relationships.
-     * @return Category entity
-     */
+
     public Category toEntity() {
         return Category.builder()
                 .id(this.id)
@@ -96,13 +73,7 @@ public class CategoryDTO {
                 .isActive(this.isActive)
                 .build();
     }
-    
-    /**
-     * Creates a simple CategoryDTO with only id and name (for backward compatibility).
-     * @param id the category ID
-     * @param name the category name
-     * @return simple CategoryDTO
-     */
+
     public static CategoryDTO simple(Integer id, String name) {
         return CategoryDTO.builder()
                 .id(id)

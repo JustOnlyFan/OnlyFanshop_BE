@@ -12,13 +12,6 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * DTO for Product with categories grouped by type.
- * Includes tags and compatibility information for accessories.
- * Used for API responses that need full product categorization details.
- * 
- * Requirements: 11.3, 11.4
- */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -32,36 +25,16 @@ public class ProductWithCategoriesDTO {
     private BigDecimal basePrice;
     private String shortDescription;
     private BrandDTO brand;
-    
-    /**
-     * Categories grouped by CategoryType.
-     * Each key is a CategoryType, and the value is a list of categories of that type.
-     */
+
     @Builder.Default
     private Map<CategoryType, List<CategoryDTO>> categoriesByType = new EnumMap<>(CategoryType.class);
-    
-    /**
-     * List of tags associated with this product.
-     */
+
     @Builder.Default
     private List<TagDTO> tags = new ArrayList<>();
-    
-    /**
-     * Compatibility information for accessory products.
-     * Only populated for products that are accessories.
-     * Uses AccessoryCompatibilityDTO for full compatibility information display.
-     */
+
     @Builder.Default
     private List<AccessoryCompatibilityDTO> compatibility = new ArrayList<>();
-    
-    /**
-     * Creates ProductWithCategoriesDTO from a Product entity.
-     * Note: This method only sets basic product fields.
-     * Categories, tags, and compatibility must be set separately.
-     * 
-     * @param product the Product entity
-     * @return ProductWithCategoriesDTO with basic fields populated
-     */
+
     public static ProductWithCategoriesDTO fromEntity(Product product) {
         if (product == null) {
             return null;
@@ -90,16 +63,7 @@ public class ProductWithCategoriesDTO {
                 .compatibility(new ArrayList<>())
                 .build();
     }
-    
-    /**
-     * Creates ProductWithCategoriesDTO from a Product entity with all related data.
-     * 
-     * @param product the Product entity
-     * @param productCategories list of ProductCategory entities for this product
-     * @param productTags list of ProductTag entities for this product
-     * @param compatibilities list of AccessoryCompatibility entities for this product
-     * @return fully populated ProductWithCategoriesDTO
-     */
+
     public static ProductWithCategoriesDTO fromEntityWithRelations(
             Product product,
             List<ProductCategory> productCategories,
@@ -146,12 +110,7 @@ public class ProductWithCategoriesDTO {
         
         return dto;
     }
-    
-    /**
-     * Adds a category to the appropriate type group.
-     * 
-     * @param categoryDTO the category to add
-     */
+
     public void addCategory(CategoryDTO categoryDTO) {
         if (categoryDTO == null || categoryDTO.getCategoryType() == null) {
             return;
@@ -159,73 +118,36 @@ public class ProductWithCategoriesDTO {
         categoriesByType.computeIfAbsent(categoryDTO.getCategoryType(), k -> new ArrayList<>())
                 .add(categoryDTO);
     }
-    
-    /**
-     * Gets categories of a specific type.
-     * 
-     * @param type the CategoryType to retrieve
-     * @return list of categories of the specified type, or empty list if none
-     */
+
     public List<CategoryDTO> getCategoriesOfType(CategoryType type) {
         return categoriesByType.getOrDefault(type, Collections.emptyList());
     }
-    
-    /**
-     * Checks if this product has any categories of the specified type.
-     * 
-     * @param type the CategoryType to check
-     * @return true if the product has at least one category of the specified type
-     */
+
     public boolean hasCategoryOfType(CategoryType type) {
         List<CategoryDTO> categories = categoriesByType.get(type);
         return categories != null && !categories.isEmpty();
     }
-    
-    /**
-     * Checks if this product has the required category type (FAN_TYPE or ACCESSORY_TYPE).
-     * 
-     * @return true if the product has at least one FAN_TYPE or ACCESSORY_TYPE category
-     */
+
     public boolean hasRequiredCategoryType() {
         return hasCategoryOfType(CategoryType.FAN_TYPE) || hasCategoryOfType(CategoryType.ACCESSORY_TYPE);
     }
-    
-    /**
-     * Gets all categories as a flat list.
-     * 
-     * @return list of all categories regardless of type
-     */
+
     public List<CategoryDTO> getAllCategories() {
         return categoriesByType.values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
     }
-    
-    /**
-     * Gets the total number of categories assigned to this product.
-     * 
-     * @return total category count
-     */
+
     public int getTotalCategoryCount() {
         return categoriesByType.values().stream()
                 .mapToInt(List::size)
                 .sum();
     }
-    
-    /**
-     * Checks if this product is an accessory (has ACCESSORY_TYPE category).
-     * 
-     * @return true if this is an accessory product
-     */
+
     public boolean isAccessory() {
         return hasCategoryOfType(CategoryType.ACCESSORY_TYPE);
     }
-    
-    /**
-     * Checks if this product has compatibility information.
-     * 
-     * @return true if compatibility information is available
-     */
+
     public boolean hasCompatibilityInfo() {
         return compatibility != null && !compatibility.isEmpty();
     }

@@ -25,12 +25,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Lấy tên role từ database (có thể là lowercase: "admin", "staff", "customer")
         String roleNameFromDB = user.getRole().getName();
         System.out.println("CustomUserDetailsService: Raw role name from DB: '" + roleNameFromDB + "'");
-        
-        // Normalize role name: 
-        // 1. Remove ROLE_ prefix if exists
-        // 2. Convert to UPPERCASE 
-        // 3. Add ROLE_ prefix back
-        // This ensures "admin" -> "ROLE_ADMIN", "ADMIN" -> "ROLE_ADMIN", "ROLE_admin" -> "ROLE_ADMIN"
+
         String normalizedRole = roleNameFromDB;
         if (normalizedRole.startsWith("ROLE_")) {
             normalizedRole = normalizedRole.substring(5); // Remove "ROLE_" prefix

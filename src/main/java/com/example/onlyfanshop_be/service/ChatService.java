@@ -38,9 +38,6 @@ public class ChatService {
     private final ProductRepository productRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * Tạo chat room mới (thực chất là gửi tin nhắn đầu tiên)
-     */
     @Transactional
     public String createChatRoom(CreateChatRoomRequest request, String adminId) {
         User customer = userRepository.findById(Long.parseLong(request.getCustomerId()))
@@ -62,20 +59,15 @@ public class ChatService {
         return roomId;
     }
 
-    /**
-     * Gửi tin nhắn và lưu vào MySQL
-     */
     @Transactional
     public void sendMessage(SendMessageRequest request, String senderId) {
         User sender = userRepository.findById(Long.parseLong(senderId))
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // Extract receiver ID from roomId
+
         String receiverId = extractReceiverIdFromRoomId(request.getRoomId(), senderId);
         User receiver = userRepository.findById(Long.parseLong(receiverId))
                 .orElseThrow(() -> new RuntimeException("Receiver not found"));
-        
-        // Lưu tin nhắn vào MySQL
+
         ChatMessage chatMessage = ChatMessage.builder()
                 .sender(sender)
                 .receiver(receiver)
@@ -88,37 +80,28 @@ public class ChatService {
                 .build();
         
         chatMessage = chatMessageRepository.save(chatMessage);
-        
-        // Gửi qua WebSocket để real-time
+
         MessageDTO messageDTO = convertToMessageDTO(chatMessage, request.getRoomId());
         messagingTemplate.convertAndSend("/topic/chat/" + request.getRoomId(), messageDTO);
         
         log.info("Message sent from {} to {} in room {}", senderId, receiverId, request.getRoomId());
     }
 
-    /**
-     * Gửi tin nhắn qua WebSocket (được gọi từ WebSocketChatController)
-     */
     @Transactional
     public void sendMessageViaWebSocket(SendMessageRequest request, String senderId) {
         // Chỉ cần gọi sendMessage, WebSocket đã được xử lý trong đó
         sendMessage(request, senderId);
     }
 
-    /**
-     * Lấy danh sách chat rooms cho admin
-     */
     public List<ChatRoomDTO> getChatRoomsForAdmin() {
         try {
             log.info("Getting chat rooms for admin...");
-            
-            // Lấy tất cả users có role customer
+
             Role customerRole = roleRepository.findByName("customer")
                     .orElseThrow(() -> new RuntimeException("Customer role not found"));
             
             List<User> customers = userRepository.findByRoleId(customerRole.getId());
-            
-            // Lấy admin user
+
             Role adminRole = roleRepository.findByName("admin")
                     .orElseThrow(() -> new RuntimeException("Admin role not found"));
             List<User> admins = userRepository.findByRoleId(adminRole.getId());
@@ -133,7 +116,6 @@ public class ChatService {
             List<ChatRoomDTO> rooms = new ArrayList<>();
             
             for (User customer : customers) {
-                // Lấy tin nhắn mới nhất giữa admin và customer
                 Optional<ChatMessage> latestMessage = chatMessageRepository
                         .findLatestMessageBetweenUsers(admin.getId(), customer.getId());
                 
@@ -159,8 +141,7 @@ public class ChatService {
                     rooms.add(roomDTO);
                 }
             }
-            
-            // Sắp xếp theo thời gian tin nhắn mới nhất
+
             rooms.sort((a, b) -> b.getLastMessageTime().compareTo(a.getLastMessageTime()));
             
             log.info("Returning " + rooms.size() + " chat rooms");
@@ -172,9 +153,6 @@ public class ChatService {
         }
     }
 
-    /**
-     * Xóa tất cả chat rooms (for testing)
-     */
     @Transactional
     public void clearAllChatRooms() {
         log.info("Clearing all chat rooms...");
@@ -186,9 +164,6 @@ public class ChatService {
         }
     }
 
-    /**
-     * Lấy tin nhắn trong một room
-     */
     public List<MessageDTO> getMessagesForRoom(String roomId) {
         try {
             // Extract user IDs from roomId
@@ -225,9 +200,6 @@ public class ChatService {
         }
     }
 
-    /**
-     * Lấy hoặc tạo chat room cho customer
-     */
     @Transactional
     public String getOrCreateChatRoom(String customerId) {
         User customer = userRepository.findById(Long.parseLong(customerId))
@@ -240,9 +212,6 @@ public class ChatService {
         return roomId;
     }
 
-    /**
-     * Tạo chat room từ product
-     */
     @Transactional
     public String createChatRoomFromProduct(String customerId, CreateChatRoomFromProductRequest request) {
         User customer = userRepository.findById(Long.parseLong(customerId))
@@ -266,34 +235,22 @@ public class ChatService {
         return roomId;
     }
 
-    /**
-     * Đánh dấu tin nhắn đã đọc
-     */
     @Transactional
     public void markMessageAsRead(String roomId, String messageId) {
         // Implementation if needed
         log.info("Marking message as read: " + messageId);
     }
 
-    /**
-     * Đánh dấu tất cả tin nhắn đã đọc
-     */
     @Transactional
     public void markAllMessagesAsRead(String roomId, String userId) {
         log.info("Marking all messages as read in room: " + roomId + " for user: " + userId);
     }
 
-    /**
-     * Lấy chat rooms cho staff
-     */
     public List<ChatRoomDTO> getChatRoomsForStaff(String staffId) {
         // Similar to admin implementation
         return getChatRoomsForAdmin();
     }
 
-    /**
-     * Lấy chat rooms cho customer
-     */
     public List<ChatRoomDTO> getChatRoomsForCustomer(String customerId) {
         try {
             log.info("Getting chat rooms for customer: " + customerId);
@@ -347,8 +304,6 @@ public class ChatService {
             return new ArrayList<>();
         }
     }
-
-    // Helper methods
     
     private String extractReceiverIdFromRoomId(String roomId, String senderId) {
         // Room ID format: chatRoom_username_userId

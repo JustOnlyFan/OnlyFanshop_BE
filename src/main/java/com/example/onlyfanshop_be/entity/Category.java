@@ -85,11 +85,6 @@ public class Category {
     @JsonIgnore
     private List<Product> products;
 
-    /**
-     * Calculates the depth of this category in the hierarchy.
-     * Root categories have depth 1.
-     * @return the depth level of this category
-     */
     @Transient
     public int getDepth() {
         if (parent == null) {
@@ -98,21 +93,11 @@ public class Category {
         return parent.getDepth() + 1;
     }
 
-    /**
-     * Checks if this category can have children based on the maximum depth limit.
-     * Maximum allowed depth is 3 levels.
-     * @return true if this category can have children
-     */
     @Transient
     public boolean canHaveChildren() {
         return getDepth() < 3;
     }
 
-    /**
-     * Validates that a potential child category has the same type as this category.
-     * @param childType the category type of the potential child
-     * @return true if the child type matches this category's type
-     */
     public boolean isValidChildType(CategoryType childType) {
         return this.categoryType == childType;
     }

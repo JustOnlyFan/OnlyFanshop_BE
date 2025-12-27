@@ -4,9 +4,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-/**
- * Request DTO for updating inventory quantity
- */
 @Data
 @Builder
 @NoArgsConstructor

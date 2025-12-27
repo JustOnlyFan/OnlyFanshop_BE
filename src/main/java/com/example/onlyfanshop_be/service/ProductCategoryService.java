@@ -16,11 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Service for managing product-category relationships.
- * Handles the many-to-many relationship between products and categories,
- * allowing products to be assigned to multiple categories from different types.
- */
 @Service
 public class ProductCategoryService {
 
@@ -33,17 +28,8 @@ public class ProductCategoryService {
     @Autowired
     private ProductRepository productRepository;
 
-    /**
-     * Assign multiple categories to a product.
-     * This method adds new category assignments without removing existing ones.
-     * 
-     * @param productId the product ID
-     * @param categoryIds list of category IDs to assign
-     * @throws AppException if product or any category doesn't exist
-     */
     @Transactional
     public void assignCategoriesToProduct(Long productId, List<Integer> categoryIds) {
-        // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
@@ -53,12 +39,10 @@ public class ProductCategoryService {
         }
 
         for (Integer categoryId : categoryIds) {
-            // Validate category exists
             if (!categoryRepository.existsById(categoryId)) {
                 throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
             }
 
-            // Check if relationship already exists
             if (!productCategoryRepository.existsByProductIdAndCategoryId(productId, categoryId)) {
                 ProductCategory productCategory = ProductCategory.builder()
                         .productId(productId)
@@ -70,25 +54,14 @@ public class ProductCategoryService {
         }
     }
 
-
-    /**
-     * Assign categories to a product, replacing all existing assignments.
-     * 
-     * @param productId the product ID
-     * @param categoryIds list of category IDs to assign
-     * @throws AppException if product or any category doesn't exist
-     */
     @Transactional
     public void replaceProductCategories(Long productId, List<Integer> categoryIds) {
-        // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
 
-        // Remove all existing category assignments
         productCategoryRepository.deleteByProductId(productId);
 
-        // Assign new categories
         if (categoryIds != null && !categoryIds.isEmpty()) {
             for (Integer categoryId : categoryIds) {
                 // Validate category exists
@@ -106,12 +79,6 @@ public class ProductCategoryService {
         }
     }
 
-    /**
-     * Remove a specific category from a product.
-     * 
-     * @param productId the product ID
-     * @param categoryId the category ID to remove
-     */
     @Transactional
     public void removeCategoryFromProduct(Long productId, Integer categoryId) {
         // Validate product exists (ProductRepository uses Integer ID)
@@ -122,12 +89,6 @@ public class ProductCategoryService {
         productCategoryRepository.deleteByProductIdAndCategoryId(productId, categoryId);
     }
 
-    /**
-     * Get all categories assigned to a product.
-     * 
-     * @param productId the product ID
-     * @return list of categories assigned to the product
-     */
     public List<Category> getProductCategories(Long productId) {
         // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
@@ -140,15 +101,7 @@ public class ProductCategoryService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get categories assigned to a product filtered by category type.
-     * 
-     * @param productId the product ID
-     * @param categoryType the category type to filter by
-     * @return list of categories of the specified type assigned to the product
-     */
     public List<Category> getProductCategoriesByType(Long productId, CategoryType categoryType) {
-        // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
@@ -164,14 +117,7 @@ public class ProductCategoryService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Check if a product has at least one required category type (FAN_TYPE or ACCESSORY_TYPE).
-     * 
-     * @param productId the product ID
-     * @return true if the product has at least one FAN_TYPE or ACCESSORY_TYPE category
-     */
     public boolean hasRequiredCategoryType(Long productId) {
-        // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
@@ -182,38 +128,22 @@ public class ProductCategoryService {
         return hasFanType || hasAccessoryType;
     }
 
-    /**
-     * Validate that a product has at least one required category type.
-     * Throws an exception if the validation fails.
-     * 
-     * @param productId the product ID
-     * @throws AppException if the product doesn't have a required category type
-     */
     public void validateRequiredCategoryType(Long productId) {
         if (!hasRequiredCategoryType(productId)) {
             throw new AppException(ErrorCode.REQUIRED_CATEGORY_MISSING);
         }
     }
 
-    /**
-     * Set the primary category for a product.
-     * 
-     * @param productId the product ID
-     * @param categoryId the category ID to set as primary
-     */
     @Transactional
     public void setPrimaryCategory(Long productId, Integer categoryId) {
-        // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
 
-        // Validate category exists
         if (!categoryRepository.existsById(categoryId)) {
             throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
         }
 
-        // Reset all existing primary flags for this product
         List<ProductCategory> existingCategories = productCategoryRepository.findByProductId(productId);
         for (ProductCategory pc : existingCategories) {
             if (pc.getIsPrimary()) {
@@ -222,7 +152,6 @@ public class ProductCategoryService {
             }
         }
 
-        // Set the new primary category
         ProductCategory productCategory = productCategoryRepository
                 .findByProductIdAndCategoryId(productId, categoryId)
                 .orElse(null);
@@ -231,7 +160,6 @@ public class ProductCategoryService {
             productCategory.setIsPrimary(true);
             productCategoryRepository.save(productCategory);
         } else {
-            // Create new relationship if it doesn't exist
             ProductCategory newProductCategory = ProductCategory.builder()
                     .productId(productId)
                     .categoryId(categoryId)
@@ -241,12 +169,6 @@ public class ProductCategoryService {
         }
     }
 
-    /**
-     * Get the primary category for a product.
-     * 
-     * @param productId the product ID
-     * @return the primary category, or null if none is set
-     */
     public Category getPrimaryCategory(Long productId) {
         // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
@@ -258,12 +180,6 @@ public class ProductCategoryService {
                 .orElse(null);
     }
 
-    /**
-     * Get the count of categories assigned to a product.
-     * 
-     * @param productId the product ID
-     * @return the number of categories assigned
-     */
     public long getCategoryCount(Long productId) {
         // Validate product exists (ProductRepository uses Integer ID)
         if (!productRepository.existsById(productId.intValue())) {
@@ -273,23 +189,10 @@ public class ProductCategoryService {
         return productCategoryRepository.countByProductId(productId);
     }
 
-    /**
-     * Check if a product has a specific category assigned.
-     * 
-     * @param productId the product ID
-     * @param categoryId the category ID
-     * @return true if the product has the category assigned
-     */
     public boolean hasCategory(Long productId, Integer categoryId) {
         return productCategoryRepository.existsByProductIdAndCategoryId(productId, categoryId);
     }
 
-    /**
-     * Get all product IDs that have a specific category assigned.
-     * 
-     * @param categoryId the category ID
-     * @return list of product IDs
-     */
     public List<Long> getProductIdsByCategory(Integer categoryId) {
         List<ProductCategory> productCategories = productCategoryRepository.findByCategoryId(categoryId);
         return productCategories.stream()
@@ -297,23 +200,12 @@ public class ProductCategoryService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Assign categories to a product with required category type validation.
-     * This method replaces all existing assignments and validates that at least
-     * one FAN_TYPE or ACCESSORY_TYPE category is included.
-     * 
-     * @param productId the product ID
-     * @param categoryIds list of category IDs to assign
-     * @throws AppException if product or any category doesn't exist, or if no required category type is included
-     */
     @Transactional
     public void assignCategoriesWithValidation(Long productId, List<Integer> categoryIds) {
-        // Validate product exists
         if (!productRepository.existsById(productId.intValue())) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
 
-        // Validate that at least one required category type is included
         if (categoryIds == null || categoryIds.isEmpty()) {
             throw new AppException(ErrorCode.REQUIRED_CATEGORY_MISSING);
         }
@@ -333,18 +225,9 @@ public class ProductCategoryService {
             throw new AppException(ErrorCode.REQUIRED_CATEGORY_MISSING);
         }
 
-        // Replace all existing category assignments
         replaceProductCategories(productId, categoryIds);
     }
 
-    /**
-     * Check if a list of category IDs contains at least one required category type
-     * (FAN_TYPE or ACCESSORY_TYPE) without requiring a product to exist.
-     * Useful for validating categories before product creation.
-     * 
-     * @param categoryIds list of category IDs to check
-     * @return true if at least one FAN_TYPE or ACCESSORY_TYPE category is included
-     */
     public boolean containsRequiredCategoryType(List<Integer> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
             return false;
@@ -361,16 +244,4 @@ public class ProductCategoryService {
         return false;
     }
 
-    /**
-     * Validate that a list of category IDs contains at least one required category type.
-     * Throws an exception if validation fails.
-     * 
-     * @param categoryIds list of category IDs to validate
-     * @throws AppException if no required category type is included
-     */
-    public void validateCategoryIdsContainRequiredType(List<Integer> categoryIds) {
-        if (!containsRequiredCategoryType(categoryIds)) {
-            throw new AppException(ErrorCode.REQUIRED_CATEGORY_MISSING);
-        }
-    }
 }

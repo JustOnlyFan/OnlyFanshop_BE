@@ -1,6 +1,5 @@
 package com.example.onlyfanshop_be.controller;
 
-import com.example.onlyfanshop_be.dto.ProductDetailDTO;
 import com.example.onlyfanshop_be.dto.request.ProductFilterRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.entity.Product;
@@ -19,13 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller for advanced product filtering.
- * Provides endpoints for filtering products by multiple criteria including
- * categories, brands, price range, tags, and accessory compatibility.
- * 
- * Requirements: 4.1, 5.1, 6.1, 7.1, 8.4
- */
 @RestController
 @RequestMapping("/products/filter")
 public class ProductFilterController {
@@ -33,18 +25,6 @@ public class ProductFilterController {
     @Autowired
     private ProductFilterService productFilterService;
 
-    /**
-     * Filter products with multiple criteria.
-     * All filters are combined using AND logic.
-     * Requirements: 4.1, 5.1, 6.1, 7.1, 8.4
-     * 
-     * @param request the filter request containing all criteria
-     * @param page page number (0-based)
-     * @param size page size
-     * @param sortBy field to sort by
-     * @param sortDirection sort direction (ASC or DESC)
-     * @return paginated list of products matching all criteria
-     */
     @PostMapping("/public")
     public ResponseEntity<ApiResponse<Map<String, Object>>> filterProducts(
             @RequestBody ProductFilterRequest request,
@@ -84,15 +64,6 @@ public class ProductFilterController {
         }
     }
 
-
-    /**
-     * Get products by category with optional subcategory inclusion.
-     * Requirements: 4.1 - Category query completeness
-     * 
-     * @param categoryId the category ID
-     * @param includeSubcategories whether to include products from subcategories
-     * @return list of products in the category
-     */
     @GetMapping("/public/category/{categoryId}")
     public ResponseEntity<ApiResponse<List<Product>>> getProductsByCategory(
             @PathVariable Integer categoryId,
@@ -114,14 +85,6 @@ public class ProductFilterController {
         }
     }
 
-    /**
-     * Get products by price range.
-     * Requirements: 7.1 - Price range filter
-     * 
-     * @param minPrice minimum price (inclusive)
-     * @param maxPrice maximum price (inclusive)
-     * @return list of products within the price range
-     */
     @GetMapping("/public/price-range")
     public ResponseEntity<ApiResponse<List<Product>>> getProductsByPriceRange(
             @RequestParam(required = false) BigDecimal minPrice,
@@ -143,13 +106,6 @@ public class ProductFilterController {
         }
     }
 
-    /**
-     * Get accessories compatible with a specific fan type.
-     * Requirements: 8.4 - Accessory compatibility filter
-     * 
-     * @param fanTypeId the fan type category ID
-     * @return list of accessory products compatible with the fan type
-     */
     @GetMapping("/public/accessories/compatible/{fanTypeId}")
     public ResponseEntity<ApiResponse<List<Product>>> getAccessoriesByCompatibleFanType(
             @PathVariable Integer fanTypeId) {
@@ -170,13 +126,6 @@ public class ProductFilterController {
         }
     }
 
-    /**
-     * Get all category IDs including descendants for a given category.
-     * Useful for understanding category hierarchy in filtering.
-     * 
-     * @param categoryId the root category ID
-     * @return list of all descendant category IDs
-     */
     @GetMapping("/public/category/{categoryId}/descendants")
     public ResponseEntity<ApiResponse<List<Integer>>> getCategoryDescendants(@PathVariable Integer categoryId) {
         try {

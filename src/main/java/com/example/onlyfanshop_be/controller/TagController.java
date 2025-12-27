@@ -13,13 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Controller for managing product tags.
- * Provides endpoints for tag CRUD operations.
- * Tags are used for marketing purposes to highlight products as new, bestseller, on-sale, etc.
- * 
- * Requirements: 3.1
- */
 @RestController
 @RequestMapping("/tags")
 public class TagController {
@@ -27,13 +20,6 @@ public class TagController {
     @Autowired
     private TagService tagService;
 
-    // ==================== PUBLIC ENDPOINTS ====================
-
-    /**
-     * Get all tags.
-     * 
-     * @return list of all tags ordered by display order
-     */
     @GetMapping("/public")
     public ResponseEntity<ApiResponse<List<TagDTO>>> getAllTags() {
         try {
@@ -56,12 +42,6 @@ public class TagController {
         }
     }
 
-    /**
-     * Get a tag by ID.
-     * 
-     * @param id the tag ID
-     * @return the tag
-     */
     @GetMapping("/public/{id}")
     public ResponseEntity<ApiResponse<TagDTO>> getTagById(@PathVariable Integer id) {
         try {
@@ -82,12 +62,6 @@ public class TagController {
         }
     }
 
-    /**
-     * Get a tag by code.
-     * 
-     * @param code the tag code (e.g., NEW, BESTSELLER, SALE)
-     * @return the tag if found
-     */
     @GetMapping("/public/code/{code}")
     public ResponseEntity<ApiResponse<TagDTO>> getTagByCode(@PathVariable String code) {
         try {
@@ -111,15 +85,6 @@ public class TagController {
         }
     }
 
-    // ==================== ADMIN ENDPOINTS ====================
-
-    /**
-     * Create a new tag.
-     * Requirements: 3.1 - Unique tag code and display name required
-     * 
-     * @param tagDTO the tag data to create
-     * @return the created tag
-     */
     @PostMapping("/admin/create")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<TagDTO>> createTag(@RequestBody TagDTO tagDTO) {
@@ -143,13 +108,6 @@ public class TagController {
         }
     }
 
-    /**
-     * Update an existing tag.
-     * 
-     * @param id the tag ID
-     * @param tagDTO the updated tag data
-     * @return the updated tag
-     */
     @PutMapping("/admin/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<TagDTO>> updateTag(
@@ -174,12 +132,6 @@ public class TagController {
         }
     }
 
-    /**
-     * Delete a tag.
-     * 
-     * @param id the tag ID to delete
-     * @return success response
-     */
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteTag(@PathVariable Integer id) {
@@ -198,12 +150,6 @@ public class TagController {
         }
     }
 
-    /**
-     * Check if a tag code exists.
-     * 
-     * @param code the tag code to check
-     * @return true if the code exists
-     */
     @GetMapping("/admin/exists/{code}")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<ApiResponse<Boolean>> checkTagCodeExists(@PathVariable String code) {

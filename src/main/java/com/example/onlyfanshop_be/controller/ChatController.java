@@ -29,31 +29,6 @@ public class ChatController {
     private final ChatService chatService;
     private final JwtTokenProvider jwtTokenProvider;
 
-//    @PostMapping("/rooms")
-//    @Operation(summary = "Create a new chat room", description = "Create a new chat room between admin and customer")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<ApiResponse<String>> createChatRoom(
-//            @RequestBody CreateChatRoomRequest request,
-//            HttpServletRequest httpRequest) {
-//        try {
-//            String token = jwtTokenProvider.extractToken(httpRequest);
-//            String adminId = jwtTokenProvider.getUserIdFromJWT(token).toString();
-//
-//            String roomId = chatService.createChatRoom(request, adminId);
-//
-//            return ResponseEntity.ok(ApiResponse.<String>builder()
-//                    .message("Chat room created successfully")
-//                    .data(roomId)
-//                    .build());
-//        } catch (Exception e) {
-//            log.error("Error creating chat room: " + e.getMessage());
-//            return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
-//                    .statusCode(400)
-//                    .message("Failed to create chat room: " + e.getMessage())
-//                    .build());
-//        }
-//    }
-
     @PostMapping("/messages")
     @Operation(summary = "Send a message", description = "Send a message to a chat room")
     public ResponseEntity<ApiResponse<String>> sendMessage(

@@ -23,21 +23,6 @@ public class NotificationController {
     private NotificationService notificationService;
     @Autowired
     private NotificationRepository notificationRepository;
-//     1️⃣ Tạo thông báo
-//    @PostMapping("/create")
-//    public ResponseEntity<NotificationDTO> createNotification(@RequestParam Integer userID, @RequestParam String message) {
-//        User user = userRepository.findById(userID)
-//                .orElseThrow(() -> new RuntimeException("Không tìm thấy user!"));
-//
-//        NotificationDTO notification = Notification.builder()
-//                .user(user)
-//                .message(message)
-//                .isRead(false)
-//                .createdAt(LocalDateTime.now())
-//                .build();
-//
-//        return ResponseEntity.ok(notificationRepository.save(notification));
-//    }
 
     // 2️⃣ Lấy danh sách thông báo theo user
     @GetMapping("/user/{userID}")

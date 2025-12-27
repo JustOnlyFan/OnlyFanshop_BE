@@ -24,20 +24,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of TransferRequestService
- * Handles transfer request operations including creation, validation, approval, and rejection
- * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TransferRequestService implements ITransferRequestService {
-    
-    /**
-     * Maximum quantity allowed per product per request
-     * Requirements: 4.2
-     */
+
     public static final int MAX_QUANTITY_PER_PRODUCT = 30;
     
     private final TransferRequestRepository transferRequestRepository;
@@ -48,52 +39,39 @@ public class TransferRequestService implements ITransferRequestService {
     private final StoreLocationRepository storeLocationRepository;
     private final UserRepository userRepository;
 
-
-    /**
-     * Create a new transfer request for a store
-     * Requirements: 3.1, 3.2, 4.1, 4.2, 4.3, 4.4
-     */
     @Override
     @Transactional
     public TransferRequestDTO createRequest(Integer storeId, CreateTransferRequestDTO request) {
-        // Validate store exists
         StoreLocation store = storeLocationRepository.findById(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
-        
-        // Validate request has items
+
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new AppException(ErrorCode.TRANSFER_REQUEST_EMPTY_ITEMS);
         }
-        
-        // Validate source warehouse is provided (Requirements 3.1)
+
         if (request.getSourceWarehouseId() == null) {
             throw new AppException(ErrorCode.SOURCE_WAREHOUSE_REQUIRED);
         }
-        
-        // Validate source warehouse exists and is active (Requirements 3.1, 3.2)
+
         Warehouse sourceWarehouse = warehouseRepository.findById(request.getSourceWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.SOURCE_WAREHOUSE_NOT_FOUND));
         
         if (!Boolean.TRUE.equals(sourceWarehouse.getIsActive())) {
             throw new AppException(ErrorCode.SOURCE_WAREHOUSE_INACTIVE);
         }
-        
-        // Get destination store warehouse
+
         Warehouse destWarehouse = warehouseRepository.findByStoreId(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
-        
-        // Validate source and destination are different (Requirements 3.5)
+
         if (sourceWarehouse.getId().equals(destWarehouse.getId())) {
             throw new AppException(ErrorCode.SAME_WAREHOUSE_TRANSFER);
         }
-        
-        // Validate all items and check source warehouse has sufficient quantity (Requirements 3.2)
+
         for (CreateTransferRequestItemDTO item : request.getItems()) {
             validateTransferRequestItem(item, destWarehouse.getId());
             validateSourceWarehouseQuantity(item, sourceWarehouse.getId());
         }
-        
-        // Create transfer request with source warehouse (Requirements 3.1)
+
         TransferRequest transferRequest = TransferRequest.builder()
                 .storeId(storeId)
                 .sourceWarehouseId(request.getSourceWarehouseId())
@@ -101,8 +79,7 @@ public class TransferRequestService implements ITransferRequestService {
                 .build();
         
         TransferRequest savedRequest = transferRequestRepository.save(transferRequest);
-        
-        // Create transfer request items
+
         List<TransferRequestItem> items = new ArrayList<>();
         for (CreateTransferRequestItemDTO itemDTO : request.getItems()) {
             TransferRequestItem item = TransferRequestItem.builder()
@@ -122,12 +99,7 @@ public class TransferRequestService implements ITransferRequestService {
         
         return convertToDTO(savedRequest, store, null, sourceWarehouse);
     }
-    
-    /**
-     * Validate source warehouse has sufficient quantity for the requested item
-     * Requirements: 3.2 - WHEN creating Transfer_Request THEN the System SHALL validate that source warehouse has sufficient available quantity
-     * Requirements: 3.4 - IF source Store_Warehouse has insufficient quantity THEN the System SHALL reject the Transfer_Request
-     */
+
     private void validateSourceWarehouseQuantity(CreateTransferRequestItemDTO item, Long sourceWarehouseId) {
         InventoryItem inventoryItem = inventoryItemRepository
                 .findByWarehouseIdAndProductId(sourceWarehouseId, item.getProductId())
@@ -142,32 +114,23 @@ public class TransferRequestService implements ITransferRequestService {
             throw new AppException(ErrorCode.SOURCE_WAREHOUSE_INSUFFICIENT_STOCK);
         }
     }
-    
-    /**
-     * Validate a single transfer request item
-     * Requirements: 4.1 - Validate product exists in Store_Warehouse
-     * Requirements: 4.2 - Enforce max 30 units per product
-     */
+
     private void validateTransferRequestItem(CreateTransferRequestItemDTO item, Long storeWarehouseId) {
-        // Validate quantity is positive
         if (item.getQuantity() == null || item.getQuantity() <= 0) {
             throw new AppException(ErrorCode.TRANSFER_REQUEST_INVALID_QUANTITY);
         }
-        
-        // Validate quantity does not exceed limit (Requirements 4.2)
+
         if (item.getQuantity() > MAX_QUANTITY_PER_PRODUCT) {
             throw new AppException(ErrorCode.TRANSFER_REQUEST_QUANTITY_EXCEEDS_LIMIT);
         }
-        
-        // Validate product exists
+
         if (item.getProductId() == null) {
             throw new AppException(ErrorCode.PRODUCT_NOTEXISTED);
         }
         
         productRepository.findById(item.getProductId().intValue())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOTEXISTED));
-        
-        // Validate product exists in Store_Warehouse (Requirements 4.1)
+
         boolean existsInStoreWarehouse = inventoryItemRepository
                 .existsByWarehouseIdAndProductId(storeWarehouseId, item.getProductId());
         
@@ -176,11 +139,6 @@ public class TransferRequestService implements ITransferRequestService {
         }
     }
 
-
-    /**
-     * Get all transfer requests with optional status filter
-     * Requirements: 4.5
-     */
     @Override
     public Page<TransferRequestDTO> getRequests(TransferRequestStatus status, Pageable pageable) {
         Page<TransferRequest> requests;
@@ -193,10 +151,7 @@ public class TransferRequestService implements ITransferRequestService {
         
         return requests.map(this::convertToDTO);
     }
-    
-    /**
-     * Get transfer requests for a specific store
-     */
+
     @Override
     public Page<TransferRequestDTO> getRequestsByStore(Integer storeId, TransferRequestStatus status, Pageable pageable) {
         Page<TransferRequest> requests;
@@ -209,10 +164,7 @@ public class TransferRequestService implements ITransferRequestService {
         
         return requests.map(this::convertToDTO);
     }
-    
-    /**
-     * Get a specific transfer request by ID
-     */
+
     @Override
     public TransferRequestDTO getRequest(Long id) {
         TransferRequest request = transferRequestRepository.findById(id)
@@ -220,23 +172,17 @@ public class TransferRequestService implements ITransferRequestService {
         
         return convertToDTO(request);
     }
-    
-    /**
-     * Approve a transfer request
-     * Note: This is a basic approval that changes status. Full fulfillment logic will be in FulfillmentService (Task 6)
-     */
+
     @Override
     @Transactional
     public TransferRequestDTO approveRequest(Long id) {
         TransferRequest request = transferRequestRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TRANSFER_REQUEST_NOT_FOUND));
-        
-        // Validate status is PENDING
+
         if (request.getStatus() != TransferRequestStatus.PENDING) {
             throw new AppException(ErrorCode.TRANSFER_REQUEST_ALREADY_PROCESSED);
         }
-        
-        // Update status
+
         request.setStatus(TransferRequestStatus.APPROVED);
         request.setProcessedAt(LocalDateTime.now());
         request.setProcessedBy(getCurrentUserId());
@@ -247,22 +193,17 @@ public class TransferRequestService implements ITransferRequestService {
         
         return convertToDTO(savedRequest);
     }
-    
-    /**
-     * Reject a transfer request
-     */
+
     @Override
     @Transactional
     public TransferRequestDTO rejectRequest(Long id, String reason) {
         TransferRequest request = transferRequestRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TRANSFER_REQUEST_NOT_FOUND));
-        
-        // Validate status is PENDING
+
         if (request.getStatus() != TransferRequestStatus.PENDING) {
             throw new AppException(ErrorCode.TRANSFER_REQUEST_ALREADY_PROCESSED);
         }
-        
-        // Update status
+
         request.setStatus(TransferRequestStatus.REJECTED);
         request.setProcessedAt(LocalDateTime.now());
         request.setProcessedBy(getCurrentUserId());
@@ -275,19 +216,55 @@ public class TransferRequestService implements ITransferRequestService {
         return convertToDTO(savedRequest);
     }
 
+    @Override
+    @Transactional
+    public TransferRequestDTO completeRequest(Long id) {
+        TransferRequest request = transferRequestRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSFER_REQUEST_NOT_FOUND));
 
-    // ==================== Private Helper Methods ====================
-    
-    /**
-     * Get current user ID from security context
-     */
+        if (request.getStatus() != TransferRequestStatus.APPROVED) {
+            throw new AppException(ErrorCode.TRANSFER_REQUEST_NOT_APPROVED);
+        }
+
+        request.setStatus(TransferRequestStatus.COMPLETED);
+        request.setProcessedAt(LocalDateTime.now());
+        request.setProcessedBy(getCurrentUserId());
+        
+        TransferRequest savedRequest = transferRequestRepository.save(request);
+        
+        log.info("Completed transfer request {}", id);
+        
+        return convertToDTO(savedRequest);
+    }
+
+    @Override
+    @Transactional
+    public TransferRequestDTO cancelRequest(Long id) {
+        TransferRequest request = transferRequestRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSFER_REQUEST_NOT_FOUND));
+
+        if (request.getStatus() != TransferRequestStatus.PENDING && 
+            request.getStatus() != TransferRequestStatus.APPROVED) {
+            throw new AppException(ErrorCode.TRANSFER_REQUEST_CANNOT_CANCEL);
+        }
+
+        request.setStatus(TransferRequestStatus.CANCELLED);
+        request.setProcessedAt(LocalDateTime.now());
+        request.setProcessedBy(getCurrentUserId());
+        
+        TransferRequest savedRequest = transferRequestRepository.save(request);
+        
+        log.info("Cancelled transfer request {}", id);
+        
+        return convertToDTO(savedRequest);
+    }
+
     private Long getCurrentUserId() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
                 org.springframework.security.core.userdetails.UserDetails userDetails = 
                         (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
-                // Try to find user by username/email
                 String username = userDetails.getUsername();
                 return userRepository.findByEmail(username)
                         .map(User::getId)
@@ -298,10 +275,7 @@ public class TransferRequestService implements ITransferRequestService {
         }
         return null;
     }
-    
-    /**
-     * Convert TransferRequest entity to DTO (simple version)
-     */
+
     private TransferRequestDTO convertToDTO(TransferRequest request) {
         StoreLocation store = null;
         User processedByUser = null;
@@ -321,23 +295,17 @@ public class TransferRequestService implements ITransferRequestService {
         
         return convertToDTO(request, store, processedByUser, sourceWarehouse);
     }
-    
-    /**
-     * Convert TransferRequest entity to DTO with pre-loaded entities
-     */
+
     private TransferRequestDTO convertToDTO(TransferRequest request, StoreLocation store, User processedByUser, Warehouse sourceWarehouse) {
-        // Load items if not already loaded
         List<TransferRequestItem> items = request.getItems();
         if (items == null) {
             items = transferRequestItemRepository.findByTransferRequestId(request.getId());
         }
-        
-        // Convert items to DTOs
+
         List<TransferRequestItemDTO> itemDTOs = items.stream()
                 .map(this::convertItemToDTO)
                 .collect(Collectors.toList());
-        
-        // Calculate totals
+
         int totalItems = itemDTOs.size();
         int totalQuantity = itemDTOs.stream()
                 .mapToInt(TransferRequestItemDTO::getRequestedQuantity)
@@ -360,10 +328,7 @@ public class TransferRequestService implements ITransferRequestService {
                 .totalQuantity(totalQuantity)
                 .build();
     }
-    
-    /**
-     * Convert TransferRequestItem entity to DTO
-     */
+
     private TransferRequestItemDTO convertItemToDTO(TransferRequestItem item) {
         Product product = null;
         String productImageUrl = null;

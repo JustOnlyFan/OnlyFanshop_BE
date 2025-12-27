@@ -7,9 +7,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * InventoryLog - Nhật ký thay đổi số lượng tồn kho
- */
 @Entity
 @Table(name = "inventory_logs",
     indexes = {
@@ -73,9 +70,6 @@ public class InventoryLog {
         createdAt = LocalDateTime.now();
     }
 
-    /**
-     * Số lượng thay đổi (có thể âm hoặc dương)
-     */
     @Transient
     public Integer getQuantityChange() {
         return newQuantity - previousQuantity;

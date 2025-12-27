@@ -57,31 +57,26 @@ public class CategoryService {
     }
 
     public Category createCategory(Category category) {
-        // 1️⃣ Validate name
         if (category.getName() == null || category.getName().trim().isEmpty()) {
             throw new RuntimeException("Tên danh mục không được để trống");
         }
-        
-        // 2️⃣ Kiểm tra name đã tồn tại chưa
+
         String categoryName = category.getName().trim();
         if (categoryRepository.existsByName(categoryName)) {
             throw new RuntimeException("Danh mục với tên '" + categoryName + "' đã tồn tại");
         }
-        
-        // 3️⃣ Generate slug từ name nếu không được cung cấp
+
         String slug = category.getSlug();
         if (slug == null || slug.trim().isEmpty()) {
             slug = generateSlugForCategory(categoryName);
         }
-        
-        // 4️⃣ Tạo Category entity
+
         Category c = new Category();
         c.setName(categoryName);
         c.setSlug(slug);
         c.setDescription(category.getDescription());
         c.setParentId(category.getParentId());
-        
-        // 5️⃣ Lưu vào DB
+
         return categoryRepository.save(c);
     }
 
@@ -89,23 +84,19 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID: " + id));
 
-        // 0️⃣ Đảm bảo category hiện tại có slug (fix cho các category cũ không có slug)
         if (category.getSlug() == null || category.getSlug().trim().isEmpty()) {
             String slug = generateSlugForCategory(category.getName());
             category.setSlug(slug);
         }
 
-        // 1️⃣ Validate và update name
         if (updatedCategory.getName() != null && !updatedCategory.getName().trim().isEmpty()) {
             String oldName = category.getName();
             String newName = updatedCategory.getName().trim();
-            
-            // Kiểm tra nếu name thay đổi và name mới đã tồn tại (trừ chính nó)
+
             if (!oldName.equals(newName) && categoryRepository.existsByName(newName)) {
                 throw new RuntimeException("Danh mục với tên '" + newName + "' đã tồn tại");
             }
-            
-            // 2️⃣ Generate slug mới nếu name thay đổi
+
             if (!oldName.equals(newName)) {
                 String newSlug = generateSlugForCategory(newName);
                 category.setSlug(newSlug);
@@ -113,8 +104,7 @@ public class CategoryService {
             
             category.setName(newName);
         }
-        
-        // 3️⃣ Update các field khác
+
         if (updatedCategory.getDescription() != null) {
             category.setDescription(updatedCategory.getDescription());
         }
@@ -128,15 +118,12 @@ public class CategoryService {
     
     public Category toggleActive(Integer id, boolean active) {
         Category category = getCategoryById(id);
-        
-        // Đảm bảo category có slug (fix cho các category cũ không có slug)
+
         if (category.getSlug() == null || category.getSlug().trim().isEmpty()) {
             String slug = generateSlugForCategory(category.getName());
             category.setSlug(slug);
         }
-        
-        // Note: Category entity doesn't have active field - always active in new schema
-        // This method is kept for backward compatibility but doesn't modify category status
+
         categoryRepository.save(category);
         productService.updateActiveByCategory(id);
         return category;
@@ -146,22 +133,14 @@ public class CategoryService {
         if (!categoryRepository.existsById(id)) {
             throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
         }
-        
-        // Check if category has children - prevent deletion if it does
+
         if (categoryRepository.existsByParentId(id)) {
             throw new AppException(ErrorCode.CATEGORY_HAS_CHILDREN);
         }
         
         categoryRepository.deleteById(id);
     }
-    
-    // ==================== NEW METHODS FOR EXPANDED CATEGORY SYSTEM ====================
 
-    /**
-     * Get all categories by type.
-     * @param categoryType the category type to filter by
-     * @return list of categories with the specified type, ordered by display order
-     */
     public List<Category> getCategoriesByType(CategoryType categoryType) {
         if (categoryType == null) {
             throw new AppException(ErrorCode.CATEGORY_TYPE_REQUIRED);
@@ -169,20 +148,13 @@ public class CategoryService {
         return categoryRepository.findByCategoryTypeOrderByDisplayOrderAsc(categoryType);
     }
 
-    /**
-     * Get category tree by type (root categories with children loaded).
-     * @param categoryType the category type to filter by
-     * @return list of root categories with their children hierarchy
-     */
     public List<Category> getCategoryTree(CategoryType categoryType) {
         if (categoryType == null) {
             throw new AppException(ErrorCode.CATEGORY_TYPE_REQUIRED);
         }
-        
-        // Get root categories with children eagerly loaded
+
         List<Category> rootCategories = categoryRepository.findRootCategoriesWithChildren(categoryType);
-        
-        // Build the full tree by loading children recursively
+
         for (Category root : rootCategories) {
             loadChildrenRecursively(root);
         }
@@ -190,9 +162,6 @@ public class CategoryService {
         return rootCategories;
     }
 
-    /**
-     * Recursively load children for a category.
-     */
     private void loadChildrenRecursively(Category category) {
         if (category == null || category.getId() == null) {
             return;
@@ -207,11 +176,6 @@ public class CategoryService {
         }
     }
 
-    /**
-     * Get child categories by parent ID.
-     * @param parentId the parent category ID
-     * @return list of child categories
-     */
     public List<Category> getChildCategories(Integer parentId) {
         if (parentId == null) {
             throw new AppException(ErrorCode.PARENT_NOT_FOUND);
@@ -219,12 +183,6 @@ public class CategoryService {
         return categoryRepository.findByParentIdOrderByDisplayOrderAsc(parentId);
     }
 
-    /**
-     * Calculate the depth of a category in the hierarchy.
-     * Root categories have depth 1.
-     * @param categoryId the category ID
-     * @return the depth level of the category
-     */
     public int getCategoryDepth(Integer categoryId) {
         if (categoryId == null) {
             throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
@@ -236,9 +194,6 @@ public class CategoryService {
         return calculateDepth(category);
     }
 
-    /**
-     * Calculate depth by traversing up the parent chain.
-     */
     private int calculateDepth(Category category) {
         int depth = 1;
         Integer parentId = category.getParentId();
@@ -255,22 +210,11 @@ public class CategoryService {
         return depth;
     }
 
-    /**
-     * Validate that a category can have children (depth < 3).
-     * @param categoryId the category ID to check
-     * @return true if the category can have children
-     */
     public boolean canHaveChildren(Integer categoryId) {
         int depth = getCategoryDepth(categoryId);
         return depth < 3;
     }
 
-    /**
-     * Validate parent-child category type consistency.
-     * @param parentId the parent category ID
-     * @param childType the category type of the child
-     * @throws AppException if types don't match
-     */
     public void validateParentChildType(Integer parentId, CategoryType childType) {
         if (parentId == null) {
             return; // Root category, no validation needed
@@ -290,14 +234,8 @@ public class CategoryService {
         }
     }
 
-    /**
-     * Create a category with full validation.
-     * @param category the category to create
-     * @return the created category
-     */
     @Transactional
     public Category createCategoryWithValidation(Category category) {
-        // 1. Validate name
         if (category.getName() == null || category.getName().trim().isEmpty()) {
             throw new RuntimeException("Tên danh mục không được để trống");
         }
@@ -306,24 +244,20 @@ public class CategoryService {
         if (categoryRepository.existsByName(categoryName)) {
             throw new AppException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
-        
-        // 2. Validate category type
+
         if (category.getCategoryType() == null) {
             throw new AppException(ErrorCode.CATEGORY_TYPE_REQUIRED);
         }
-        
-        // 3. Validate parent-child relationship
+
         if (category.getParentId() != null) {
             validateParentChildType(category.getParentId(), category.getCategoryType());
         }
-        
-        // 4. Generate slug
+
         String slug = category.getSlug();
         if (slug == null || slug.trim().isEmpty()) {
             slug = generateSlugForCategory(categoryName);
         }
-        
-        // 5. Create and save
+
         Category newCategory = Category.builder()
                 .name(categoryName)
                 .slug(slug)
@@ -338,18 +272,11 @@ public class CategoryService {
         return categoryRepository.save(newCategory);
     }
 
-    /**
-     * Update a category with full validation.
-     * @param id the category ID
-     * @param updatedCategory the updated category data
-     * @return the updated category
-     */
     @Transactional
     public Category updateCategoryWithValidation(Integer id, Category updatedCategory) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
-        
-        // Update name and regenerate slug if name changed
+
         if (updatedCategory.getName() != null && !updatedCategory.getName().trim().isEmpty()) {
             String oldName = category.getName();
             String newName = updatedCategory.getName().trim();
@@ -362,25 +289,21 @@ public class CategoryService {
                 category.setSlug(generateSlugForCategory(newName));
             }
         }
-        
-        // Update category type (only if no children and no parent type conflict)
+
         if (updatedCategory.getCategoryType() != null && 
             updatedCategory.getCategoryType() != category.getCategoryType()) {
-            
-            // Check if has children
+
             if (categoryRepository.existsByParentId(id)) {
                 throw new RuntimeException("Không thể thay đổi loại danh mục khi có danh mục con");
             }
-            
-            // Check parent type consistency
+
             if (category.getParentId() != null) {
                 validateParentChildType(category.getParentId(), updatedCategory.getCategoryType());
             }
             
             category.setCategoryType(updatedCategory.getCategoryType());
         }
-        
-        // Update other fields
+
         if (updatedCategory.getDescription() != null) {
             category.setDescription(updatedCategory.getDescription());
         }
@@ -397,11 +320,6 @@ public class CategoryService {
         return categoryRepository.save(category);
     }
 
-    /**
-     * Delete a category with children check.
-     * @param id the category ID to delete
-     * @throws AppException if category has children
-     */
     @Transactional
     public void deleteCategoryWithChildrenCheck(Integer id) {
         if (!categoryRepository.existsById(id)) {
@@ -416,12 +334,6 @@ public class CategoryService {
         categoryRepository.deleteById(id);
     }
 
-    /**
-     * Get all descendant category IDs for a given category (including itself).
-     * Useful for filtering products by category including subcategories.
-     * @param categoryId the root category ID
-     * @return list of all descendant category IDs
-     */
     public List<Integer> getAllDescendantCategoryIds(Integer categoryId) {
         List<Integer> result = new ArrayList<>();
         result.add(categoryId);
@@ -439,9 +351,6 @@ public class CategoryService {
         }
     }
 
-    // ==================== HELPER METHODS ====================
-
-    // Helper method to generate slug from category name
     private String generateSlugForCategory(String categoryName) {
         if (categoryName == null || categoryName.trim().isEmpty()) {
             return "category-" + System.currentTimeMillis();
@@ -487,14 +396,5 @@ public class CategoryService {
         } while (true);
         
         return slug;
-    }
-
-    /**
-     * Generate slug from category name (public method for testing).
-     * @param categoryName the category name
-     * @return the generated slug
-     */
-    public String generateSlug(String categoryName) {
-        return generateSlugForCategory(categoryName);
     }
 }

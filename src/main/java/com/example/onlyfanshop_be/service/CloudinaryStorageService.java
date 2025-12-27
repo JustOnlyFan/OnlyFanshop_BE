@@ -16,16 +16,10 @@ public class CloudinaryStorageService {
     @Autowired
     private Cloudinary cloudinary;
 
-    /**
-     * Upload file to Cloudinary default folder (products)
-     */
     public String uploadFile(MultipartFile file) throws IOException {
         return uploadFileToFolder(file, "products");
     }
 
-    /**
-     * Upload file to specific folder in Cloudinary
-     */
     public String uploadFileToFolder(MultipartFile file, String folderName) throws IOException {
         try {
             String fileName = UUID.randomUUID().toString() + "_" + sanitizeFileName(file.getOriginalFilename());
@@ -51,13 +45,8 @@ public class CloudinaryStorageService {
         }
     }
 
-    /**
-     * Delete file from Cloudinary by URL
-     */
     public void deleteFileByUrl(String imageUrl) {
         try {
-            // Extract public_id from Cloudinary URL
-            // Example: https://res.cloudinary.com/demo/image/upload/v1234567890/products/abc123.jpg
             String publicId = extractPublicIdFromUrl(imageUrl);
 
             if (publicId != null && !publicId.isEmpty()) {
@@ -71,19 +60,12 @@ public class CloudinaryStorageService {
         }
     }
 
-    /**
-     * Extract public_id from Cloudinary URL
-     */
     private String extractPublicIdFromUrl(String imageUrl) {
         try {
-            // URL format: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{format}
-            // or: https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.{format}
-            
             if (imageUrl.contains("/upload/")) {
                 String[] parts = imageUrl.split("/upload/");
                 if (parts.length > 1) {
                     String pathAfterUpload = parts[1];
-                    // Remove version if exists (v1234567890/)
                     if (pathAfterUpload.matches("^v\\d+/.*")) {
                         pathAfterUpload = pathAfterUpload.substring(pathAfterUpload.indexOf('/') + 1);
                     }
@@ -102,9 +84,6 @@ public class CloudinaryStorageService {
         }
     }
 
-    /**
-     * Sanitize file name to remove special characters
-     */
     private String sanitizeFileName(String fileName) {
         if (fileName == null) return "unknown_file";
         return fileName.replaceAll("[^a-zA-Z0-9._-]", "_");

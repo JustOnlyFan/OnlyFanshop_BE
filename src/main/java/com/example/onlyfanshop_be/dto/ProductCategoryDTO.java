@@ -4,10 +4,6 @@ import com.example.onlyfanshop_be.entity.ProductCategory;
 import com.example.onlyfanshop_be.enums.CategoryType;
 import lombok.*;
 
-/**
- * DTO for ProductCategory relationship.
- * Used to return category information for a product.
- */
 @Getter
 @Setter
 @AllArgsConstructor

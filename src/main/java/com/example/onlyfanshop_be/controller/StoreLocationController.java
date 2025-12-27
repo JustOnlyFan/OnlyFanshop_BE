@@ -68,9 +68,7 @@ public class StoreLocationController {
                 .openingHours(request.getOpeningHours())
                 .status(request.getStatus() != null ? request.getStatus() : StoreStatus.ACTIVE)
                 .build();
-        
-        // Use the new method that creates store with staff and warehouse automatically
-        // Requirements: 3.2, 3.3, 3.4
+
         StoreLocation saved = iStoreLocation.createStoreWithStaffAndWarehouse(location, request.getStaffPassword());
 
         return ApiResponse.<StoreLocation>builder()

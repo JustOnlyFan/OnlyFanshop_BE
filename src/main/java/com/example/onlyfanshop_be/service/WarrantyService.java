@@ -22,17 +22,14 @@ public class WarrantyService {
     }
 
     public Warranty createWarranty(Warranty warranty) {
-        // Validate name
         if (warranty.getName() == null || warranty.getName().trim().isEmpty()) {
             throw new RuntimeException("Tên bảo hành không được để trống");
         }
 
-        // Validate duration
         if (warranty.getDurationMonths() == null || warranty.getDurationMonths() <= 0) {
             throw new RuntimeException("Thời gian bảo hành phải lớn hơn 0");
         }
 
-        // Check if name already exists
         String warrantyName = warranty.getName().trim();
         if (warrantyRepository.existsByName(warrantyName)) {
             throw new RuntimeException("Bảo hành với tên '" + warrantyName + "' đã tồn tại");

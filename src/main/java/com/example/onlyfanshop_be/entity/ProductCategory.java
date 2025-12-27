@@ -8,10 +8,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Entity representing the many-to-many relationship between products and categories.
- * Allows products to be assigned to multiple categories from different category types.
- */
 @Entity
 @Table(name = "product_categories",
     indexes = {
@@ -49,10 +45,6 @@ public class ProductCategory {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "products", "children", "parent"})
     private Category category;
 
-    /**
-     * Indicates if this is the primary category for the product.
-     * Each product should have exactly one primary category.
-     */
     @Column(name = "is_primary", columnDefinition = "TINYINT(1) DEFAULT 0")
     @Builder.Default
     private Boolean isPrimary = false;
