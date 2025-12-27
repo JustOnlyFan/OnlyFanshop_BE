@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 /**
  * Implementation of WarehouseService
  * Handles warehouse management operations including inventory tracking and logging
- * Requirements: 2.3, 2.4, 2.5, 3.5
+ * Hệ thống chỉ hỗ trợ Store Warehouses - kho tổng (Main Warehouse) đã được loại bỏ
+ * Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 7.2, 7.3
  */
 @Service
 @RequiredArgsConstructor
@@ -40,18 +41,6 @@ public class WarehouseService implements IWarehouseService {
     private final IDebtOrderService debtOrderService;
 
     /**
-     * Get the Main Warehouse with all inventory items
-     * Requirements: 2.4 - WHEN Admin queries Main_Warehouse inventory THEN the System SHALL return all Inventory_Items with current quantities
-     */
-    @Override
-    public WarehouseDTO getMainWarehouse() {
-        Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
-                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
-        
-        return convertToWarehouseDTO(mainWarehouse);
-    }
-    
-    /**
      * Get a Store Warehouse by store ID
      */
     @Override
@@ -60,21 +49,35 @@ public class WarehouseService implements IWarehouseService {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
         
-        Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
+        Warehouse storeWarehouse = warehouseRepository.findByStoreIdAndIsActiveTrue(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
         
         return convertToWarehouseDTO(storeWarehouse);
     }
+
+    /**
+     * Get all active store warehouses
+     * Requirements: 2.4 - THE System SHALL allow Admin to view inventory across all Store_Warehouses
+     * Requirements: 7.4 - WHEN querying active warehouses THEN the System SHALL exclude inactive warehouses
+     */
+    @Override
+    public List<WarehouseDTO> getAllActiveWarehouses() {
+        List<Warehouse> activeWarehouses = warehouseRepository.findByIsActiveTrue();
+        
+        return activeWarehouses.stream()
+                .map(this::convertToWarehouseDTO)
+                .collect(Collectors.toList());
+    }
     
     /**
-     * Update quantity for a product in Main Warehouse
-     * Requirements: 2.3 - WHEN Admin updates quantity for a product in Main_Warehouse THEN the System SHALL persist the new quantity immediately
-     * Requirements: 2.5 - WHEN quantity in Main_Warehouse changes THEN the System SHALL log the change
+     * Update quantity for a product in a Store Warehouse
+     * Requirements: 2.1 - WHEN Admin updates inventory quantity THEN the System SHALL update the Inventory_Item in the specified Store_Warehouse
+     * Requirements: 2.3 - WHEN inventory quantity changes THEN the System SHALL create an Inventory_Log entry recording the change
      */
     @Override
     @Transactional
-    public InventoryItemDTO updateMainWarehouseQuantity(Long productId, Integer quantity, String reason) {
-        if (productId == null || quantity == null) {
+    public InventoryItemDTO updateStoreWarehouseQuantity(Integer storeId, Long productId, Integer quantity, String reason) {
+        if (storeId == null || productId == null || quantity == null) {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
         
@@ -82,8 +85,8 @@ public class WarehouseService implements IWarehouseService {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
         
-        // Get Main Warehouse
-        Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
+        // Get Store Warehouse (only active)
+        Warehouse storeWarehouse = warehouseRepository.findByStoreIdAndIsActiveTrue(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
         
         // Verify product exists
@@ -91,8 +94,8 @@ public class WarehouseService implements IWarehouseService {
         
         // Get or create inventory item
         InventoryItem inventoryItem = inventoryItemRepository
-                .findByWarehouseIdAndProductId(mainWarehouse.getId(), productId)
-                .orElseGet(() -> createNewInventoryItem(mainWarehouse.getId(), productId));
+                .findByWarehouseIdAndProductId(storeWarehouse.getId(), productId)
+                .orElseGet(() -> createNewInventoryItem(storeWarehouse.getId(), productId));
         
         // Store previous quantity for logging
         Integer previousQuantity = inventoryItem.getQuantity();
@@ -101,13 +104,13 @@ public class WarehouseService implements IWarehouseService {
         inventoryItem.setQuantity(quantity);
         InventoryItem savedItem = inventoryItemRepository.save(inventoryItem);
         
-        // Create inventory log entry (Requirements 2.5)
-        createInventoryLog(mainWarehouse.getId(), productId, previousQuantity, quantity, reason);
+        // Create inventory log entry (Requirements 2.3)
+        createInventoryLog(storeWarehouse.getId(), productId, previousQuantity, quantity, reason);
         
-        log.info("Updated Main Warehouse inventory for product {}: {} -> {}", 
-                productId, previousQuantity, quantity);
+        log.info("Updated Store Warehouse inventory for store {} product {}: {} -> {}", 
+                storeId, productId, previousQuantity, quantity);
         
-        // Check for fulfillable debt orders when quantity increases (Requirements 6.3, 6.4)
+        // Check for fulfillable debt orders when quantity increases
         if (quantity > previousQuantity) {
             try {
                 var fulfillableOrders = debtOrderService.checkFulfillableDebtOrders();
@@ -119,22 +122,25 @@ public class WarehouseService implements IWarehouseService {
             }
         }
         
-        return convertToInventoryItemDTO(savedItem, product, mainWarehouse);
+        return convertToInventoryItemDTO(savedItem, product, storeWarehouse);
     }
 
     /**
-     * Add a product to a Store Warehouse with zero quantity
-     * Requirements: 3.5 - WHEN Admin adds a product to Store_Warehouse THEN the System SHALL create an Inventory_Item with zero quantity
+     * Add a product to a Store Warehouse with specified quantity
+     * Requirements: 2.2 - WHEN Admin adds a product to a store THEN the System SHALL create an Inventory_Item in that store's warehouse with the specified quantity
      */
     @Override
     @Transactional
-    public InventoryItemDTO addProductToStoreWarehouse(Integer storeId, Long productId) {
+    public InventoryItemDTO addProductToStoreWarehouse(Integer storeId, Long productId, Integer quantity) {
         if (storeId == null || productId == null) {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
         
-        // Get Store Warehouse
-        Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
+        // Default quantity to 0 if not provided
+        int initialQuantity = (quantity != null && quantity >= 0) ? quantity : 0;
+        
+        // Get Store Warehouse (only active)
+        Warehouse storeWarehouse = warehouseRepository.findByStoreIdAndIsActiveTrue(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
         
         // Verify it's a store warehouse
@@ -154,66 +160,51 @@ public class WarehouseService implements IWarehouseService {
             return convertToInventoryItemDTO(existingItem, product, storeWarehouse);
         }
         
-        // Create new inventory item with zero quantity
+        // Create new inventory item with specified quantity
         InventoryItem inventoryItem = InventoryItem.builder()
                 .warehouseId(storeWarehouse.getId())
                 .productId(productId)
-                .quantity(0)
+                .quantity(initialQuantity)
                 .reservedQuantity(0)
                 .build();
         
         InventoryItem savedItem = inventoryItemRepository.save(inventoryItem);
         
-        log.info("Added product {} to Store Warehouse {} (Store ID: {}) with quantity 0", 
-                productId, storeWarehouse.getId(), storeId);
+        // Create inventory log entry for the initial quantity
+        if (initialQuantity > 0) {
+            createInventoryLog(storeWarehouse.getId(), productId, 0, initialQuantity, "Initial stock added");
+        }
+        
+        log.info("Added product {} to Store Warehouse {} (Store ID: {}) with quantity {}", 
+                productId, storeWarehouse.getId(), storeId, initialQuantity);
         
         return convertToInventoryItemDTO(savedItem, product, storeWarehouse);
     }
-    
+
     /**
-     * Create an InventoryItem in Main Warehouse for a new product
-     * Requirements: 2.2 - WHEN a new product is added to Product_Catalog THEN the System SHALL automatically create an InventoryItem in Main_Warehouse with zero quantity
+     * Mark a warehouse as inactive (soft delete)
+     * Requirements: 7.2 - WHEN System migrates THEN the System SHALL mark old Main_Warehouse records as inactive rather than deleting
+     * Requirements: 7.3 - THE System SHALL not allow new operations on inactive warehouses
      */
     @Override
     @Transactional
-    public void createMainWarehouseInventoryItem(Long productId) {
-        if (productId == null) {
-            log.warn("Cannot create inventory item - productId is null");
+    public void deactivateWarehouse(Long warehouseId) {
+        if (warehouseId == null) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+        
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        
+        if (!warehouse.getIsActive()) {
+            log.info("Warehouse {} is already inactive", warehouseId);
             return;
         }
         
-        try {
-            // Find Main Warehouse
-            Warehouse mainWarehouse = warehouseRepository.findFirstByType(WarehouseType.MAIN)
-                    .orElse(null);
-            
-            if (mainWarehouse == null) {
-                log.warn("Main Warehouse not found - cannot create inventory item for product {}", productId);
-                return;
-            }
-            
-            // Check if inventory item already exists
-            if (inventoryItemRepository.existsByWarehouseIdAndProductId(mainWarehouse.getId(), productId)) {
-                log.info("InventoryItem already exists for product {} in Main Warehouse", productId);
-                return;
-            }
-            
-            // Create new inventory item with zero quantity
-            InventoryItem inventoryItem = InventoryItem.builder()
-                    .warehouseId(mainWarehouse.getId())
-                    .productId(productId)
-                    .quantity(0)
-                    .reservedQuantity(0)
-                    .build();
-            
-            inventoryItemRepository.save(inventoryItem);
-            
-            log.info("Created InventoryItem for product {} in Main Warehouse (ID: {}) with quantity 0", 
-                    productId, mainWarehouse.getId());
-        } catch (Exception e) {
-            log.error("Error creating inventory item for product {}: {}", productId, e.getMessage());
-            // Don't throw exception to not affect product creation
-        }
+        warehouse.setIsActive(false);
+        warehouseRepository.save(warehouse);
+        
+        log.info("Deactivated warehouse {} ({})", warehouseId, warehouse.getName());
     }
 
     // ==================== Private Helper Methods ====================
@@ -244,13 +235,13 @@ public class WarehouseService implements IWarehouseService {
     
     /**
      * Create an inventory log entry for quantity changes
-     * Requirements: 2.5 - WHEN quantity in Main_Warehouse changes THEN the System SHALL log the change
+     * Requirements: 2.3 - WHEN inventory quantity changes THEN the System SHALL create an Inventory_Log entry recording the change
      */
     private void createInventoryLog(Long warehouseId, Long productId, 
                                     Integer previousQuantity, Integer newQuantity, String reason) {
         Long userId = getCurrentUserId();
         
-        InventoryLog log = InventoryLog.builder()
+        InventoryLog inventoryLog = InventoryLog.builder()
                 .warehouseId(warehouseId)
                 .productId(productId)
                 .previousQuantity(previousQuantity)
@@ -259,9 +250,9 @@ public class WarehouseService implements IWarehouseService {
                 .userId(userId)
                 .build();
         
-        inventoryLogRepository.save(log);
+        inventoryLogRepository.save(inventoryLog);
         
-        WarehouseService.log.debug("Created inventory log: warehouse={}, product={}, {} -> {}, reason={}", 
+        log.debug("Created inventory log: warehouse={}, product={}, {} -> {}, reason={}", 
                 warehouseId, productId, previousQuantity, newQuantity, reason);
     }
     
@@ -313,6 +304,7 @@ public class WarehouseService implements IWarehouseService {
                 .type(warehouse.getType())
                 .storeId(warehouse.getStoreId())
                 .storeName(storeName)
+                .isActive(warehouse.getIsActive())
                 .address(warehouse.getAddress())
                 .phone(warehouse.getPhone())
                 .createdAt(warehouse.getCreatedAt())

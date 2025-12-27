@@ -11,13 +11,15 @@ import java.util.List;
 
 /**
  * TransferRequest - Yêu cầu nhập hàng từ Staff cửa hàng
+ * Hỗ trợ điều chuyển hàng trực tiếp giữa các kho cửa hàng
  */
 @Entity
 @Table(name = "transfer_requests",
     indexes = {
         @Index(name = "idx_transfer_request_store_id", columnList = "store_id"),
         @Index(name = "idx_transfer_request_status", columnList = "status"),
-        @Index(name = "idx_transfer_request_created_at", columnList = "created_at")
+        @Index(name = "idx_transfer_request_created_at", columnList = "created_at"),
+        @Index(name = "idx_transfer_request_source_warehouse", columnList = "source_warehouse_id")
     })
 @Getter
 @Setter
@@ -38,6 +40,19 @@ public class TransferRequest {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JsonIgnore
     private StoreLocation store;
+
+    /**
+     * ID của kho nguồn - nơi hàng được chuyển đi
+     * Bắt buộc phải chỉ định kho nguồn khi tạo yêu cầu điều chuyển
+     */
+    @Column(name = "source_warehouse_id", columnDefinition = "BIGINT UNSIGNED")
+    private Long sourceWarehouseId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_warehouse_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
+    private Warehouse sourceWarehouse;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
