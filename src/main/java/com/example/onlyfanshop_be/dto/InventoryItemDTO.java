@@ -18,5 +18,6 @@ public class InventoryItemDTO {
     private Integer quantity;
     private Integer reservedQuantity;
     private Integer availableQuantity;
+    private Boolean isEnabled;
     private LocalDateTime updatedAt;
 }

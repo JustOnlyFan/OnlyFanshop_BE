@@ -248,7 +248,63 @@ public class WarehouseService implements IWarehouseService {
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
                 .availableQuantity(item.getAvailableQuantity())
+                .isEnabled(item.getIsEnabled())
                 .updatedAt(item.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public InventoryItemDTO toggleProductEnabled(Integer storeId, Long productId, Boolean isEnabled) {
+        if (storeId == null || productId == null || isEnabled == null) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+
+        Warehouse storeWarehouse = warehouseRepository.findByStoreIdAndIsActiveTrue(storeId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+        Product product = findProductById(productId);
+
+        InventoryItem inventoryItem = inventoryItemRepository
+                .findByWarehouseIdAndProductId(storeWarehouse.getId(), productId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_INVENTORY_NOT_FOUND));
+
+        inventoryItem.setIsEnabled(isEnabled);
+        InventoryItem savedItem = inventoryItemRepository.save(inventoryItem);
+
+        log.info("Toggled product {} enabled status to {} in Store Warehouse {} (Store ID: {})", 
+                productId, isEnabled, storeWarehouse.getId(), storeId);
+
+        return convertToInventoryItemDTO(savedItem, product, storeWarehouse);
+    }
+
+    @Override
+    @Transactional
+    public void addAllProductsToWarehouse(Long warehouseId) {
+        if (warehouseId == null) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+        List<Product> allProducts = productRepository.findAll();
+        
+        int addedCount = 0;
+        for (Product product : allProducts) {
+            if (!inventoryItemRepository.existsByWarehouseIdAndProductId(warehouseId, product.getId().longValue())) {
+                InventoryItem inventoryItem = InventoryItem.builder()
+                        .warehouseId(warehouseId)
+                        .productId(product.getId().longValue())
+                        .quantity(0)
+                        .reservedQuantity(0)
+                        .isEnabled(true)
+                        .build();
+                inventoryItemRepository.save(inventoryItem);
+                addedCount++;
+            }
+        }
+
+        log.info("Added {} products to warehouse {} ({})", addedCount, warehouseId, warehouse.getName());
     }
 }
