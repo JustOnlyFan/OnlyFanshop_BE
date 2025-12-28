@@ -118,4 +118,20 @@ public class WarehouseController {
                 .message("Warehouse deactivated successfully")
                 .build());
     }
+
+    @PatchMapping("/stores/{storeId}/inventory/{productId}/toggle")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Toggle Product Enabled Status", description = "Enable or disable a product in a store warehouse")
+    public ResponseEntity<ApiResponse<InventoryItemDTO>> toggleProductEnabled(
+            @PathVariable Integer storeId,
+            @PathVariable Long productId,
+            @RequestParam Boolean isEnabled) {
+        log.info("Toggling product {} enabled status to {} in store {}", productId, isEnabled, storeId);
+        InventoryItemDTO inventoryItem = warehouseService.toggleProductEnabled(storeId, productId, isEnabled);
+        return ResponseEntity.ok(ApiResponse.<InventoryItemDTO>builder()
+                .statusCode(200)
+                .message(isEnabled ? "Product enabled successfully" : "Product disabled successfully")
+                .data(inventoryItem)
+                .build());
+    }
 }

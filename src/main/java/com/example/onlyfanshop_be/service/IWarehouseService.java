@@ -16,4 +16,8 @@ public interface IWarehouseService {
     InventoryItemDTO addProductToStoreWarehouse(Integer storeId, Long productId, Integer quantity);
 
     void deactivateWarehouse(Long warehouseId);
+
+    InventoryItemDTO toggleProductEnabled(Integer storeId, Long productId, Boolean isEnabled);
+
+    void addAllProductsToWarehouse(Long warehouseId);
 }

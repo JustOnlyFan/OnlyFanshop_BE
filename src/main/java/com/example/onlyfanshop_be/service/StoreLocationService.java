@@ -33,6 +33,8 @@ public class StoreLocationService implements IStoreLocation {
 	private WarehouseRepository warehouseRepository;
 	@Autowired
 	private StaffService staffService;
+	@Autowired
+	private IWarehouseService warehouseService;
 
     @Override
     @Transactional(readOnly = true)
@@ -204,6 +206,15 @@ public class StoreLocationService implements IStoreLocation {
 		Warehouse savedWarehouse = warehouseRepository.save(warehouse);
 		log.info("Successfully created warehouse with ID: {} for store ID: {}", 
 				savedWarehouse.getId(), store.getLocationID());
+
+		// Tự động thêm tất cả sản phẩm vào kho mới với số lượng = 0 và isEnabled = true
+		try {
+			warehouseService.addAllProductsToWarehouse(savedWarehouse.getId());
+			log.info("Successfully added all products to warehouse ID: {}", savedWarehouse.getId());
+		} catch (Exception e) {
+			log.error("Failed to add products to warehouse ID: {} - Error: {}", 
+					savedWarehouse.getId(), e.getMessage(), e);
+		}
 		
 		return savedWarehouse;
 	}

@@ -54,6 +54,10 @@ public class InventoryItem {
     @Builder.Default
     private Integer reservedQuantity = 0;
 
+    @Column(name = "is_enabled", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 1")
+    @Builder.Default
+    private Boolean isEnabled = true;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
