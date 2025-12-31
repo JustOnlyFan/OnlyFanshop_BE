@@ -3,9 +3,9 @@ package com.example.onlyfanshop_be.dto;
 import lombok.*;
 import com.example.onlyfanshop_be.entity.Color;
 import com.example.onlyfanshop_be.entity.Warranty;
-
 import java.math.BigDecimal;
 import java.util.List;
+import com.example.onlyfanshop_be.dto.ProductImageDTO;
 
 @Getter
 @Setter
@@ -70,7 +70,6 @@ public class ProductDetailDTO {
     // Multi-category support
     private List<ProductCategoryDTO> productCategories; // List of product categories
     private List<ProductTagDTO> productTags; // List of product tags
+    private List<ProductImageDTO> images; // Danh sách ảnh (bao gồm ảnh theo màu)
 }
-
-
 

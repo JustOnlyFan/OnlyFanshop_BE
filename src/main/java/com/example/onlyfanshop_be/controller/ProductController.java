@@ -188,6 +188,13 @@ public class ProductController {
          iProductService.updateImage(id, imgString);
         return ApiResponse.<Void>builder().message("Cập nhật thành công").statusCode(200).build();
     }
+
+    @DeleteMapping("/image/{imageId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    public ApiResponse<Void> deleteImage(@PathVariable Long imageId) {
+        iProductService.deleteImage(imageId);
+        return ApiResponse.<Void>builder().message("Xóa ảnh thành công").statusCode(200).build();
+    }
     @PostMapping("/productList")
     public ResponseEntity<ApiResponse<HomepageResponse>> productList(
             @RequestParam(required = false) String keyword,

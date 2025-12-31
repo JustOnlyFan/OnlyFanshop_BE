@@ -22,6 +22,7 @@ public interface IProductService {
     public ProductDetailDTO updateProduct(Integer id, ProductDetailRequest updatedProduct);
     public void deleteProduct(int id);
     public void updateImage(int productId, String imageURL);
+    public void deleteImage(Long imageId);
     public ApiResponse<HomepageResponse> productList(
             String keyword, Integer categoryId, Integer brandId,
             Long minPrice, Long maxPrice, Integer bladeCount,

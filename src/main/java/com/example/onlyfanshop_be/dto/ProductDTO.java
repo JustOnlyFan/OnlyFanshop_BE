@@ -2,6 +2,8 @@ package com.example.onlyfanshop_be.dto;
 
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -16,4 +18,5 @@ public class ProductDTO {
     private BrandDTO brand;
     private CategoryDTO category;
     private boolean isActive;
+    private List<ProductImageDTO> images;
 }

@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import com.example.onlyfanshop_be.entity.Color;
+
 @Entity
 @Table(name = "product_images",
     indexes = {@Index(name = "idx_product_images_product_id", columnList = "product_id")})
@@ -32,6 +34,14 @@ public class ProductImage {
     @JsonIgnore
     private Product product;
 
+    @Column(name = "color_id", columnDefinition = "INT UNSIGNED")
+    private Integer colorId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "products"})
+    private Color color;
+
     @Column(name = "image_url", nullable = false, length = 255)
     private String imageUrl;
 
@@ -43,4 +53,3 @@ public class ProductImage {
     @Builder.Default
     private Integer sortOrder = 0;
 }
-
