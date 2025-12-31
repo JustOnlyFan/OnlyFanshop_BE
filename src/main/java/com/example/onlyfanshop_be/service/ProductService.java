@@ -3,10 +3,18 @@ package com.example.onlyfanshop_be.service;
 import com.example.onlyfanshop_be.dto.BrandDTO;
 import com.example.onlyfanshop_be.dto.CategoryDTO;
 import com.example.onlyfanshop_be.dto.Pagination;
+import com.example.onlyfanshop_be.dto.ProductDTO;
+import com.example.onlyfanshop_be.dto.ProductDetailDTO;
+import com.example.onlyfanshop_be.dto.ProductImageDTO;
 import com.example.onlyfanshop_be.dto.request.ProductDetailRequest;
+import com.example.onlyfanshop_be.dto.request.ProductImageRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
 import com.example.onlyfanshop_be.dto.response.HomepageResponse;
+import com.example.onlyfanshop_be.entity.Brand;
+import com.example.onlyfanshop_be.entity.Category;
+import com.example.onlyfanshop_be.entity.Color;
 import com.example.onlyfanshop_be.entity.Product;
+import com.example.onlyfanshop_be.entity.ProductImage;
 import com.example.onlyfanshop_be.exception.AppException;
 import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.BrandRepository;
@@ -19,15 +27,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import com.example.onlyfanshop_be.dto.ProductDTO;
-import com.example.onlyfanshop_be.dto.ProductDetailDTO;
-import com.example.onlyfanshop_be.entity.Category;
-import com.example.onlyfanshop_be.entity.Brand;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -128,6 +139,7 @@ public class ProductService implements  IProductService {
             List<Product> products = productPage.getContent();
 
             java.util.Map<Long, String> productImageMap = loadProductImagesBatch(products);
+            java.util.Map<Long, java.util.List<ProductImageDTO>> productImageDtoMap = loadProductImagesDTOBatch(products);
 
             List<ProductDTO> productDTOs = products.stream()
                     .map(p -> {
@@ -159,6 +171,7 @@ public class ProductService implements  IProductService {
                                 .briefDescription(p.getBriefDescription())
                                 .brand(brandDTO)
                                 .category(categoryDTO)
+                                .images(productImageDtoMap.getOrDefault(p.getId(), java.util.Collections.emptyList()))
                                 .build();
                     })
                     .toList();
@@ -251,10 +264,21 @@ public class ProductService implements  IProductService {
         }
         String sku = generateSku(brand.getId(), brand.getName());
 
+        Set<Integer> requestedColorIds = new HashSet<>();
+        if (request.getColorIds() != null) {
+            requestedColorIds.addAll(request.getColorIds());
+        }
+        if (request.getColorImages() != null) {
+            request.getColorImages().stream()
+                    .map(ProductImageRequest::getColorId)
+                    .filter(Objects::nonNull)
+                    .forEach(requestedColorIds::add);
+        }
+
         List<com.example.onlyfanshop_be.entity.Color> colors = new java.util.ArrayList<>();
-        if (request.getColorIds() != null && !request.getColorIds().isEmpty()) {
-            colors = colorRepository.findAllById(request.getColorIds());
-            if (colors.size() != request.getColorIds().size()) {
+        if (!requestedColorIds.isEmpty()) {
+            colors = colorRepository.findAllById(requestedColorIds);
+            if (colors.size() != requestedColorIds.size()) {
                 throw new RuntimeException("Một hoặc nhiều màu sắc không tồn tại");
             }
         }
@@ -318,21 +342,55 @@ public class ProductService implements  IProductService {
             savedProduct = productRepository.save(savedProduct);
         }
 
+        List<com.example.onlyfanshop_be.entity.ProductImage> imagesToSave = new ArrayList<>();
         if (request.getImageURL() != null && !request.getImageURL().trim().isEmpty()) {
-            try {
+            imagesToSave.add(com.example.onlyfanshop_be.entity.ProductImage.builder()
+                    .productId(savedProduct.getId())
+                    .imageUrl(request.getImageURL().trim())
+                    .isMain(true)
+                    .sortOrder(0)
+                    .build());
+        }
+
+        if (request.getColorImages() != null && !request.getColorImages().isEmpty()) {
+            Set<Integer> allowedColorIds = colors.stream()
+                    .map(com.example.onlyfanshop_be.entity.Color::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            int baseOrder = imagesToSave.size();
+            for (int i = 0; i < request.getColorImages().size(); i++) {
+                ProductImageRequest imageRequest = request.getColorImages().get(i);
+                if (imageRequest == null || imageRequest.getImageUrl() == null || imageRequest.getImageUrl().trim().isEmpty()) {
+                    continue;
+                }
+
+                Integer colorId = imageRequest.getColorId();
+                if (colorId != null && !allowedColorIds.isEmpty() && !allowedColorIds.contains(colorId)) {
+                    throw new RuntimeException("Màu sắc cho ảnh không thuộc danh sách màu của sản phẩm");
+                }
+
                 com.example.onlyfanshop_be.entity.ProductImage productImage = com.example.onlyfanshop_be.entity.ProductImage.builder()
                         .productId(savedProduct.getId())
-                        .imageUrl(request.getImageURL().trim())
-                        .isMain(true)
-                        .sortOrder(0)
+                        .colorId(colorId)
+                        .imageUrl(imageRequest.getImageUrl().trim())
+                        .isMain(imageRequest.getIsMain() != null ? imageRequest.getIsMain() : false)
+                        .sortOrder(imageRequest.getSortOrder() != null ? imageRequest.getSortOrder() : baseOrder + i)
                         .build();
+                imagesToSave.add(productImage);
+            }
+        }
 
-                productImageRepository.save(productImage);
-                
-                System.out.println("ProductService: Created ProductImage with URL: " + request.getImageURL());
-                System.out.println("ProductService: ProductImage saved with ID: " + productImage.getId() + ", ProductId: " + productImage.getProductId());
+        if (!imagesToSave.isEmpty()) {
+            boolean hasMain = imagesToSave.stream().anyMatch(img -> Boolean.TRUE.equals(img.getIsMain()));
+            if (!hasMain) {
+                imagesToSave.get(0).setIsMain(true);
+            }
+
+            try {
+                productImageRepository.saveAll(imagesToSave);
             } catch (Exception e) {
-                System.err.println("ProductService: Error saving ProductImage: " + e.getMessage());
+                System.err.println("ProductService: Error saving ProductImage list: " + e.getMessage());
                 e.printStackTrace();
                 throw new RuntimeException("Không thể lưu ảnh sản phẩm: " + e.getMessage(), e);
             }
@@ -344,6 +402,7 @@ public class ProductService implements  IProductService {
     }
 
     @Override
+    @Transactional
     public ProductDetailDTO updateProduct(Integer id, ProductDetailRequest updatedProduct) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm có ID: " + id));
@@ -458,34 +517,73 @@ public class ProductService implements  IProductService {
             product.setQuantity(updatedProduct.getQuantity());
         }
 
-        if (updatedProduct.getImageURL() != null && !updatedProduct.getImageURL().trim().isEmpty()) {
-            // Xóa các ảnh cũ bằng cách clear images list (orphanRemoval sẽ tự động xóa)
-            if (product.getImages() != null && !product.getImages().isEmpty()) {
-                System.out.println("ProductService: Deleting " + product.getImages().size() + " old ProductImage(s)");
-                product.getImages().clear(); // orphanRemoval = true sẽ tự động xóa
+        boolean hasImageUrlUpdate = updatedProduct.getImageURL() != null && !updatedProduct.getImageURL().trim().isEmpty();
+        boolean hasColorImageUpdate = updatedProduct.getColorImages() != null;
+
+        if (hasImageUrlUpdate || hasColorImageUpdate) {
+            productImageRepository.deleteByProductId(product.getId());
+
+            List<com.example.onlyfanshop_be.entity.ProductImage> newImages = new ArrayList<>();
+            if (hasImageUrlUpdate) {
+                newImages.add(com.example.onlyfanshop_be.entity.ProductImage.builder()
+                        .productId(product.getId().longValue())
+                        .imageUrl(updatedProduct.getImageURL().trim())
+                        .isMain(true)
+                        .sortOrder(0)
+                        .build());
             }
-            
-            // Tạo ảnh mới
-            com.example.onlyfanshop_be.entity.ProductImage productImage = 
-                    com.example.onlyfanshop_be.entity.ProductImage.builder()
-                            .productId(product.getId().longValue())
-                            .imageUrl(updatedProduct.getImageURL().trim())
-                            .isMain(true) // Đặt làm ảnh chính
-                            .sortOrder(0)
-                            .build();
-            
-            // Set product reference để cascade hoạt động
-            productImage.setProduct(product);
-            
-            // Tạo list images nếu chưa có
-            if (product.getImages() == null) {
-                product.setImages(new java.util.ArrayList<>());
+
+            if (hasColorImageUpdate && updatedProduct.getColorImages() != null) {
+                Set<Integer> allowedColorIds = new HashSet<>();
+                if (updatedProduct.getColorIds() != null) {
+                    allowedColorIds.addAll(updatedProduct.getColorIds());
+                } else if (product.getColors() != null) {
+                    product.getColors().forEach(c -> {
+                        if (c.getId() != null) {
+                            allowedColorIds.add(c.getId());
+                        }
+                    });
+                }
+
+                int baseOrder = newImages.size();
+                for (int i = 0; i < updatedProduct.getColorImages().size(); i++) {
+                    ProductImageRequest imageRequest = updatedProduct.getColorImages().get(i);
+                    if (imageRequest == null || imageRequest.getImageUrl() == null || imageRequest.getImageUrl().trim().isEmpty()) {
+                        continue;
+                    }
+                    Integer colorId = imageRequest.getColorId();
+                    if (colorId != null && !allowedColorIds.isEmpty() && !allowedColorIds.contains(colorId)) {
+                        throw new RuntimeException("Màu sắc cho ảnh không thuộc danh sách màu của sản phẩm");
+                    }
+                    if (colorId != null && allowedColorIds.isEmpty()) {
+                        colorRepository.findById(colorId)
+                                .orElseThrow(() -> new RuntimeException("Không tìm thấy màu sắc có ID: " + colorId));
+                    }
+
+                    com.example.onlyfanshop_be.entity.ProductImage productImage =
+                            com.example.onlyfanshop_be.entity.ProductImage.builder()
+                                    .productId(product.getId().longValue())
+                                    .colorId(colorId)
+                                    .imageUrl(imageRequest.getImageUrl().trim())
+                                    .isMain(imageRequest.getIsMain() != null ? imageRequest.getIsMain() : false)
+                                    .sortOrder(imageRequest.getSortOrder() != null ? imageRequest.getSortOrder() : baseOrder + i)
+                                    .build();
+                    newImages.add(productImage);
+                }
             }
-            
-            // Add image vào product's images list
-            product.getImages().add(productImage);
-            
-            System.out.println("ProductService: Added new ProductImage with URL: " + updatedProduct.getImageURL());
+
+            if (!newImages.isEmpty()) {
+                boolean hasMain = newImages.stream().anyMatch(img -> Boolean.TRUE.equals(img.getIsMain()));
+                if (!hasMain) {
+                    newImages.get(0).setIsMain(true);
+                }
+                productImageRepository.saveAll(newImages);
+            } else if (updatedProduct.getColorImages() != null && updatedProduct.getColorImages().isEmpty()) {
+                // Explicitly clear in-memory relation to prevent stale data
+                if (product.getImages() != null) {
+                    product.getImages().clear();
+                }
+            }
         }
         
         // Cập nhật Category (nếu có)
@@ -495,12 +593,13 @@ public class ProductService implements  IProductService {
 
         // Cập nhật Brand (nếu có)
         if (updatedProduct.getBrandID() != null) {
-            product.setBrandId(updatedProduct.getBrandID());
-            // Nếu brand thay đổi, regenerate SKU
-            Brand newBrand = brandRepository.findById(updatedProduct.getBrandID())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + updatedProduct.getBrandID()));
-            String newSku = generateSku(newBrand.getId(), newBrand.getName());
-            product.setSku(newSku);
+            // Chỉ cập nhật brand khi thay đổi, không regenerate SKU để tránh đụng unique
+            if (!java.util.Objects.equals(product.getBrandId(), updatedProduct.getBrandID())) {
+                Brand newBrand = brandRepository.findById(updatedProduct.getBrandID())
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có ID: " + updatedProduct.getBrandID()));
+                product.setBrandId(newBrand.getId());
+                // Giữ nguyên SKU hiện có; nếu cần đổi SKU theo brand, hãy xử lý thủ công để bảo toàn tính duy nhất
+            }
         }
         
         // Cập nhật Colors (nếu có)
@@ -586,6 +685,7 @@ public class ProductService implements  IProductService {
     }
     
     @Override
+    @Transactional
     public void updateImage(int productId, String imageURL) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (!productOpt.isPresent()) {
@@ -621,6 +721,26 @@ public class ProductService implements  IProductService {
             System.err.println("ProductService: Error updating ProductImage: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Không thể cập nhật ảnh sản phẩm: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteImage(Long imageId) {
+        if (imageId == null) {
+            throw new RuntimeException("imageId không được để trống");
+        }
+        try {
+            if (!productImageRepository.existsById(imageId)) {
+                throw new RuntimeException("Không tìm thấy ảnh với ID: " + imageId);
+            }
+            productImageRepository.deleteById(imageId);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("ProductService: Error deleting ProductImage " + imageId + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể xóa ảnh sản phẩm: " + e.getMessage(), e);
         }
     }
 
@@ -695,6 +815,7 @@ public class ProductService implements  IProductService {
             List<Product> products = productPage.getContent();
 
             java.util.Map<Long, String> productImageMap = loadProductImagesBatch(products);
+            java.util.Map<Long, java.util.List<ProductImageDTO>> productImageDtoMap = loadProductImagesDTOBatch(products);
 
             List<ProductDTO> productDTOs = products.stream()
                     .map(p -> {
@@ -726,6 +847,7 @@ public class ProductService implements  IProductService {
                                 .isActive(p.isActive())
                                 .brand(brandDTO)
                                 .category(categoryDTO)
+                                .images(productImageDtoMap.getOrDefault(p.getId(), java.util.Collections.emptyList()))
                                 .build();
                     })
                     .toList();
@@ -943,6 +1065,52 @@ public class ProductService implements  IProductService {
         return imageMap;
     }
 
+    private java.util.Map<Long, java.util.List<ProductImageDTO>> loadProductImagesDTOBatch(List<Product> products) {
+        java.util.Map<Long, java.util.List<ProductImageDTO>> result = new java.util.HashMap<>();
+
+        if (products == null || products.isEmpty()) {
+            return result;
+        }
+
+        List<Long> productIds = products.stream()
+                .map(Product::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+
+        if (productIds.isEmpty()) {
+            return result;
+        }
+
+        try {
+            List<com.example.onlyfanshop_be.entity.ProductImage> allImages =
+                    productImageRepository.findByProductIdIn(productIds);
+
+            allImages.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(com.example.onlyfanshop_be.entity.ProductImage::getProductId))
+                    .forEach((pid, imgs) -> {
+                        List<ProductImageDTO> dtos = imgs.stream()
+                                .sorted(Comparator.comparing(img -> img.getSortOrder() != null ? img.getSortOrder() : 0))
+                                .map(img -> ProductImageDTO.builder()
+                                        .id(img.getId())
+                                        .productId(img.getProductId())
+                                        .imageUrl(img.getImageUrl())
+                                        .isMain(Boolean.TRUE.equals(img.getIsMain()))
+                                        .sortOrder(img.getSortOrder())
+                                        .colorId(img.getColorId())
+                                        .color(null)
+                                        .build())
+                                .toList();
+                        result.put(pid, dtos);
+                    });
+        } catch (Exception e) {
+            System.err.println("Warning: Could not load image DTOs in batch: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
     private String getProductImageURL(Product product, List<com.example.onlyfanshop_be.entity.ProductImage> images) {
         if (images != null && !images.isEmpty()) {
             return images.stream()
@@ -979,6 +1147,22 @@ public class ProductService implements  IProductService {
             }
         } catch (Exception e) {
             System.err.println("Warning: Could not load images for product " + product.getId() + ": " + e.getMessage());
+        }
+
+        List<ProductImageDTO> imageDTOs = new ArrayList<>();
+        if (images != null && !images.isEmpty()) {
+            imageDTOs = images.stream()
+                    .sorted(Comparator.comparing(img -> img.getSortOrder() != null ? img.getSortOrder() : 0))
+                    .map(img -> ProductImageDTO.builder()
+                            .id(img.getId())
+                            .productId(img.getProductId())
+                            .imageUrl(img.getImageUrl())
+                            .isMain(Boolean.TRUE.equals(img.getIsMain()))
+                            .sortOrder(img.getSortOrder())
+                            .colorId(img.getColorId())
+                            .color(null) // avoid lazy proxy serialization
+                            .build())
+                    .collect(Collectors.toList());
         }
         
         com.example.onlyfanshop_be.entity.Warranty warranty = product.getWarranty();
@@ -1025,8 +1209,9 @@ public class ProductService implements  IProductService {
                 .colorDefault(product.getColorDefault()) // Legacy field
                 .warrantyMonths(product.getWarrantyMonths()) // Legacy field
                 .quantity(product.getQuantity()) // Số lượng sản phẩm
-                .colors(colors) // New relationship
+                .colors(copyColors(colors)) // New relationship
                 .warranty(warranty) // New relationship
+                .images(imageDTOs)
                 .brand(product.getBrand() != null
                         ? new BrandDTO(
                         product.getBrand().getBrandID(),
@@ -1046,7 +1231,20 @@ public class ProductService implements  IProductService {
                 // Multi-category support
                 .productCategories(loadProductCategories(product.getId()))
                 .productTags(loadProductTags(product.getId()))
+                .colors(copyColors(colors)) // use detached colors to avoid proxy serialization
                 .build();
+    }
+
+    private List<Color> copyColors(List<Color> colors) {
+        if (colors == null) return null;
+        return colors.stream()
+                .map(c -> Color.builder()
+                        .id(c.getId())
+                        .name(c.getName())
+                        .hexCode(c.getHexCode())
+                        .description(c.getDescription())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private String buildTechnicalSpecifications(Product product) {

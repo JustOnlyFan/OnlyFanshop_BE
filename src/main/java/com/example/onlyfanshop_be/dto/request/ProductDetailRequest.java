@@ -57,6 +57,7 @@ public class ProductDetailRequest {
     // New relationship fields
     private List<Integer> colorIds; // List of color IDs
     private Integer warrantyId; // Warranty ID
+    private List<ProductImageRequest> colorImages; // Ảnh gắn với từng màu
     
     // Quantity field
     private Integer quantity; // Số lượng sản phẩm
