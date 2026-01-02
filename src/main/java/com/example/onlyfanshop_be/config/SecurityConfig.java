@@ -4,6 +4,7 @@ import com.example.onlyfanshop_be.repository.TokenRepository;
 import com.example.onlyfanshop_be.security.CustomUserDetailsService;
 import com.example.onlyfanshop_be.security.JwtAuthenticationFilter;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
+import com.example.onlyfanshop_be.service.ILoginService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,24 +27,27 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
         private final JwtTokenProvider tokenProvider;
         private final CustomUserDetailsService userDetailsService;
         private final TokenRepository tokenRepository; // ✅ thêm repository
+        private final ILoginService loginService;
 
         private final LoginRateLimitFilter loginRateLimitFilter;
 
         public SecurityConfig(JwtTokenProvider tokenProvider,
                               CustomUserDetailsService userDetailsService,
                               TokenRepository tokenRepository,
+                              ILoginService loginService,
                               LoginRateLimitFilter loginRateLimitFilter) {
             this.tokenProvider = tokenProvider;
             this.userDetailsService = userDetailsService;
             this.tokenRepository = tokenRepository;
+            this.loginService = loginService;
             this.loginRateLimitFilter = loginRateLimitFilter;
         }
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-            // ✅ Truyền thêm tokenRepository vào filter
+            // ✅ Truyền thêm tokenRepository và loginService vào filter
             JwtAuthenticationFilter jwtFilter =
-                    new JwtAuthenticationFilter(tokenProvider, userDetailsService, tokenRepository);
+                    new JwtAuthenticationFilter(tokenProvider, userDetailsService, tokenRepository, loginService);
 
             http
                     .csrf(csrf -> csrf.disable())

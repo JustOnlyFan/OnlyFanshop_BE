@@ -13,7 +13,11 @@ import com.example.onlyfanshop_be.entity.Color;
 
 @Entity
 @Table(name = "product_images",
-    indexes = {@Index(name = "idx_product_images_product_id", columnList = "product_id")})
+    indexes = {
+        @Index(name = "idx_product_images_product_id", columnList = "product_id"),
+        @Index(name = "idx_product_images_is_main", columnList = "is_main"),
+        @Index(name = "idx_product_images_product_main", columnList = "product_id, is_main") // Composite for main image queries
+    })
 @Getter
 @Setter
 @NoArgsConstructor

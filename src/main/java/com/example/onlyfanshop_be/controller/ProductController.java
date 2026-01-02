@@ -58,9 +58,21 @@ public class ProductController {
                     keyword, categoryId, brandId, minPrice, maxPrice, bladeCount,
                     remoteControl, oscillation, timer, minPower, maxPower,
                     page, size, sortBy, order);
-            return ResponseEntity
-                    .status(HttpStatus.OK)
-                    .body(response);
+
+            try {
+                return ResponseEntity
+                        .status(HttpStatus.OK)
+                        .cacheControl(org.springframework.http.CacheControl.maxAge(2, java.util.concurrent.TimeUnit.MINUTES)
+                                .cachePublic()
+                                .mustRevalidate())
+                        .eTag(String.valueOf(response.hashCode()))
+                        .body(response);
+            } catch (Exception cacheException) {
+                System.err.println("Warning: Failed to set cache headers: " + cacheException.getMessage());
+                return ResponseEntity
+                        .status(HttpStatus.OK)
+                        .body(response);
+            }
         } catch (Exception e) {
             System.err.println("Error in getHomepage: " + e.getMessage());
             e.printStackTrace();
@@ -211,13 +223,14 @@ public class ProductController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "DESC") String order) {
+            @RequestParam(defaultValue = "DESC") String order,
+            @RequestParam(required = false, defaultValue = "false") Boolean includeInactive) {
         try {
-            System.out.println("ProductList request - sortBy: " + sortBy + ", order: " + order);
+            System.out.println("ProductList request - sortBy: " + sortBy + ", order: " + order + ", includeInactive: " + includeInactive);
             ApiResponse<HomepageResponse> response = iProductService.productList(
                     keyword, categoryId, brandId, minPrice, maxPrice, bladeCount,
                     remoteControl, oscillation, timer, minPower, maxPower,
-                    page, size, sortBy, order);
+                    page, size, sortBy, order, includeInactive);
             return ResponseEntity
                     .status(HttpStatus.OK)
                     .body(response);

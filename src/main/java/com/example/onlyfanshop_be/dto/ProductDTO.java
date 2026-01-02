@@ -1,5 +1,6 @@
 package com.example.onlyfanshop_be.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL) // Don't serialize null fields - reduces JSON size
 public class ProductDTO {
     private Integer id;
     private String productName;

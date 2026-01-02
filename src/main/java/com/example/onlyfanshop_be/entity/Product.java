@@ -15,7 +15,10 @@ import java.util.List;
 @Table(name = "products",
     indexes = {
         @Index(name = "idx_products_category_id", columnList = "category_id"),
-        @Index(name = "idx_products_brand_id", columnList = "brand_id")
+        @Index(name = "idx_products_brand_id", columnList = "brand_id"),
+        @Index(name = "idx_products_status", columnList = "status"),
+        @Index(name = "idx_products_base_price", columnList = "base_price"),
+        @Index(name = "idx_products_status_price", columnList = "status, base_price") // Composite index for common queries
     })
 @Getter
 @Setter

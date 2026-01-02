@@ -6,14 +6,30 @@ import com.example.onlyfanshop_be.entity.User;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.service.GoogleAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Duration;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/auth/google")
-@CrossOrigin(origins = "*")
+@CrossOrigin(
+        originPatterns = {
+                "http://localhost:3000",
+                "http://onlyfan.local:3000",
+                "http://admin.onlyfan.local:3000",
+                "http://staff.onlyfan.local:3000",
+                "https://*.ngrok-free.dev",
+                "https://*.ngrok-free.app"
+        },
+        allowCredentials = "true"
+)
 public class GoogleAuthController {
 
     @Autowired
@@ -22,22 +38,32 @@ public class GoogleAuthController {
     @Autowired
     private UserRepository userRepository;
 
+    private static final String REFRESH_COOKIE_NAME = "refresh_token";
+
     @PostMapping("/login")
-    public ApiResponse<UserDTO> googleLogin(@RequestBody GoogleLoginRequest request) {
+    public ResponseEntity<ApiResponse<UserDTO>> googleLogin(
+            @RequestBody GoogleLoginRequest request,
+            HttpServletRequest httpServletRequest) {
         System.out.println("Google login request received: " + request.getEmail() + " - " + request.getUsername());
         try {
             ApiResponse<UserDTO> response = googleAuthService.handleGoogleLogin(request.getEmail(), request.getUsername());
             System.out.println("Google login response: " + response);
-            return response;
+            if (response.getData() != null && response.getData().getRefreshToken() != null) {
+                ResponseCookie refreshCookie = buildRefreshCookie(response.getData().getRefreshToken(), httpServletRequest);
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                        .body(response);
+            }
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             System.err.println("Error in Google login: " + e.getMessage());
             e.printStackTrace();
 
             // Trả về lỗi thân thiện thay vì throw exception
-            return ApiResponse.<UserDTO>builder()
+            return ResponseEntity.status(500).body(ApiResponse.<UserDTO>builder()
                     .statusCode(500)
                     .message("Lỗi server: " + e.getMessage())
-                    .build();
+                    .build());
         }
     }
 
@@ -112,5 +138,17 @@ public class GoogleAuthController {
         public void setUsername(String username) {
             this.username = username;
         }
+    }
+
+    private ResponseCookie buildRefreshCookie(String refreshToken, HttpServletRequest request) {
+        boolean secure = request.isSecure() ||
+                "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ofDays(googleAuthService.getRefreshTtlDays()))
+                .build();
     }
 }

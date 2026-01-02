@@ -195,6 +195,36 @@ public class LoginService implements ILoginService{
                 .build();
     }
 
+    @Override
+    public ApiResponse<Void> logout(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ApiResponse.<Void>builder().statusCode(200).message("Đã đăng xuất").build();
+        }
+        try {
+            if (jwtTokenProvider.validateToken(refreshToken)) {
+                Long userId = jwtTokenProvider.getUserIdFromJWT(refreshToken);
+                List<Token> tokens = tokenRepository.findAllByUserIdAndExpiredFalseAndRevokedFalse(userId);
+                tokens.forEach(t -> {
+                    t.setExpired(true);
+                    t.setRevoked(true);
+                });
+                tokenRepository.saveAll(tokens);
+            }
+            tokenRepository.findByToken(refreshToken).ifPresent(t -> {
+                t.setExpired(true);
+                t.setRevoked(true);
+                tokenRepository.save(t);
+            });
+        } catch (Exception e) {
+            System.err.println("Logout: failed to revoke tokens: " + e.getMessage());
+        }
+
+        return ApiResponse.<Void>builder()
+                .statusCode(200)
+                .message("Đã đăng xuất")
+                .build();
+    }
+
     private long jwtAccessTtlMinutes() {
         try {
             var field = jwtTokenProvider.getClass().getDeclaredField("accessTtlMinutes");

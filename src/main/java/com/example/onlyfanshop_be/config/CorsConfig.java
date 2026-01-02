@@ -17,10 +17,17 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(
+                        "http://localhost:3000",
+                        "http://onlyfan.local:3000",
+                        "http://admin.onlyfan.local:3000",
+                        "http://staff.onlyfan.local:3000",
+                        "https://*.ngrok-free.dev",
+                        "https://*.ngrok-free.app"
+                )
                 .allowedMethods("*")
                 .allowedHeaders("*")
-                .allowCredentials(false);
+                .allowCredentials(true);
     }
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

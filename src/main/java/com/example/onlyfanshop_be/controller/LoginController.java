@@ -5,17 +5,23 @@ import com.example.onlyfanshop_be.dto.request.LoginRequest;
 import com.example.onlyfanshop_be.dto.request.RegisterRequest;
 import com.example.onlyfanshop_be.dto.request.RefreshTokenRequest;
 import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.exception.AppException;
+import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.UserRepository;
 import com.example.onlyfanshop_be.security.JwtTokenProvider;
 import com.example.onlyfanshop_be.service.ILoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
+import java.time.Duration;
 
 @RestController
 @RequestMapping("login")
@@ -32,10 +38,21 @@ public class LoginController {
     @Autowired
     private UserRepository userRepository;
 
+    private static final String REFRESH_COOKIE_NAME = "refresh_token";
+
     @PostMapping("/signin")
     @Operation(summary = "Đăng nhập", description = "-Nguyễn Hoàng Thiên")
-    public ApiResponse<UserDTO> login(@RequestBody LoginRequest loginRequest) {
-        return loginService.login(loginRequest);
+    public ResponseEntity<ApiResponse<UserDTO>> login(
+            @RequestBody LoginRequest loginRequest,
+            HttpServletRequest request) {
+        ApiResponse<UserDTO> response = loginService.login(loginRequest);
+        if (response.getData() != null && response.getData().getRefreshToken() != null) {
+            ResponseCookie refreshCookie = buildRefreshCookie(response.getData().getRefreshToken(), request);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(response);
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/register")
@@ -111,9 +128,62 @@ public class LoginController {
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<UserDTO> refresh(@RequestBody RefreshTokenRequest request) {
-        return loginService.refreshToken(request.getRefreshToken());
+    public ResponseEntity<ApiResponse<UserDTO>> refresh(
+            @CookieValue(value = REFRESH_COOKIE_NAME, required = false) String refreshFromCookie,
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        String refreshToken = refreshFromCookie;
+        if (refreshToken == null || refreshToken.isBlank()) {
+            refreshToken = request != null ? request.getRefreshToken() : null;
+        }
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        ApiResponse<UserDTO> response = loginService.refreshToken(refreshToken);
+        if (response.getData() != null && response.getData().getRefreshToken() != null) {
+            ResponseCookie refreshCookie = buildRefreshCookie(refreshToken, httpServletRequest);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(response);
+        }
+        return ResponseEntity.ok(response);
     }
 
-}
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @CookieValue(value = REFRESH_COOKIE_NAME, required = false) String refreshFromCookie,
+            HttpServletRequest request
+    ) {
+        ApiResponse<Void> response = loginService.logout(refreshFromCookie);
+        ResponseCookie clearedCookie = buildClearedRefreshCookie(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearedCookie.toString())
+                .body(response);
+    }
 
+    private ResponseCookie buildRefreshCookie(String refreshToken, HttpServletRequest request) {
+        boolean secure = request.isSecure() ||
+                "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ofDays(tokenProvider.refreshTtlDays))
+                .build();
+    }
+
+    private ResponseCookie buildClearedRefreshCookie(HttpServletRequest request) {
+        boolean secure = request.isSecure() ||
+                "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
+    }
+}

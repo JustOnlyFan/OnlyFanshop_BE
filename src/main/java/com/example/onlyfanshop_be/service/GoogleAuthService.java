@@ -31,6 +31,10 @@ public class GoogleAuthService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    public long getRefreshTtlDays() {
+        return jwtTokenProvider.refreshTtlDays;
+    }
+
     public ApiResponse<UserDTO> handleGoogleLogin(String email, String username) {
         System.out.println("GoogleAuthService: Processing login for email: " + email + ", username: " + username);
 
@@ -61,7 +65,7 @@ public class GoogleAuthService {
                     .expired(false)
                     .revoked(false)
                     .type(TokenType.ACCESS)
-                    .expiresAt(Instant.now().plusSeconds(60L*30L))
+                    .expiresAt(Instant.now().plusSeconds(60L * jwtTokenProvider.accessTtlMinutes))
                     .build());
             tokenRepository.save(Token.builder()
                     .userId(user.getId())
@@ -69,7 +73,7 @@ public class GoogleAuthService {
                     .expired(false)
                     .revoked(false)
                     .type(TokenType.REFRESH)
-                    .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
+                    .expiresAt(Instant.now().plusSeconds(60L * 60L * 24L * jwtTokenProvider.refreshTtlDays))
                     .build());
 
             UserDTO userDTO = UserDTO.builder()
@@ -125,7 +129,7 @@ public class GoogleAuthService {
                     .expired(false)
                     .revoked(false)
                     .type(TokenType.ACCESS)
-                    .expiresAt(Instant.now().plusSeconds(60L*30L))
+                    .expiresAt(Instant.now().plusSeconds(60L * jwtTokenProvider.accessTtlMinutes))
                     .build());
             tokenRepository.save(Token.builder()
                     .userId(savedUser.getId())
@@ -133,7 +137,7 @@ public class GoogleAuthService {
                     .expired(false)
                     .revoked(false)
                     .type(TokenType.REFRESH)
-                    .expiresAt(Instant.now().plusSeconds(60L*60L*24L*7L))
+                    .expiresAt(Instant.now().plusSeconds(60L * 60L * 24L * jwtTokenProvider.refreshTtlDays))
                     .build());
 
             UserDTO userDTO = UserDTO.builder()

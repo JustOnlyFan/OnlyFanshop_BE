@@ -14,7 +14,17 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/upload")
-@CrossOrigin("*")
+@CrossOrigin(
+        originPatterns = {
+                "http://localhost:3000",
+                "http://onlyfan.local:3000",
+                "http://admin.onlyfan.local:3000",
+                "http://staff.onlyfan.local:3000",
+                "https://*.ngrok-free.dev",
+                "https://*.ngrok-free.app"
+        },
+        allowCredentials = "true"
+)
 public class FileUploadController {
 
     @Autowired
@@ -135,7 +145,7 @@ public class FileUploadController {
             @RequestParam("file") MultipartFile file
     ) {
         try {
-            System.out.println("🔵 Upload brand image - File name: " + file.getOriginalFilename());
+            System.out.println("Upload brand image - File name: " + file.getOriginalFilename());
             String imageUrl = cloudinaryStorageService.uploadFileToFolder(file, "brands");
             System.out.println("✅ Brand image uploaded successfully to brands folder: " + imageUrl);
             return ApiResponse.<String>builder()
@@ -144,7 +154,7 @@ public class FileUploadController {
                     .data(imageUrl)
                     .build();
         } catch (Exception e) {
-            System.err.println("❌ Error uploading brand image: " + e.getMessage());
+            System.err.println("Error uploading brand image: " + e.getMessage());
             e.printStackTrace();
             return ApiResponse.<String>builder()
                     .statusCode(500)
