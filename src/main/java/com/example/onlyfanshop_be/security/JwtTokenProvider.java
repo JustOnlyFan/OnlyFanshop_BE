@@ -7,6 +7,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -16,17 +17,18 @@ import java.util.Map;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+@Slf4j
 @Component
 public class JwtTokenProvider {
     @Value("${JWT_SECRET}")
     private String JWT_SECRET;
-    
+
     @Value("${jwt.access.ttlMinutes:30}")
     public long accessTtlMinutes;
-    
+
     @Value("${jwt.refresh.ttlDays:7}")
     public long refreshTtlDays;
-    
+
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
     }
@@ -73,6 +75,7 @@ public class JwtTokenProvider {
 
         return claims.getSubject();
     }
+
     private Claims getAllClaimsFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -80,6 +83,7 @@ public class JwtTokenProvider {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
     public String getEmailFromJWT(String token) {
         return getAllClaimsFromToken(token).getSubject();
     }
@@ -93,7 +97,7 @@ public class JwtTokenProvider {
         }
         return Long.parseLong(userId.toString());
     }
-    
+
     // Legacy method for backward compatibility
     @Deprecated
     public Integer getUserIdFromJWTAsInteger(String token) {
@@ -120,5 +124,26 @@ public class JwtTokenProvider {
             return header.substring(7);
         }
         throw new RuntimeException("Token không hợp lệ hoặc không được cung cấp!");
+    }
+
+    public Date getExpirationDateFromToken(String token) {
+        Claims claims = getAllClaimsFromToken(token);
+        return claims.getExpiration();
+    }
+
+    public boolean isTokenExpiringSoon(String token, long minutesBeforeExpiration) {
+        try {
+            Date expirationDate = getExpirationDateFromToken(token);
+            long expirationTime = expirationDate.getTime();
+            long currentTime = System.currentTimeMillis();
+            long timeUntilExpiration = expirationTime - currentTime;
+            long thresholdMs = minutesBeforeExpiration * 60 * 1000;
+
+            // Return true if token expires within threshold
+            return timeUntilExpiration > 0 && timeUntilExpiration <= thresholdMs;
+        } catch (Exception e) {
+            log.warn("Error checking token expiration: {}", e.getMessage());
+            return false;
+        }
     }
 }

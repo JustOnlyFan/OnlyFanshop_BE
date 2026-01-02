@@ -20,6 +20,7 @@ import com.example.onlyfanshop_be.exception.ErrorCode;
 import com.example.onlyfanshop_be.repository.BrandRepository;
 import com.example.onlyfanshop_be.repository.CategoryRepository;
 import com.example.onlyfanshop_be.repository.ProductRepository;
+import com.example.onlyfanshop_be.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -63,6 +64,8 @@ public class ProductService implements  IProductService {
     private com.example.onlyfanshop_be.repository.WarehouseRepository warehouseRepository;
     @Autowired
     private com.example.onlyfanshop_be.repository.InventoryItemRepository inventoryItemRepository;
+    @Autowired
+    private CacheService cacheService;
 
     @Override
     public ApiResponse<HomepageResponse> getHomepage(
@@ -138,8 +141,10 @@ public class ProductService implements  IProductService {
             Page<Product> productPage = productRepository.findAll(spec, pageable);
             List<Product> products = productPage.getContent();
 
+            // OPTIMIZATION: Only load main image URL for homepage (faster - no need for all images)
             java.util.Map<Long, String> productImageMap = loadProductImagesBatch(products);
-            java.util.Map<Long, java.util.List<ProductImageDTO>> productImageDtoMap = loadProductImagesDTOBatch(products);
+            // Skip loading full image DTO list for homepage - only main image is needed
+            // This saves one database query per request
 
             List<ProductDTO> productDTOs = products.stream()
                     .map(p -> {
@@ -163,22 +168,35 @@ public class ProductService implements  IProductService {
                         // Get image URL from map (already loaded in batch)
                         String imageURL = productImageMap.get(p.getId());
                         
-                        return ProductDTO.builder()
+                        // OPTIMIZATION: Don't set images and isActive fields for homepage (reduces JSON size)
+                        ProductDTO.ProductDTOBuilder builder = ProductDTO.builder()
                                 .id(p.getProductID())
                                 .productName(p.getProductName())
                                 .price(p.getPrice())
                                 .imageURL(imageURL)
                                 .briefDescription(p.getBriefDescription())
                                 .brand(brandDTO)
-                                .category(categoryDTO)
-                                .images(productImageDtoMap.getOrDefault(p.getId(), java.util.Collections.emptyList()))
-                                .build();
+                                .category(categoryDTO);
+                        // Don't set images and isActive - Jackson will skip null fields with @JsonInclude
+                        // This reduces JSON payload size significantly
+                        return builder.build();
                     })
                     .toList();
-            java.math.BigDecimal maxPriceBD = productRepository.findMaxPrice();
-            java.math.BigDecimal minPriceBD = productRepository.findMinPrice();
-            Long maxPriceFilter = maxPriceBD != null ? maxPriceBD.longValue() : null;
-            Long minPriceFilter = minPriceBD != null ? minPriceBD.longValue() : null;
+            // OPTIMIZATION: Use cache service for price range (with fallback)
+            Long maxPriceFilter = null;
+            Long minPriceFilter = null;
+            try {
+                java.util.Map<String, Long> priceRange = cacheService.getPriceRange();
+                maxPriceFilter = priceRange.get("maxPrice");
+                minPriceFilter = priceRange.get("minPrice");
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to get price range from cache, using direct query: " + e.getMessage());
+                // Fallback to direct query
+                java.math.BigDecimal maxPriceBD = productRepository.findMaxPrice();
+                java.math.BigDecimal minPriceBD = productRepository.findMinPrice();
+                maxPriceFilter = maxPriceBD != null ? maxPriceBD.longValue() : null;
+                minPriceFilter = minPriceBD != null ? minPriceBD.longValue() : null;
+            }
             HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
                     .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
                     .selectedBrand(brandId != null && brandId > 0 ? brandRepository.findById(brandId).map(Brand::getBrandName).orElse("All") : "All")
@@ -187,17 +205,9 @@ public class ProductService implements  IProductService {
                     .minPrice(minPriceFilter)
                     .build();
 
-            List<CategoryDTO> categories = categoryRepository.findAll().stream()
-                    .map(c -> CategoryDTO.simple(c.getCategoryID(), c.getCategoryName()))
-                    .toList();
-
-            List<BrandDTO> brands = brandRepository.findAll().stream()
-                    .map(b -> BrandDTO.builder()
-                            .brandID(b.getBrandID() == null ? null : b.getBrandID().intValue())
-                            .name(b.getBrandName())
-                            .imageURL(b.getImageURL())
-                            .build())
-                    .toList();
+            // OPTIMIZATION: Use cache service for categories and brands (they don't change often)
+            List<CategoryDTO> categories = cacheService.getCategories();
+            List<BrandDTO> brands = cacheService.getBrands();
 
             Pagination pagination = Pagination.builder()
                     .page(page)
@@ -750,16 +760,24 @@ public class ProductService implements  IProductService {
             Long minPrice, Long maxPrice, Integer bladeCount,
             Boolean remoteControl, Boolean oscillation, Boolean timer,
             Integer minPower, Integer maxPower,
-            int page, int size, String sortBy, String order) {
+            int page, int size, String sortBy, String order, Boolean includeInactive) {
         try {
-            System.out.println("ProductService.productList - sortBy: " + sortBy);
+            System.out.println("ProductService.productList - sortBy: " + sortBy + ", includeInactive: " + includeInactive);
             Sort.Direction direction = "DESC".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
             String actualSortField = mapSortField(sortBy);
             System.out.println("ProductService.productList - mapped sortBy: " + actualSortField);
             Pageable pageable = PageRequest.of(page - 1, size, Sort.by(direction, actualSortField));
 
-            Specification<Product> spec = (root, query, cb) -> 
-                    cb.equal(root.get("status"), com.example.onlyfanshop_be.enums.ProductStatus.active);
+            Specification<Product> spec;
+            // Only filter by active status if includeInactive is false or null
+            if (includeInactive != null && includeInactive) {
+                // Include both active and inactive products - start with no status filter
+                spec = (root, query, cb) -> cb.conjunction();
+            } else {
+                // Default behavior: only include active products
+                spec = (root, query, cb) -> 
+                        cb.equal(root.get("status"), com.example.onlyfanshop_be.enums.ProductStatus.active);
+            }
             if (keyword != null && !keyword.isEmpty()) {
                 spec = spec.and((root, query, cb) ->
                         cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
@@ -851,10 +869,21 @@ public class ProductService implements  IProductService {
                                 .build();
                     })
                     .toList();
-            java.math.BigDecimal maxPriceBD = productRepository.findMaxPrice();
-            java.math.BigDecimal minPriceBD = productRepository.findMinPrice();
-            Long maxPriceFilter = maxPriceBD != null ? maxPriceBD.longValue() : null;
-            Long minPriceFilter = minPriceBD != null ? minPriceBD.longValue() : null;
+            // OPTIMIZATION: Use cache service for price range (with fallback)
+            Long maxPriceFilter = null;
+            Long minPriceFilter = null;
+            try {
+                java.util.Map<String, Long> priceRange = cacheService.getPriceRange();
+                maxPriceFilter = priceRange.get("maxPrice");
+                minPriceFilter = priceRange.get("minPrice");
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to get price range from cache, using direct query: " + e.getMessage());
+                // Fallback to direct query
+                java.math.BigDecimal maxPriceBD = productRepository.findMaxPrice();
+                java.math.BigDecimal minPriceBD = productRepository.findMinPrice();
+                maxPriceFilter = maxPriceBD != null ? maxPriceBD.longValue() : null;
+                minPriceFilter = minPriceBD != null ? minPriceBD.longValue() : null;
+            }
 
             HomepageResponse.Filters filters = HomepageResponse.Filters.builder()
                     .selectedCategory(categoryId != null && categoryId > 0 ? categoryRepository.findById(categoryId).map(Category::getCategoryName).orElse("All") : "All")
@@ -864,17 +893,9 @@ public class ProductService implements  IProductService {
                     .minPrice(minPriceFilter)
                     .build();
 
-            List<CategoryDTO> categories = categoryRepository.findAll().stream()
-                    .map(c -> CategoryDTO.simple(c.getCategoryID(), c.getCategoryName()))
-                    .toList();
-
-            List<BrandDTO> brands = brandRepository.findAll().stream()
-                    .map(b -> BrandDTO.builder()
-                            .brandID(b.getBrandID() == null ? null : b.getBrandID().intValue())
-                            .name(b.getBrandName())
-                            .imageURL(b.getImageURL())
-                            .build())
-                    .toList();
+            // OPTIMIZATION: Use cache service for categories and brands (they don't change often)
+            List<CategoryDTO> categories = cacheService.getCategories();
+            List<BrandDTO> brands = cacheService.getBrands();
 
             Pagination pagination = Pagination.builder()
                     .page(page)
@@ -1035,26 +1056,26 @@ public class ProductService implements  IProductService {
         }
         
         try {
-            List<com.example.onlyfanshop_be.entity.ProductImage> allImages = 
-                    productImageRepository.findByProductIdIn(productIds);
-
-            java.util.Map<Long, java.util.List<com.example.onlyfanshop_be.entity.ProductImage>> imagesByProduct = 
-                    allImages.stream()
-                            .collect(java.util.stream.Collectors.groupingBy(
-                                    com.example.onlyfanshop_be.entity.ProductImage::getProductId));
-
-            for (java.util.Map.Entry<Long, java.util.List<com.example.onlyfanshop_be.entity.ProductImage>> entry : 
-                    imagesByProduct.entrySet()) {
-                Long productId = entry.getKey();
-                java.util.List<com.example.onlyfanshop_be.entity.ProductImage> images = entry.getValue();
+            // OPTIMIZATION: Query only main image URLs directly (much faster - only one query, only needed fields)
+            List<Object[]> mainImageResults = productImageRepository.findMainImageUrlsByProductIdIn(productIds);
+            
+            for (Object[] result : mainImageResults) {
+                Long productId = (Long) result[0];
+                String imageUrl = (String) result[1];
+                if (productId != null && imageUrl != null) {
+                    imageMap.put(productId, imageUrl);
+                }
+            }
+            
+            // Fallback: If no main images found, try to get any image
+            if (imageMap.size() < productIds.size()) {
+                List<com.example.onlyfanshop_be.entity.ProductImage> fallbackImages = 
+                        productImageRepository.findByProductIdIn(productIds);
                 
-                if (images != null && !images.isEmpty()) {
-                    String imageURL = images.stream()
-                            .filter(com.example.onlyfanshop_be.entity.ProductImage::getIsMain)
-                            .map(com.example.onlyfanshop_be.entity.ProductImage::getImageUrl)
-                            .findFirst()
-                            .orElse(images.get(0).getImageUrl());
-                    imageMap.put(productId, imageURL);
+                for (com.example.onlyfanshop_be.entity.ProductImage img : fallbackImages) {
+                    if (!imageMap.containsKey(img.getProductId())) {
+                        imageMap.put(img.getProductId(), img.getImageUrl());
+                    }
                 }
             }
         } catch (Exception e) {

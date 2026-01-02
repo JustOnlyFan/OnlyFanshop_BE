@@ -1,8 +1,12 @@
 package com.example.onlyfanshop_be.security;
 
+import com.example.onlyfanshop_be.dto.response.ApiResponse;
+import com.example.onlyfanshop_be.dto.UserDTO;
 import com.example.onlyfanshop_be.repository.TokenRepository;
+import com.example.onlyfanshop_be.service.ILoginService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -12,22 +16,30 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.WebUtils;
 
 import java.io.IOException;
 
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String REFRESH_COOKIE_NAME = "refresh_token";
+    private static final String X_NEW_ACCESS_TOKEN_HEADER = "X-New-Access-Token";
+    private static final long MINUTES_BEFORE_EXPIRATION = 5; // Refresh token if it expires within 5 minutes
+
     private final JwtTokenProvider tokenProvider;
     private final UserDetailsService userDetailsService;
     private final TokenRepository tokenRepository;
+    private final ILoginService loginService;
 
     public JwtAuthenticationFilter(JwtTokenProvider tokenProvider,
                                    UserDetailsService userDetailsService,
-                                   TokenRepository tokenRepository) {
+                                   TokenRepository tokenRepository,
+                                   ILoginService loginService) {
         this.tokenProvider = tokenProvider;
         this.userDetailsService = userDetailsService;
         this.tokenRepository = tokenRepository;
+        this.loginService = loginService;
     }
 
     @Override
@@ -136,6 +148,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.info("Authentication successful for user: {} with authorities: {} on request: {}",
                         username, userDetails.getAuthorities(), requestURI);
 
+                // Check if token is expiring soon and auto-refresh it
+                try {
+                    if (tokenProvider.isTokenExpiringSoon(token, MINUTES_BEFORE_EXPIRATION)) {
+                        log.info("Token is expiring soon (within {} minutes), attempting to refresh...", MINUTES_BEFORE_EXPIRATION);
+                        String refreshToken = getRefreshTokenFromCookie(request);
+                        if (refreshToken != null && !refreshToken.isEmpty()) {
+                            try {
+                                ApiResponse<UserDTO> refreshResponse = loginService.refreshToken(refreshToken);
+                                if (refreshResponse != null && refreshResponse.getData() != null && refreshResponse.getData().getToken() != null) {
+                                    String newAccessToken = refreshResponse.getData().getToken();
+                                    // Add new token to response header for frontend to pick up
+                                    response.setHeader(X_NEW_ACCESS_TOKEN_HEADER, newAccessToken);
+                                    log.info("Token refreshed successfully for user: {}", username);
+                                }
+                            } catch (Exception refreshError) {
+                                log.warn("Failed to refresh token for user: {}, error: {}", username, refreshError.getMessage());
+                                // Don't fail the request if refresh fails - token is still valid
+                            }
+                        } else {
+                            log.warn("Token is expiring soon but no refresh token found in cookie");
+                        }
+                    }
+                } catch (Exception refreshCheckError) {
+                    log.warn("Error checking token expiration: {}", refreshCheckError.getMessage());
+                    // Don't fail the request if expiration check fails
+                }
+
             } catch (Exception e) {
                 log.error("Error setting authentication: ", e);
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -151,5 +190,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String getRefreshTokenFromCookie(HttpServletRequest request) {
+        Cookie refreshCookie = WebUtils.getCookie(request, REFRESH_COOKIE_NAME);
+        if (refreshCookie != null) {
+            return refreshCookie.getValue();
+        }
+        return null;
     }
 }

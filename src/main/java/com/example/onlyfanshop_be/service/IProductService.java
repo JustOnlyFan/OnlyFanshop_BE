@@ -28,7 +28,7 @@ public interface IProductService {
             Long minPrice, Long maxPrice, Integer bladeCount,
             Boolean remoteControl, Boolean oscillation, Boolean timer,
             Integer minPower, Integer maxPower,
-            int page, int size, String sortBy, String order);
+            int page, int size, String sortBy, String order, Boolean includeInactive);
     public void updateActive(int productId, boolean active);
     public void updateActiveByBrand(int brandID);
     public void updateActiveByCategory(int categoryID);
