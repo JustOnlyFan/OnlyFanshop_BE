@@ -1,6 +1,7 @@
 package com.example.onlyfanshop_be.entity;
 
 import com.example.onlyfanshop_be.enums.StoreStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class StoreLocation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -76,7 +78,6 @@ public class StoreLocation {
 		this.status = active ? StoreStatus.ACTIVE : StoreStatus.PAUSED;
 	}
 
-	// Legacy getter for backward compatibility
 	@Transient
 	@JsonProperty("locationID")
 	public Integer getLocationID() {
