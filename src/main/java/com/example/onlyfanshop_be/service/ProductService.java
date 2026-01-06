@@ -76,10 +76,32 @@ public class ProductService implements  IProductService {
             int page, int size, String sortBy, String order) {
         try {
             System.out.println("ProductService.getHomepage - sortBy: " + sortBy);
-            Sort.Direction direction = "DESC".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
-            String actualSortField = mapSortField(sortBy);
-            System.out.println("ProductService.getHomepage - mapped sortBy: " + actualSortField);
-            Pageable pageable = PageRequest.of(page - 1, size, Sort.by(direction, actualSortField));
+            
+            // Check if shuffle/recommended algorithm should be used
+            boolean useShuffle = "shuffled".equalsIgnoreCase(sortBy) || 
+                                "recommended".equalsIgnoreCase(sortBy) ||
+                                "popular".equalsIgnoreCase(sortBy);
+            
+            List<Product> products;
+            long totalElements;
+            int totalPages;
+            
+            if (useShuffle) {
+                // For shuffle algorithm: load all matching products, shuffle, then paginate
+                java.util.Map<String, Object> shuffleResult = loadAndShuffleProducts(keyword, categoryId, brandId, minPrice, maxPrice,
+                        bladeCount, remoteControl, oscillation, timer, minPower, maxPower,
+                        page, size);
+                @SuppressWarnings("unchecked")
+                List<Product> shuffledProductsList = (List<Product>) shuffleResult.get("products");
+                products = shuffledProductsList;
+                totalElements = (Long) shuffleResult.get("totalElements");
+                totalPages = (Integer) shuffleResult.get("totalPages");
+            } else {
+                // Normal sorting: use database pagination
+                Sort.Direction direction = "DESC".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
+                String actualSortField = mapSortField(sortBy);
+                System.out.println("ProductService.getHomepage - mapped sortBy: " + actualSortField);
+                Pageable pageable = PageRequest.of(page - 1, size, Sort.by(direction, actualSortField));
 
             Specification<Product> spec = (root, query, cb) -> 
                     cb.equal(root.get("status"), com.example.onlyfanshop_be.enums.ProductStatus.active);
@@ -138,8 +160,11 @@ public class ProductService implements  IProductService {
                         cb.lessThanOrEqualTo(root.get("powerWatt"), maxPower));
             }
 
-            Page<Product> productPage = productRepository.findAll(spec, pageable);
-            List<Product> products = productPage.getContent();
+                Page<Product> productPage = productRepository.findAll(spec, pageable);
+                products = productPage.getContent();
+                totalElements = productPage.getTotalElements();
+                totalPages = productPage.getTotalPages();
+            }
 
             // OPTIMIZATION: Only load main image URL for homepage (faster - no need for all images)
             java.util.Map<Long, String> productImageMap = loadProductImagesBatch(products);
@@ -212,8 +237,8 @@ public class ProductService implements  IProductService {
             Pagination pagination = Pagination.builder()
                     .page(page)
                     .size(size)
-                    .totalPages(productPage.getTotalPages())
-                    .totalElements(productPage.getTotalElements())
+                    .totalPages(totalPages)
+                    .totalElements(totalElements)
                     .build();
 
             return ApiResponse.<HomepageResponse>builder().statusCode(200).data(HomepageResponse.builder()
@@ -936,6 +961,115 @@ public class ProductService implements  IProductService {
     @Override
     public void updateActiveByCategory(int categoryID) {
         productRepository.findByCategoryId(categoryID);
+    }
+
+    /**
+     * Load products with filters and shuffle them using round-robin by brand algorithm
+     * This ensures products from different brands are interleaved
+     */
+    private java.util.Map<String, Object> loadAndShuffleProducts(
+            String keyword, Integer categoryId, Integer brandId,
+            Long minPrice, Long maxPrice, Integer bladeCount,
+            Boolean remoteControl, Boolean oscillation, Boolean timer,
+            Integer minPower, Integer maxPower,
+            int page, int size) {
+        
+        // Build the same specification as normal query
+        Specification<Product> spec = (root, query, cb) -> 
+                cb.equal(root.get("status"), com.example.onlyfanshop_be.enums.ProductStatus.active);
+        if (keyword != null && !keyword.isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
+        }
+        if (categoryId != null && categoryId > 0) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("categoryId"), categoryId));
+        }
+        if (brandId != null && brandId > 0) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("brandId"), brandId));
+        }
+        if (minPrice != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(minPrice)));
+        }
+        if (maxPrice != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("basePrice"), java.math.BigDecimal.valueOf(maxPrice)));
+        }
+        if (bladeCount != null && bladeCount > 0) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("bladeCount"), bladeCount));
+        }
+        if (remoteControl != null && remoteControl) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("remoteControl"), true));
+        }
+        if (oscillation != null && oscillation) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("oscillation"), true));
+        }
+        if (timer != null && timer) {
+            spec = spec.and((root, query, cb) ->
+                    cb.isNotNull(root.get("timer")));
+        }
+        if (minPower != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("powerWatt"), minPower));
+        }
+        if (maxPower != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("powerWatt"), maxPower));
+        }
+        
+        // Load all matching products (without pagination)
+        List<Product> allProducts = productRepository.findAll(spec);
+        
+        // Group products by brand
+        java.util.Map<Integer, List<Product>> productsByBrand = allProducts.stream()
+                .collect(Collectors.groupingBy(
+                        p -> p.getBrandId() != null ? p.getBrandId() : 0,
+                        Collectors.toList()
+                ));
+        
+        // Shuffle using round-robin: interleave products from different brands
+        List<Product> shuffledProducts = new ArrayList<>();
+        java.util.Map<Integer, Integer> brandIndices = new java.util.HashMap<>();
+        productsByBrand.forEach((brandIdKey, brandProducts) -> brandIndices.put(brandIdKey, 0));
+        
+        // Round-robin: take one product from each brand in turn
+        boolean hasMoreProducts = true;
+        while (hasMoreProducts) {
+            hasMoreProducts = false;
+            for (java.util.Map.Entry<Integer, List<Product>> entry : productsByBrand.entrySet()) {
+                Integer brandIdKey = entry.getKey();
+                List<Product> brandProducts = entry.getValue();
+                Integer currentIndex = brandIndices.get(brandIdKey);
+                
+                if (currentIndex < brandProducts.size()) {
+                    shuffledProducts.add(brandProducts.get(currentIndex));
+                    brandIndices.put(brandIdKey, currentIndex + 1);
+                    hasMoreProducts = true;
+                }
+            }
+        }
+        
+        // Apply pagination
+        long totalElements = shuffledProducts.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int startIndex = (page - 1) * size;
+        int endIndex = Math.min(startIndex + size, shuffledProducts.size());
+        
+        List<Product> paginatedProducts = startIndex < shuffledProducts.size() 
+                ? shuffledProducts.subList(startIndex, endIndex)
+                : new ArrayList<>();
+        
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("products", paginatedProducts);
+        result.put("totalElements", totalElements);
+        result.put("totalPages", totalPages);
+        
+        return result;
     }
 
     private String mapSortField(String sortBy) {
