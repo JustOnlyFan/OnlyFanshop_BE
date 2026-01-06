@@ -1,12 +1,17 @@
 package com.example.onlyfanshop_be.service;
 
 import com.example.onlyfanshop_be.dto.StoreInventoryDTO;
+import com.example.onlyfanshop_be.entity.InventoryItem;
 import com.example.onlyfanshop_be.entity.Product;
 import com.example.onlyfanshop_be.entity.StoreInventory;
 import com.example.onlyfanshop_be.entity.StoreLocation;
+import com.example.onlyfanshop_be.entity.Warehouse;
+import com.example.onlyfanshop_be.enums.ProductStatus;
+import com.example.onlyfanshop_be.repository.InventoryItemRepository;
 import com.example.onlyfanshop_be.repository.ProductRepository;
 import com.example.onlyfanshop_be.repository.StoreInventoryRepository;
 import com.example.onlyfanshop_be.repository.StoreLocationRepository;
+import com.example.onlyfanshop_be.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,27 +26,8 @@ public class StoreInventoryService {
     private final StoreInventoryRepository storeInventoryRepository;
     private final StoreLocationRepository storeLocationRepository;
     private final ProductRepository productRepository;
-
-    @Transactional
-    public void addProductToAllStores(Long productId) {
-        List<StoreLocation> allStores = storeLocationRepository.findAll();
-        
-        for (StoreLocation store : allStores) {
-            // Kiểm tra xem đã tồn tại chưa
-            if (storeInventoryRepository.findByStoreIdAndProductId(store.getLocationID(), productId).isEmpty()) {
-                StoreInventory inventory = StoreInventory.builder()
-                        .storeId(store.getLocationID())
-                        .productId(productId)
-                        .variantId(null)
-                        .isAvailable(true) // Mặc định bật bán ở tất cả stores
-                        .quantity(0)
-                        .createdAt(LocalDateTime.now())
-                        .updatedAt(LocalDateTime.now())
-                        .build();
-                storeInventoryRepository.save(inventory);
-            }
-        }
-    }
+    private final WarehouseRepository warehouseRepository;
+    private final InventoryItemRepository inventoryItemRepository;
 
     @Transactional
     public StoreInventory toggleProductAvailability(Integer storeId, Long productId, Boolean isAvailable) {
@@ -55,13 +41,32 @@ public class StoreInventoryService {
 
     @Transactional(readOnly = true)
     public List<StoreLocation> getStoresWithProduct(Long productId) {
+        // Lấy danh sách cửa hàng có sản phẩm available
         List<StoreInventory> inventories = storeInventoryRepository.findAvailableStoresByProductId(productId);
         
-        List<Integer> storeIds = inventories.stream()
+        // Lọc chỉ các cửa hàng có số lượng > 0 trong InventoryItem
+        List<Integer> storeIdsWithStock = inventories.stream()
+                .filter(inventory -> {
+                    // Tìm warehouse tương ứng với store
+                    Warehouse warehouse = warehouseRepository.findByStoreIdAndIsActiveTrue(inventory.getStoreId())
+                            .orElse(null);
+                    
+                    if (warehouse == null) {
+                        return false;
+                    }
+                    
+                    // Kiểm tra số lượng trong InventoryItem
+                    InventoryItem inventoryItem = inventoryItemRepository
+                            .findByWarehouseIdAndProductId(warehouse.getId(), productId)
+                            .orElse(null);
+                    
+                    // Chỉ trả về nếu có số lượng > 0
+                    return inventoryItem != null && inventoryItem.getQuantity() != null && inventoryItem.getQuantity() > 0;
+                })
                 .map(StoreInventory::getStoreId)
                 .collect(Collectors.toList());
         
-        return storeLocationRepository.findAllById(storeIds);
+        return storeLocationRepository.findAllById(storeIdsWithStock);
     }
 
     @Transactional(readOnly = true)
@@ -136,7 +141,10 @@ public class StoreInventoryService {
 
     @Transactional(readOnly = true)
     public List<StoreInventoryDTO> getAllProductsWithStoreStatus(Integer storeId) {
-        List<Product> allProducts = productRepository.findAll();
+        // Only get active products - "Tổng" should only count active products (same for all stores)
+        List<Product> allProducts = productRepository.findAll().stream()
+                .filter(product -> product.getStatus() == ProductStatus.active)
+                .collect(Collectors.toList());
         List<StoreInventory> existingInventories = storeInventoryRepository.findByStoreId(storeId);
 
         java.util.Map<Long, StoreInventory> inventoryMap = existingInventories.stream()
